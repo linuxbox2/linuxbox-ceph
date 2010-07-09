@@ -13,9 +13,9 @@
  */
 
 #include "common/errno.h"
+#include "mds/mdstypes.h" /* XXXX */
 #include "include/cephfs/libcephfs.h"
 #include <stdlib.h>
-
 #include <errno.h>
 #include <dirent.h>
 #include <iostream>

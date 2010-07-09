@@ -205,7 +205,7 @@ static void ceph_ll_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name
 static void ceph_ll_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
   const struct fuse_ctx *ctx = fuse_req_ctx(req);
-  void *dirp;
+  dir_result_t* dirp;
   int r = client->ll_opendir(fino_vino(ino), &dirp, ctx->uid, ctx->gid);
   if (r >= 0) {
     fi->fh = (long)dirp;

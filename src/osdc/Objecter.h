@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_OBJECTER_H
@@ -505,15 +505,15 @@ struct ObjectOperation {
 
 
 class Objecter {
- public:  
+ public:
   Messenger *messenger;
   MonClient *monc;
   OSDMap    *osdmap;
   CephContext *cct;
 
   bool initialized;
- 
- private:
+
+private:
   tid_t last_tid;
   int client_inc;
   uint64_t max_linger_id;
@@ -1033,11 +1033,11 @@ private:
     o->out_rval.swap(op.out_rval);
     return op_submit(o);
   }
-  tid_t linger(const object_t& oid, const object_locator_t& oloc, 
+  tid_t linger(const object_t& oid, const object_locator_t& oloc,
 	       ObjectOperation& op,
 	       snapid_t snap, bufferlist& inbl, bufferlist *poutbl, int flags,
-               Context *onack, Context *onfinish,
-               eversion_t *objver);
+	       Context *onack, Context *onfinish,
+	       eversion_t *objver);
   void unregister_linger(uint64_t linger_id);
 
   /**
@@ -1166,9 +1166,9 @@ private:
   }
 
   tid_t getxattrs(const object_t& oid, const object_locator_t& oloc, snapid_t snap,
-             map<string,bufferlist>& attrset,
-	     int flags, Context *onfinish,
-	     eversion_t *objver = NULL, ObjectOperation *extra_ops = NULL) {
+		  map<string,bufferlist>& attrset,
+		  int flags, Context *onfinish,
+		  eversion_t *objver = NULL, ObjectOperation *extra_ops = NULL) {
     vector<OSDOp> ops;
     int i = init_ops(ops, 1, extra_ops);
     ops[i].op.op = CEPH_OSD_OP_GETXATTRS;
@@ -1182,17 +1182,17 @@ private:
   tid_t read_full(const object_t& oid, const object_locator_t& oloc,
 		  snapid_t snap, bufferlist *pbl, int flags,
 		  Context *onfinish,
-	          eversion_t *objver = NULL, ObjectOperation *extra_ops = NULL) {
-    return read(oid, oloc, 0, 0, snap, pbl, flags | global_op_flags | CEPH_OSD_FLAG_READ, onfinish, objver);
+		  eversion_t *objver = NULL, ObjectOperation *extra_ops = NULL) {
+    return read(oid, oloc, 0, 0, snap, pbl, flags | CEPH_OSD_FLAG_READ, onfinish, objver);
   }
-     
+
   // writes
-  tid_t _modify(const object_t& oid, const object_locator_t& oloc, 
+  tid_t _modify(const object_t& oid, const object_locator_t& oloc,
 		vector<OSDOp>& ops, utime_t mtime,
 		const SnapContext& snapc, int flags,
-	        Context *onack, Context *oncommit,
-	        eversion_t *objver = NULL) {
-    Op *o = new Op(oid, oloc, ops, flags | global_op_flags | CEPH_OSD_FLAG_WRITE, onack, oncommit, objver);
+		Context *onack, Context *oncommit,
+		eversion_t *objver = NULL) {
+    Op *o = new Op(oid, oloc, ops, flags | CEPH_OSD_FLAG_WRITE, onack, oncommit, objver);
     o->mtime = mtime;
     o->snapc = snapc;
     return op_submit(o);
@@ -1271,7 +1271,7 @@ private:
 	      const SnapContext& snapc,
 	      utime_t mtime, int flags,
 	      uint64_t trunc_size, __u32 trunc_seq,
-              Context *onack, Context *oncommit,
+	      Context *onack, Context *oncommit,
 	      eversion_t *objver = NULL, ObjectOperation *extra_ops = NULL) {
     vector<OSDOp> ops;
     int i = init_ops(ops, 1, extra_ops);
