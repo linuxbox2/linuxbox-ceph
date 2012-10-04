@@ -541,7 +541,7 @@ Inode * Client::add_update_inode(InodeStat *st, utime_t from, int mds)
     in->layout = st->layout;
     in->ctime = st->ctime;
     in->max_size = st->max_size;  // right?
-  
+
     update_inode_file_bits(in, st->truncate_seq, st->truncate_size, st->size,
 			   st->time_warp_seq, st->ctime, st->mtime, st->atime,
 			   issued);
@@ -3126,7 +3126,7 @@ void Client::handle_cap_flushsnap_ack(Inode *in, MClientCaps *m)
 	    << " on " << *in << dendl;
     // we may not have it if we send multiple FLUSHSNAP requests and (got multiple FLUSHEDSNAPs back)
   }
-    
+
   m->put();
 }
 
@@ -3138,17 +3138,18 @@ void Client::handle_cap_grant(Inode *in, int mds, Cap *cap, MClientCaps *m)
   const int old_caps = cap->issued;
   const int new_caps = m->get_caps();
   ldout(cct, 5) << "handle_cap_grant on in " << m->get_ino() 
-          << " mds." << mds << " seq " << m->get_seq() 
-          << " caps now " << ccap_string(new_caps) 
-          << " was " << ccap_string(old_caps) << dendl;
+		<< " mds." << mds << " seq " << m->get_seq()
+		<< " caps now " << ccap_string(new_caps)
+		<< " was " << ccap_string(old_caps) << dendl;
 
   cap->seq = m->get_seq();
 
   in->layout = m->get_layout();
-  
+
   // update inode
   int implemented = 0;
   int issued = in->caps_issued(&implemented) | in->caps_dirty();
+  int revoked = 0;
   issued |= implemented;
 
   if ((issued & CEPH_CAP_AUTH_EXCL) == 0) {
@@ -3183,19 +3184,30 @@ void Client::handle_cap_grant(Inode *in, int mds, Cap *cap, MClientCaps *m)
   check_cap_issue(in, cap, issued);
 
   // update caps
-  if (old_caps & ~new_caps) { 
-    ldout(cct, 10) << "  revocation of " << ccap_string(~new_caps & old_caps) << dendl;
+  revoked = old_caps & ~new_caps;
+  if (revoked) {
+    ldout(cct, 10) << "  revocation of " << ccap_string(revoked) << dendl;
     cap->issued = new_caps;
 
-    if ((~cap->issued & old_caps) & CEPH_CAP_FILE_CACHE)
+    if (revoked & CEPH_CAP_FILE_CACHE)
       _release(in, false);
-    
+
     if (((used & ~new_caps) & CEPH_CAP_FILE_BUFFER) &&
 	!_flush(in)) {
       // waitin' for flush
     } else {
       cap->wanted = 0; // don't let check_caps skip sending a response to MDS
       check_caps(in, true);
+    }
+
+    if (revoked & (CEPH_CAP_FILE_WR |
+		   CEPH_CAP_FILE_BUFFER |
+		   CEPH_CAP_FILE_WREXTEND |
+		   CEPH_CAP_FILE_CACHE |
+		   CEPH_CAP_FILE_RD)) {
+      in->recall_rw_caps(CEPH_CAP_FILE_WR ||
+			 CEPH_CAP_FILE_BUFFER ||
+			 CEPH_CAP_FILE_WREXTEND);
     }
 
   } else if (old_caps == new_caps) {
@@ -3243,7 +3255,7 @@ int Client::mount(const std::string &mount_root)
 	  << " and mdsmap " << mdsmap->get_epoch() 
 	  << dendl;
 
-  
+
   // hack: get+pin root inode.
   //  fuse assumes it's always there.
   MetaRequest *req = new MetaRequest(CEPH_MDS_OP_GETATTR);
@@ -3326,15 +3338,15 @@ void Client::unmount()
     // flush/release all buffered data
     hash_map<vinodeno_t, Inode*>::iterator next;
     for (hash_map<vinodeno_t, Inode*>::iterator p = inode_map.begin();
-         p != inode_map.end(); 
-         p = next) {
+	 p != inode_map.end();
+	 p = next) {
       next = p;
       next++;
       Inode *in = p->second;
       if (!in) {
 	ldout(cct, 0) << "null inode_map entry ino " << p->first << dendl;
 	assert(in);
-      }      
+      }
       if (!in->caps.empty()) {
 	in->get();
 	_release(in);
@@ -5815,7 +5827,7 @@ int Client::ll_walk(const char* name, struct stat *attr)
 
 void Client::_ll_get(Inode *in)
 {
-  if (in->ll_ref == 0) 
+  if (in->ll_ref == 0)
     in->get();
   in->ll_get();
   ldout(cct, 20) << "_ll_get " << in << " " << in->ino << " -> " << in->ll_ref << dendl;
@@ -5860,13 +5872,14 @@ bool Client::ll_forget(vinodeno_t vino, int num)
 
   bool last = false;
   if (inode_map.count(vino) == 0) {
-    ldout(cct, 1) << "WARNING: ll_forget on " << vino << " " << num 
+    ldout(cct, 1) << "WARNING: ll_forget on " << vino << " " << num
 	    << ", which I don't have" << dendl;
   } else {
     Inode *in = inode_map[vino];
     assert(in);
     if (in->ll_ref < num) {
-      ldout(cct, 1) << "WARNING: ll_forget on " << vino << " " << num << ", which only has ll_ref=" << in->ll_ref << dendl;
+      ldout(cct, 1) << "WARNING: ll_forget on " << vino << " " << num
+		    << ", which only has ll_ref=" << in->ll_ref << dendl;
       _ll_put(in, in->ll_ref);
       last = true;
     } else {
@@ -6034,7 +6047,7 @@ int Client::_listxattr(Inode *in, char *name, size_t size, int uid, int gid)
 	 p != in->xattrs.end();
 	 p++)
       r += p->first.length() + 1;
-    
+
     if (size != 0) {
       if (size >= (unsigned)r) {
 	for (map<string,bufferptr>::iterator p = in->xattrs.begin();
@@ -6083,7 +6096,7 @@ int Client::_setxattr(Inode *in, const char *name, const void *value, size_t siz
   bufferlist bl;
   bl.append((const char*)value, size);
   req->set_data(bl);
-  
+
   int res = make_request(req, uid, gid);
 
   trim_cache();
@@ -6121,7 +6134,7 @@ int Client::_removexattr(Inode *in, const char *name, int uid, int gid)
   req->set_filepath(path);
   req->set_filepath2(name);
   req->inode = in;
- 
+
   int res = make_request(req, uid, gid);
 
   trim_cache();
@@ -6173,7 +6186,7 @@ int Client::ll_readlink(vinodeno_t vino, const char **value, int uid, int gid)
 }
 
 int Client::_mknod(Inode *dir, const char *name, mode_t mode, dev_t rdev, int uid, int gid) 
-{ 
+{
   ldout(cct, 3) << "_mknod(" << dir->ino << " " << name << ", 0" << oct << mode << dec << ", " << rdev
 	  << ", uid " << uid << ", gid " << gid << ")" << dendl;
 
@@ -6189,7 +6202,7 @@ int Client::_mknod(Inode *dir, const char *name, mode_t mode, dev_t rdev, int ui
   filepath path;
   dir->make_nosnap_relative_path(path);
   path.push_dentry(name);
-  req->set_filepath(path); 
+  req->set_filepath(path);
   req->inode = dir;
   req->head.args.mknod.mode = mode;
   req->head.args.mknod.rdev = rdev;
@@ -6238,15 +6251,15 @@ int Client::ll_mknod(vinodeno_t parent, const char *name, mode_t mode, dev_t rde
 }
 
 int Client::_create(Inode *dir, const char *name, int flags, mode_t mode, Inode **inp, Fh **fhp, int uid, int gid) 
-{ 
+{
   ldout(cct, 3) << "_create(" << dir->ino << " " << name << ", 0" << oct << mode << dec << ")" << dendl;
-  
+
   if (strlen(name) > NAME_MAX)
     return -ENAMETOOLONG;
   if (dir->snapid != CEPH_NOSNAP) {
     return -EROFS;
   }
-  
+
   int cmode = ceph_flags_to_mode(flags);
   if (cmode < 0)
     return -EINVAL;
@@ -6281,10 +6294,10 @@ int Client::_create(Inode *dir, const char *name, int flags, mode_t mode, Inode 
       *fhp = _create_fh(*inp, flags, cmode);
     }
   }
-    
+
   trim_cache();
 
-  ldout(cct, 3) << "create(" << path << ", 0" << oct << mode << dec 
+  ldout(cct, 3) << "create(" << path << ", 0" << oct << mode << dec
 	  << " layout " << file_stripe_unit
 	  << ' ' << file_stripe_count
 	  << ' ' << object_size
@@ -6300,8 +6313,9 @@ int Client::_create(Inode *dir, const char *name, int flags, mode_t mode, Inode 
 
 int Client::_mkdir(Inode *dir, const char *name, mode_t mode, int uid, int gid)
 {
-  ldout(cct, 3) << "_mkdir(" << dir->ino << " " << name << ", 0" << oct << mode << dec
-	  << ", uid " << uid << ", gid " << gid << ")" << dendl;
+  ldout(cct, 3) << "_mkdir(" << dir->ino << " " << name << ", 0" << oct
+		<< mode << dec << ", uid " << uid << ", gid " << gid << ")"
+		<< dendl;
 
   if (strlen(name) > NAME_MAX)
     return -ENAMETOOLONG;
@@ -6309,7 +6323,8 @@ int Client::_mkdir(Inode *dir, const char *name, mode_t mode, int uid, int gid)
   if (dir->snapid != CEPH_NOSNAP && dir->snapid != CEPH_SNAPDIR) {
     return -EROFS;
   }
-  MetaRequest *req = new MetaRequest(dir->snapid == CEPH_SNAPDIR ? CEPH_MDS_OP_MKSNAP:CEPH_MDS_OP_MKDIR);
+  MetaRequest *req = new MetaRequest(dir->snapid == CEPH_SNAPDIR ?
+				     CEPH_MDS_OP_MKSNAP : CEPH_MDS_OP_MKDIR);
 
   filepath path;
   dir->make_nosnap_relative_path(path);
@@ -6318,12 +6333,12 @@ int Client::_mkdir(Inode *dir, const char *name, mode_t mode, int uid, int gid)
   req->inode = dir;
   req->head.args.mkdir.mode = mode;
   req->dentry_drop = CEPH_CAP_FILE_SHARED;
-  req->dentry_unless = CEPH_CAP_FILE_EXCL; 
+  req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   int res = get_or_create(dir, name, &req->dentry);
   if (res < 0)
     goto fail;
-  
+
   ldout(cct, 10) << "_mkdir: making request" << dendl;
   res = make_request(req, uid, gid);
   ldout(cct, 10) << "_mkdir result is " << res << dendl;
@@ -6381,7 +6396,7 @@ int Client::_symlink(Inode *dir, const char *name, const char *target, int uid, 
   path.push_dentry(name);
   req->set_filepath(path);
   req->inode = dir;
-  req->set_string2(target); 
+  req->set_string2(target);
   req->dentry_drop = CEPH_CAP_FILE_SHARED;
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
@@ -6401,7 +6416,8 @@ int Client::_symlink(Inode *dir, const char *name, const char *target, int uid, 
   return res;
 }
 
-int Client::ll_symlink(vinodeno_t parent, const char *name, const char *value, struct stat *attr, int uid, int gid)
+int Client::ll_symlink(vinodeno_t parent, const char *name, const char *value,
+		       struct stat *attr, int uid, int gid)
 {
   Mutex::Locker lock(client_lock);
   ldout(cct, 3) << "ll_symlink " << parent << " " << name << " -> " << value << dendl;
@@ -6509,7 +6525,7 @@ int Client::_rmdir(Inode *dir, const char *name, int uid, int gid)
     if (dir->dir && dir->dir->dentries.count(name) ) {
       Dentry *dn = dir->dir->dentries[name];
       if (dn->inode->dir && dn->inode->dir->is_empty() &&
-          (dn->inode->dn_set.size() == 1))
+	  (dn->inode->dn_set.size() == 1))
 	close_dir(dn->inode->dir);  // FIXME: maybe i shoudl proactively hose the whole subtree from cache?
       unlink(dn, false);
     }
@@ -6636,7 +6652,7 @@ int Client::_link(Inode *in, Inode *dir, const char *newname, int uid, int gid)
   int res = get_or_create(dir, newname, &req->dentry);
   if (res < 0)
     goto fail;
-  
+
   res = make_request(req, uid, gid);
   ldout(cct, 10) << "link result is " << res << dendl;
 
@@ -6649,10 +6665,12 @@ int Client::_link(Inode *in, Inode *dir, const char *newname, int uid, int gid)
   return res;
 }
 
-int Client::ll_link(vinodeno_t vino, vinodeno_t newparent, const char *newname, struct stat *attr, int uid, int gid)
+int Client::ll_link(vinodeno_t vino, vinodeno_t newparent, const char *newname,
+		    struct stat *attr, int uid, int gid)
 {
   Mutex::Locker lock(client_lock);
-  ldout(cct, 3) << "ll_link " << vino << " to " << newparent << " " << newname << dendl;
+  ldout(cct, 3) << "ll_link " << vino << " to " << newparent << " " << newname
+		<< dendl;
   tout(cct) << "ll_link" << std::endl;
   tout(cct) << vino.ino.val << std::endl;
   tout(cct) << newparent << std::endl;
@@ -6706,6 +6724,52 @@ uint32_t Client::ll_file_layout(vinodeno_t vino, ceph_file_layout *layout)
   Inode *in = _ll_get_inode(vino);
   *layout = in->layout;
   return 0;
+}
+
+/* Allow the client to get and hold a read capability or read and
+   write capabilities.  If write is true, get both read and write
+   capabilities.  The cb function is called when the the read or write
+   capabilities are revoked. Opaque is passed to ths function.  Serial
+   is an identifier that should be passed to ll_release_rw, and
+   max_fs, if write is set to true, is the requested maximum filesize
+   to which the file may be extended as input, and the allowed maximum
+   filesize on output.  If write is false, it is undefined. */
+
+uint32_t Client::ll_hold_rw(vinodeno_t vino,
+			    bool write,
+			    void(*cb)(vinodeno_t, bool, void*),
+			    void *opaque,
+			    uint64_t* serial,
+			    uint64_t* max_fs)
+{
+  Mutex::Locker lock(client_lock);
+  int r = 0;
+  int got = 0;
+  int need = CEPH_CAP_FILE_RD | (write ? CEPH_CAP_FILE_WR : 0);
+  Inode *in = _ll_get_inode(vino);
+  r = get_caps(in, need, 0, &got, (write ? *max_fs : 0));
+  if (r != 0) {
+    return r;
+  }
+  if (need & ~got) {
+    return -EBUSY;
+  }
+  in->add_revoke_notifier(write, cb, opaque, serial);
+  /* Assume the client will actually use them */
+  mark_caps_dirty(in, need);
+  if (write) {
+    *max_fs = max(in->max_size, mdsmap->get_max_filesize());
+  }
+  return 0;
+}
+
+void Client::ll_return_rw(vinodeno_t vino,
+			  uint64_t serial)
+{
+  Mutex::Locker lock(client_lock);
+  Inode *in = _ll_get_inode(vino);
+  bool write = in->remove_revoke_notifier(serial);
+  in->put_cap_ref(CEPH_CAP_FILE_RD | (write ? CEPH_CAP_FILE_WR : 0));
 }
 
 /* Currently we cannot take advantage of redundancy in reads, since we
@@ -7240,7 +7304,7 @@ void Client::ms_handle_connect(Connection *con)
   objecter->ms_handle_connect(con);
 }
 
-bool Client::ms_handle_reset(Connection *con) 
+bool Client::ms_handle_reset(Connection *con)
 {
   ldout(cct, 0) << "ms_handle_reset on " << con->get_peer_addr() << dendl;
   Mutex::Locker l(client_lock);
@@ -7248,7 +7312,7 @@ bool Client::ms_handle_reset(Connection *con)
   return false;
 }
 
-void Client::ms_handle_remote_reset(Connection *con) 
+void Client::ms_handle_remote_reset(Connection *con)
 {
   ldout(cct, 0) << "ms_handle_remote_reset on " << con->get_peer_addr() << dendl;
   Mutex::Locker l(client_lock);

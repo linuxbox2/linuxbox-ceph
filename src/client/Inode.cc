@@ -18,7 +18,7 @@ ostream& operator<<(ostream &out, Inode &in)
     out << "(";
     for (map<int,Cap*>::iterator p = in.caps.begin(); p != in.caps.end(); ++p) {
       if (p != in.caps.begin())
-	out << ',';
+        out << ',';
       out << p->first << '=' << ccap_string(p->second->issued);
     }
     out << ")";
@@ -113,7 +113,7 @@ bool Inode::put_cap_ref(int cap)
     if (cap & 1) {
       int c = 1 << n;
       if (--cap_refs[c] == 0)
-	last = true;      
+        last = true;
       //cout << "inode " << *this << " put " << cap_string(c) << " " << (cap_refs[c]+1) << " -> " << cap_refs[c] << std::endl;
     }
     cap >>= 1;
@@ -127,7 +127,7 @@ bool Inode::is_any_caps()
   return caps.size() || exporting_mds >= 0;
 }
 
-bool Inode::cap_is_valid(Cap* cap) 
+bool Inode::cap_is_valid(Cap* cap)
 {
   /*cout << "cap_gen     " << cap->session-> cap_gen << std::endl
     << "session gen " << cap->gen << std::endl
@@ -260,4 +260,36 @@ Dir *Inode::open_dir()
     get();                  // pin inode
   }
   return dir;
+}
+
+void Inode::add_revoke_notifier(bool write,
+                                void(*cb)(vinodeno_t, bool, void*),
+                                void *opaque,
+                                uint64_t *serial)
+{
+  revoke_notifier *revoker = new revoke_notifier(write, cb, opaque);
+  *serial = revoke_serial++;
+  revoke_notifiers[*serial] = revoker;
+}
+
+bool Inode::remove_revoke_notifier(uint64_t serial)
+{
+  revoke_notifier *revoker = revoke_notifiers[serial];
+  bool write = revoker->write;
+  revoke_notifiers.erase(serial);
+  delete revoker;
+  return write;
+}
+
+void Inode::recall_rw_caps(bool write)
+{
+  for (map<uint64_t,revoke_notifier*>::iterator p
+         = revoke_notifiers.begin();
+       p != revoke_notifiers.end();
+       ++p) {
+    if (write && !p->second->write) {
+      continue;
+    }
+    p->second->cb(vino(), p->second->write, p->second->opaque);
+  }
 }
