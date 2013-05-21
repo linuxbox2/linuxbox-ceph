@@ -339,7 +339,7 @@ protected:
 
   // global client lock
   //  - protects Client and buffer cache both!
-  Mutex                  client_lock;
+  Mutex client_lock;
 
   // helpers
   void wake_inode_waiters(MetaSession *s);
