@@ -4032,18 +4032,34 @@ void Client::renew_caps(MetaSession *session)
 int Client::_do_lookup(Inode *diri, const string& name, Inode **target,
 		       uint32_t cf)
 {
-  int op = diri->snapid == CEPH_SNAPDIR ? CEPH_MDS_OP_LOOKUPSNAP :
+  COND_ILOCK(diri, cf);
+ 
+ int op = diri->snapid == CEPH_SNAPDIR ? CEPH_MDS_OP_LOOKUPSNAP :
     CEPH_MDS_OP_LOOKUP;
   MetaRequest *req = new MetaRequest(op);
   filepath path;
   diri->make_nosnap_relative_path(path);
+
+  IUNLOCK(diri); // ! CF_ILOCKED
+
   path.push_dentry(name);
   req->set_filepath(path);
   req->set_inode(diri);
   req->head.args.getattr.mask = 0;
   ldout(cct, 10) << "_do_lookup on " << path << dendl;
 
+  client_lock.Lock();
   int r = make_request(req, 0, 0, target);
+  client_lock.Unlock();
+
+  if (cf & CF_ILOCK)
+    ILOCK(diri);
+
+  if (*target) {
+      if (cf & CF_ILOCK2)
+	ILOCK(*target);
+  }
+
   ldout(cct, 10) << "_do_lookup res is " << r << dendl;
   return r;
 }
@@ -4052,6 +4068,9 @@ int Client::_lookup(Inode *diri, const string& dname, Inode **target,
 		    uint32_t cf)
 {
   int r = 0;
+  bool do_lookup = false;
+
+  COND_ILOCK(diri, cf);
 
   if (! diri->is_dir()) {
     r = -ENOTDIR;
@@ -4125,18 +4144,32 @@ int Client::_lookup(Inode *diri, const string& dname, Inode **target,
 	(diri->flags & I_COMPLETE)) {
       ldout(cct, 10) << "_lookup concluded ENOENT locally for " << *diri
 		     << " dn '" << dname << "'" << dendl;
+      COND_IUNLOCK(diri, cf);
       return -ENOENT;
     }
   }
 
-  r = _do_lookup(diri, dname, target, CF_NONE);
+  do_lookup = true;
+  r = _do_lookup(diri, dname, target, cf|CF_ILOCKED|CF_ILOCK);
+  // CF_ILOCKED
 
  done:
   if (r < 0)
-    ldout(cct, 10) << "_lookup " << *diri << " " << dname << " = " << r << dendl;
+    ldout(cct, 10) << "_lookup " << *diri << " " << dname << " = " << r
+		   << dendl;
   else
     ldout(cct, 10) << "_lookup " << *diri << " " << dname << " = " << **target
 		   << dendl;
+
+    COND_IUNLOCK(diri, cf);
+
+    if (*target) {
+      if (! do_lookup) {
+	if (cf & CF_ILOCK2)
+	  ILOCK(*target);
+      }
+    }
+
   return r;
 }
 
@@ -6633,7 +6666,6 @@ Inode *Client::open_snapdir(Inode *diri)
 int Client::ll_lookup(Inode *parent, const char *name, struct stat *attr,
 		      Inode **out, int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
   ldout(cct, 3) << "ll_lookup " << parent << " " << name << dendl;
   tout(cct) << "ll_lookup" << std::endl;
   tout(cct) << name << std::endl;
@@ -6642,15 +6674,18 @@ int Client::ll_lookup(Inode *parent, const char *name, struct stat *attr,
   Inode *in;
   int r = 0;
 
-  r = _lookup(parent, dname.c_str(), &in, CF_NONE);
+  r = _lookup(parent, dname.c_str(), &in, CF_ILOCK2);
   if (r < 0) {
     attr->st_ino = 0;
     goto out;
   }
 
   assert(in);
+
   fill_stat(in, attr);
   _ll_get(in);
+
+  IUNLOCK(in);
 
  out:
   ldout(cct, 3) << "ll_lookup " << parent << " " << name

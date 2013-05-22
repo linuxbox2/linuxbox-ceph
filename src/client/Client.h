@@ -192,6 +192,21 @@ struct dir_result_t {
 
 #define CF_NONE      0x0000
 #define CF_ILOCKED   0x0001
+#define CF_ILOCK     0x0002
+#define CF_ILOCK2    0x0004
+
+#define ILOCK(in) ((in)->lock())
+#define IUNLOCK(in) ((in)->unlock())
+
+#define COND_ILOCK(in, cf) \
+  do { \
+    if (! ((cf) & CF_ILOCKED)) (in)->lock(); \
+  } while(0)
+
+#define COND_IUNLOCK(in, cf) \
+  do { \
+    if (! ((cf) & CF_ILOCKED)) (in)->unlock(); \
+  } while(0)
 
 class Client : public Dispatcher {
  public:
