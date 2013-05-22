@@ -4029,16 +4029,16 @@ void Client::renew_caps(MetaSession *session)
 // ===============================================================
 // high level (POSIXy) interface
 
-int Client::_do_lookup(Inode *dir, const string& name, Inode **target)
+int Client::_do_lookup(Inode *diri, const string& name, Inode **target)
 {
-  int op = dir->snapid == CEPH_SNAPDIR ? CEPH_MDS_OP_LOOKUPSNAP :
+  int op = diri->snapid == CEPH_SNAPDIR ? CEPH_MDS_OP_LOOKUPSNAP :
     CEPH_MDS_OP_LOOKUP;
   MetaRequest *req = new MetaRequest(op);
   filepath path;
-  dir->make_nosnap_relative_path(path);
+  diri->make_nosnap_relative_path(path);
   path.push_dentry(name);
   req->set_filepath(path);
-  req->set_inode(dir);
+  req->set_inode(diri);
   req->head.args.getattr.mask = 0;
   ldout(cct, 10) << "_do_lookup on " << path << dendl;
 
@@ -4047,26 +4047,26 @@ int Client::_do_lookup(Inode *dir, const string& name, Inode **target)
   return r;
 }
 
-int Client::_lookup(Inode *dir, const string& dname, Inode **target)
+int Client::_lookup(Inode *diri, const string& dname, Inode **target)
 {
   int r = 0;
 
-  if (!dir->is_dir()) {
+  if (! diri->is_dir()) {
     r = -ENOTDIR;
     goto done;
   }
 
   if (dname == "..") {
-    if (dir->dn_set.empty())
+    if (diri->dn_set.empty())
       r = -ENOENT;
     else
-      *target = dir->get_first_parent()->dir->parent_inode; //dirs can't be
-                                                            // hard-linked
+      *target = diri->get_first_parent()->dir->parent_inode; //dirs can't be
+                                                             // hard-linked
     goto done;
   }
 
   if (dname == ".") {
-    *target = dir;
+    *target = diri;
     goto done;
   }
 
@@ -4076,14 +4076,14 @@ int Client::_lookup(Inode *dir, const string& dname, Inode **target)
   }
 
   if (dname == cct->_conf->client_snapdir &&
-      dir->snapid == CEPH_NOSNAP) {
-    *target = open_snapdir(dir);
+      diri->snapid == CEPH_NOSNAP) {
+    *target = open_snapdir(diri);
     goto done;
   }
 
-  if (dir->dir &&
-      dir->dir->dentries.count(dname)) {
-    Dentry *dn = dir->dir->dentries[dname];
+  if (diri->dir &&
+      diri->dir->dentries.count(dname)) {
+    Dentry *dn = diri->dir->dentries[dname];
 
     ldout(cct, 20) << "_lookup have dn " << dname << " mds." << dn->lease_mds
 		   << " ttl " << dn->lease_ttl
@@ -4101,7 +4101,7 @@ int Client::_lookup(Inode *dir, const string& dname, Inode **target)
 	*target = dn->inode;
 	// touch this mds's dir cap too, even though we don't _explicitly_ use
         // it here, to make trim_caps() behave.
-	dir->try_touch_cap(dn->lease_mds);
+	diri->try_touch_cap(dn->lease_mds);
 	touch_dn(dn);
 	goto done;
       }
@@ -4111,29 +4111,29 @@ int Client::_lookup(Inode *dir, const string& dname, Inode **target)
 		     << dn->lease_gen << dendl;
     }
     // dir lease?
-    if (dir->caps_issued_mask(CEPH_CAP_FILE_SHARED) &&
-	dn->cap_shared_gen == dir->shared_gen) {
+    if (diri->caps_issued_mask(CEPH_CAP_FILE_SHARED) &&
+	dn->cap_shared_gen == diri->shared_gen) {
       *target = dn->inode;
       touch_dn(dn);
       goto done;
     }
   } else {
     // can we conclude ENOENT locally?
-    if (dir->caps_issued_mask(CEPH_CAP_FILE_SHARED) &&
-	(dir->flags & I_COMPLETE)) {
-      ldout(cct, 10) << "_lookup concluded ENOENT locally for " << *dir
+    if (diri->caps_issued_mask(CEPH_CAP_FILE_SHARED) &&
+	(diri->flags & I_COMPLETE)) {
+      ldout(cct, 10) << "_lookup concluded ENOENT locally for " << *diri
 		     << " dn '" << dname << "'" << dendl;
       return -ENOENT;
     }
   }
 
-  r = _do_lookup(dir, dname, target);
+  r = _do_lookup(diri, dname, target);
 
  done:
   if (r < 0)
-    ldout(cct, 10) << "_lookup " << *dir << " " << dname << " = " << r << dendl;
+    ldout(cct, 10) << "_lookup " << *diri << " " << dname << " = " << r << dendl;
   else
-    ldout(cct, 10) << "_lookup " << *dir << " " << dname << " = " << **target
+    ldout(cct, 10) << "_lookup " << *diri << " " << dname << " = " << **target
 		   << dendl;
   return r;
 }
