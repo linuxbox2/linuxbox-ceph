@@ -190,6 +190,9 @@ struct dir_result_t {
   }
 };
 
+#define CF_NONE      0x0000
+#define CF_ILOCKED   0x0001
+
 class Client : public Dispatcher {
  public:
   CephContext *cct;
@@ -532,9 +535,8 @@ private:
 
   // internal interface
   //   call these with client_lock held!
-  int _do_lookup(Inode *diri, const string& name, Inode **target);
-  int _lookup(Inode *diri, const string& dname, Inode **target);
-
+  int _do_lookup(Inode *diri, const string& name, Inode **target, uint32_t cf);
+  int _lookup(Inode *diri, const string& dname, Inode **target, uint32_t cf);
   int _link(Inode *in, Inode *dir, const char *name, int uid=-1, int gid=-1, Inode **inp = 0);
   int _unlink(Inode *dir, const char *name, int uid=-1, int gid=-1);
   int _rename(Inode *olddir, const char *oname, Inode *ndir, const char *nname, int uid=-1, int gid=-1);

@@ -1238,7 +1238,7 @@ int Client::verify_reply_trace(int r,
 		       << " got_ino " << got_created_ino
 		       << " ino " << created_ino
 		       << dendl;
-	r = _do_lookup(d->dir->parent_inode, d->name, &target);
+	r = _do_lookup(d->dir->parent_inode, d->name, &target, CF_NONE);
       } else {
 	Inode *in = request->inode();
 	ldout(cct, 10) << "make_request got traceless reply, forcing getattr "
@@ -4029,7 +4029,8 @@ void Client::renew_caps(MetaSession *session)
 // ===============================================================
 // high level (POSIXy) interface
 
-int Client::_do_lookup(Inode *diri, const string& name, Inode **target)
+int Client::_do_lookup(Inode *diri, const string& name, Inode **target,
+		       uint32_t cf)
 {
   int op = diri->snapid == CEPH_SNAPDIR ? CEPH_MDS_OP_LOOKUPSNAP :
     CEPH_MDS_OP_LOOKUP;
@@ -4047,7 +4048,8 @@ int Client::_do_lookup(Inode *diri, const string& name, Inode **target)
   return r;
 }
 
-int Client::_lookup(Inode *diri, const string& dname, Inode **target)
+int Client::_lookup(Inode *diri, const string& dname, Inode **target,
+		    uint32_t cf)
 {
   int r = 0;
 
@@ -4127,7 +4129,7 @@ int Client::_lookup(Inode *diri, const string& dname, Inode **target)
     }
   }
 
-  r = _do_lookup(diri, dname, target);
+  r = _do_lookup(diri, dname, target, CF_NONE);
 
  done:
   if (r < 0)
@@ -4190,7 +4192,7 @@ int Client::path_walk(const filepath& origpath, Inode **final, bool followsym)
     ldout(cct, 10) << " " << i << " " << *cur << " " << dname << dendl;
     ldout(cct, 20) << "  (path is " << path << ")" << dendl;
     Inode *next;
-    int r = _lookup(cur, dname, &next);
+    int r = _lookup(cur, dname, &next, CF_NONE);
     if (r < 0)
       return r;
     // only follow trailing symlink if followsym.  always follow
@@ -4356,7 +4358,7 @@ int Client::mkdirs(const char *relpath, mode_t mode)
   Inode *cur = cwd;
   Inode *next;
   for (i=0; i<path.depth(); ++i) {
-    r=_lookup(cur, path[i].c_str(), &next);
+    r=_lookup(cur, path[i].c_str(), &next, CF_NONE);
     if (r < 0) break;
     cur = next;
   }
@@ -4371,7 +4373,7 @@ int Client::mkdirs(const char *relpath, mode_t mode)
     r = _mkdir(cur, path[i].c_str(), mode);
     //check proper creation/existence
     if (r < 0) return r;
-    r = _lookup(cur, path[i], &next);
+    r = _lookup(cur, path[i], &next, CF_NONE);
     if(r < 0) {
       ldout(cct, 0) << "mkdirs: successfully created new directory " << path[i]
 	      << " but can't _lookup it!" << dendl;
@@ -6640,7 +6642,7 @@ int Client::ll_lookup(Inode *parent, const char *name, struct stat *attr,
   Inode *in;
   int r = 0;
 
-  r = _lookup(parent, dname.c_str(), &in);
+  r = _lookup(parent, dname.c_str(), &in, CF_NONE);
   if (r < 0) {
     attr->st_ino = 0;
     goto out;
@@ -7507,7 +7509,7 @@ int Client::_unlink(Inode *dir, const char *name, int uid, int gid)
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Inode *otherin;
-  res = _lookup(dir, name, &otherin);
+  res = _lookup(dir, name, &otherin, CF_NONE);
   if (res < 0)
     goto fail;
   req->set_other_inode(otherin);
@@ -7573,7 +7575,7 @@ int Client::_rmdir(Inode *dir, const char *name, int uid, int gid)
     goto fail;
   req->set_dentry(de);
   Inode *in;
-  res = _lookup(dir, name, &in);
+  res = _lookup(dir, name, &in, CF_NONE);
   if (res < 0)
     goto fail;
   req->set_inode(in);
@@ -7653,14 +7655,14 @@ int Client::_rename(Inode *fromdir, const char *fromname, Inode *todir,
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Inode *oldin;
-  res = _lookup(fromdir, fromname, &oldin);
+  res = _lookup(fromdir, fromname, &oldin, CF_NONE);
   if (res < 0)
     goto fail;
   req->set_old_inode(oldin);
   req->old_inode_drop = CEPH_CAP_LINK_SHARED;
 
   Inode *otherin;
-  res = _lookup(todir, toname, &otherin);
+  res = _lookup(todir, toname, &otherin, CF_NONE);
   if (res != 0 && res != -ENOENT) {
     goto fail;
   } else if (res == 0) {
@@ -7984,7 +7986,7 @@ int Client::ll_create(Inode *parent, const char *name, mode_t mode,
 
   bool created = false;
   Inode *in = NULL;
-  int r = _lookup(parent, name, &in);
+  int r = _lookup(parent, name, &in, CF_NONE);
 
   if (r == 0 && (flags & O_CREAT) && (flags & O_EXCL))
     return -EEXIST;
