@@ -1783,16 +1783,23 @@ void Client::handle_client_reply(MClientReply *reply)
     request->send_to_auth = true;
     request->resend_mds = choose_target_mds(request);
     Inode *in = request->inode();
-    if (request->resend_mds >= 0 &&
-	request->resend_mds == request->mds &&
-	(in == NULL ||
-	 in->caps.count(request->resend_mds) == 0 ||
-	 request->sent_on_mseq == in->caps[request->resend_mds]->mseq)) {
-      // have to return ESTALE
-    } else {
+    if ((request->resend_mds >= 0) &&
+	(request->resend_mds == request->mds)) {
+      if (in == NULL)
+	goto ret_estale;
+      ILOCK(in);
+      if (in->caps.count(request->resend_mds) == 0 ||
+	  request->sent_on_mseq == in->caps[request->resend_mds]->mseq) {
+	IUNLOCK(in);
+	goto ret_estale;
+      }
+      IUNLOCK(in);
+    }  else {
       request->caller_cond->Signal();
       return;
     }
+
+  ret_estale:
     ldout(cct, 20) << "have to return ESTALE" << dendl;
   }
   
