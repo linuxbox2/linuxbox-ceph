@@ -1645,8 +1645,12 @@ void Client::send_request(MetaRequest *request, MetaSession *session)
   request->mds = mds;
 
   Inode *in = request->inode();
-  if (in && in->caps.count(mds))
-    request->sent_on_mseq = in->caps[mds]->mseq;
+  if (in) {
+    ILOCK(in);
+    if (in->caps.count(mds))
+      request->sent_on_mseq = in->caps[mds]->mseq;
+    IUNLOCK(in);
+  }
 
   session->requests.push_back(&request->item);
 
@@ -1664,13 +1668,21 @@ MClientRequest* Client::build_client_request(MetaRequest *request)
   if (request->path.empty()) {
     Inode *in = request->inode();
     Dentry *de = request->dentry();
-    if (in)
+    if (in) {
+      ILOCK(in);
       in->make_nosnap_relative_path(request->path);
-    else if (de) {
-      if (de->inode)
+      IUNLOCK(in);
+    } else if (de) {
+      in = de->inode;
+      if (in) {
+	ILOCK(in);
 	de->inode->make_nosnap_relative_path(request->path);
-      else if (de->dir) {
-	de->dir->parent_inode->make_nosnap_relative_path(request->path);
+	IUNLOCK(in);
+      } else if (de->dir) {
+	in = de->dir->parent_inode;
+	ILOCK(in);
+	in->make_nosnap_relative_path(request->path);
+	IUNLOCK(in);
 	request->path.push_dentry(de->name);
       }
       else ldout(cct, 1) << "Warning -- unable to construct a filepath!"
