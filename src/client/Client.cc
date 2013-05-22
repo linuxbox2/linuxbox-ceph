@@ -4015,11 +4015,13 @@ void Client::tick()
   while (!p.end()) {
     Inode *in = *p;
     ++p;
+    ILOCK(in);
     if (in->hold_caps_until > now)
       break;
     delayed_caps.pop_front();
     cap_list.push_back(&in->cap_item);
     check_caps(in, true);
+    IUNLOCK(in);
   }
 
 }
