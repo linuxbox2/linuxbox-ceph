@@ -1993,6 +1993,7 @@ void Client::send_reconnect(MetaSession *session)
        p != inode_map.end();
        ++p) {
     Inode *in = p->second;
+    ILOCK(in);
     if (in->caps.count(mds)) {
       ldout(cct, 10) << " caps on " << p->first
 	       << " " << ccap_string(in->caps[mds]->issued)
@@ -2030,7 +2031,8 @@ void Client::send_reconnect(MetaSession *session)
 	in->snaprealm = 0;
       }
     }
-  }
+    IUNLOCK(in);
+  } // for all inodes
   
   // reset my cap seq number
   session->seq = 0;
