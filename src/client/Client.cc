@@ -6885,13 +6885,10 @@ int Client::_ll_put(Inode *in, int num, uint32_t cf)
 		 << " -> " << in->ll_ref << dendl;
   if (in->ll_ref == 0) {
     put_inode(in, 1, CF_ILOCKED);
-    if (! (cf & CF_ILOCK))
-      IUNLOCK(in);
     return 0;
   } else {
     int32_t ll_refs = in->ll_ref;
-    if (! (cf & CF_ILOCK))
-      IUNLOCK(in);
+    IUNLOCK(in);
     return ll_refs;
   }
 }
