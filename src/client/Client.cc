@@ -6800,16 +6800,15 @@ int Client::ll_lookup(Inode *parent, const char *name, struct stat *attr,
 
 int Client::ll_walk(const char* name, struct stat *attr)
 {
-  Mutex::Locker lock(client_lock);
   filepath fp(name, 0);
-  Inode *destination=0;
+  Inode *dest=0;
   int rc;
 
   ldout(cct, 3) << "ll_walk" << name << dendl;
   tout(cct) << "ll_walk" << std::endl;
   tout(cct) << name << std::endl;
 
-  rc=path_walk(fp, &destination, false);
+  rc=path_walk(fp, &dest, false); // XXX CF_ILOCK2 (and below)
   if (rc < 0)
     {
       attr->st_ino=0;
@@ -6817,7 +6816,9 @@ int Client::ll_walk(const char* name, struct stat *attr)
     }
   else
     {
-      fill_stat(destination, attr);
+      ILOCK(dest);
+      fill_stat(dest, attr);
+      IUNLOCK(dest);
       return 0;
     }
 }
