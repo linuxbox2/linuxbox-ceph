@@ -190,11 +190,12 @@ struct dir_result_t {
   }
 };
 
-#define CF_NONE        0x0000
-#define CF_ILOCKED     0x0001
-#define CF_ILOCK       0x0002
-#define CF_ILOCK2      0x0004
-#define CF_CLIENT_LOCK 0x0008
+#define CF_NONE           0x0000
+#define CF_ILOCKED        0x0001
+#define CF_ILOCK          0x0002
+#define CF_ILOCK2         0x0004
+#define CF_CLIENT_LOCKED  0x0008
+#define CF_CLIENT_LOCK    0x0010
 
 #define ILOCK(in) ((in)->lock())
 #define IUNLOCK(in) ((in)->unlock())
@@ -388,7 +389,8 @@ protected:
 
   // path traversal for high-level interface
   Inode *cwd;
-  int path_walk(const filepath& fp, Inode **end, bool followsym=true);
+  int path_walk(const filepath& fp, Inode **end, bool followsym=true,
+		uint32_t cf=CF_NONE);
   int fill_stat(Inode *in, struct stat *st, frag_info_t *dirstat=0, nest_info_t *rstat=0);
   void touch_dn(Dentry *dn);
 

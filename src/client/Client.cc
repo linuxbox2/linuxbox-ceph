@@ -4107,9 +4107,13 @@ int Client::_do_lookup(Inode *diri, const string& name, Inode **target,
   req->head.args.getattr.mask = 0;
   ldout(cct, 10) << "_do_lookup on " << path << dendl;
 
-  client_lock.Lock();
+  if (! (cf & CF_CLIENT_LOCKED))
+      client_lock.Lock();
+
   int r = make_request(req, 0, 0, target);
-  client_lock.Unlock();
+
+  if (! (cf & CF_CLIENT_LOCKED))
+    client_lock.Unlock();
 
   if (cf & CF_ILOCK)
     ILOCK(diri);
@@ -4264,7 +4268,8 @@ int Client::get_or_create(Inode *dir, const char* name,
   return 0;
 }
 
-int Client::path_walk(const filepath& origpath, Inode **final, bool followsym)
+int Client::path_walk(const filepath& origpath, Inode **final, bool followsym,
+		      uint32_t cf)
 {
   filepath path = origpath;
   Inode *cur;
@@ -4284,11 +4289,13 @@ int Client::path_walk(const filepath& origpath, Inode **final, bool followsym)
     ldout(cct, 10) << " " << i << " " << *cur << " " << dname << dendl;
     ldout(cct, 20) << "  (path is " << path << ")" << dendl;
     Inode *next;
-    int r = _lookup(cur, dname, &next, CF_NONE);
+    int r = _lookup(cur, dname, &next, cf);
     if (r < 0)
       return r;
     // only follow trailing symlink if followsym.  always follow
     // 'directory' symlinks.
+
+    // XXXX fix inode locking
     if (next && next->is_symlink()) {
       symlinks++;
       ldout(cct, 20) << " symlink count " << symlinks << ", value is '"
@@ -4450,7 +4457,7 @@ int Client::mkdirs(const char *relpath, mode_t mode)
   Inode *cur = cwd;
   Inode *next;
   for (i=0; i<path.depth(); ++i) {
-    r=_lookup(cur, path[i].c_str(), &next, CF_NONE);
+    r=_lookup(cur, path[i].c_str(), &next, CF_CLIENT_LOCKED); // XXXX
     if (r < 0) break;
     cur = next;
   }
@@ -4465,7 +4472,7 @@ int Client::mkdirs(const char *relpath, mode_t mode)
     r = _mkdir(cur, path[i].c_str(), mode);
     //check proper creation/existence
     if (r < 0) return r;
-    r = _lookup(cur, path[i], &next, CF_NONE);
+    r = _lookup(cur, path[i], &next, CF_CLIENT_LOCKED); // XXXX
     if(r < 0) {
       ldout(cct, 0) << "mkdirs: successfully created new directory " << path[i]
 	      << " but can't _lookup it!" << dendl;
@@ -7603,7 +7610,7 @@ int Client::_unlink(Inode *dir, const char *name, int uid, int gid)
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Inode *otherin;
-  res = _lookup(dir, name, &otherin, CF_NONE);
+  res = _lookup(dir, name, &otherin, CF_CLIENT_LOCKED); // XXXX
   if (res < 0)
     goto fail;
   req->set_other_inode(otherin);
@@ -7669,7 +7676,7 @@ int Client::_rmdir(Inode *dir, const char *name, int uid, int gid)
     goto fail;
   req->set_dentry(de);
   Inode *in;
-  res = _lookup(dir, name, &in, CF_NONE);
+  res = _lookup(dir, name, &in, CF_CLIENT_LOCKED); // XXXX
   if (res < 0)
     goto fail;
   req->set_inode(in);
@@ -7749,14 +7756,14 @@ int Client::_rename(Inode *fromdir, const char *fromname, Inode *todir,
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Inode *oldin;
-  res = _lookup(fromdir, fromname, &oldin, CF_NONE);
+  res = _lookup(fromdir, fromname, &oldin, CF_CLIENT_LOCKED); // XXXX
   if (res < 0)
     goto fail;
   req->set_old_inode(oldin);
   req->old_inode_drop = CEPH_CAP_LINK_SHARED;
 
   Inode *otherin;
-  res = _lookup(todir, toname, &otherin, CF_NONE);
+  res = _lookup(todir, toname, &otherin, CF_CLIENT_LOCKED); // XXXX
   if (res != 0 && res != -ENOENT) {
     goto fail;
   } else if (res == 0) {
@@ -8080,7 +8087,7 @@ int Client::ll_create(Inode *parent, const char *name, mode_t mode,
 
   bool created = false;
   Inode *in = NULL;
-  int r = _lookup(parent, name, &in, CF_NONE);
+  int r = _lookup(parent, name, &in, CF_CLIENT_LOCKED); // XXXX
 
   if (r == 0 && (flags & O_CREAT) && (flags & O_EXCL))
     return -EEXIST;
