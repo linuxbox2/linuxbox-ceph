@@ -560,7 +560,7 @@ private:
   int _rename(Inode *olddir, const char *oname, Inode *ndir, const char *nname, int uid=-1, int gid=-1);
   int _mkdir(Inode *dir, const char *name, mode_t mode, int uid=-1, int gid=-1, Inode **inp = 0);
   int _rmdir(Inode *dir, const char *name, int uid=-1, int gid=-1);
-  int _symlink(Inode *dir, const char *name, const char *target, int uid=-1, int gid=-1, Inode **inp = 0);
+  int _symlink(Inode *dir, const char *name, const char *target, int uid=-1, int gid=-1, Inode **inp = 0, uint32_t cf=CF_NONE);
   int _mknod(Inode *dir, const char *name, mode_t mode, dev_t rdev, int uid=-1, int gid=-1, Inode **inp = 0);
   int _setattr(Inode *in, struct stat *attr, int mask, int uid=-1, int gid=-1, Inode **inp = 0);
   int _getattr(Inode *in, int mask, int uid=-1, int gid=-1, bool force=false,
@@ -580,8 +580,8 @@ private:
   int _fsync(Fh *fh, bool syncdataonly);
   int _sync_fs();
 
-  int get_or_create(Inode *dir, const char* name,
-		    Dentry **pdn, bool expect_null=false);
+  int get_or_create(Inode *dir, const char* name, Dentry **pdn,
+		    bool expect_null=false, uint32_t cf=CF_NONE);
 
   int check_permissions(Inode *in, int flags, int uid, int gid);
 

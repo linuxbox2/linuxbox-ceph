@@ -4236,33 +4236,45 @@ int Client::_lookup(Inode *diri, const string& dname, Inode **target,
   return r;
 }
 
-int Client::get_or_create(Inode *dir, const char* name,
-			  Dentry **pdn, bool expect_null)
+int Client::get_or_create(Inode *diri, const char* name, Dentry **pdn,
+			  bool expect_null, uint32_t cf)
 {
   // lookup
-  ldout(cct, 20) << "get_or_create " << *dir << " name " << name << dendl;
-  dir->open_dir();
-  if (dir->dir->dentries.count(name)) {
-    Dentry *dn = dir->dir->dentries[name];
-    
-    // is dn lease valid?
-    utime_t now = ceph_clock_now(cct);
+  ldout(cct, 20) << "get_or_create " << *diri << " name " << name << dendl;
+
+  // is dn lease valid?
+  utime_t now = ceph_clock_now(cct);
+
+  COND_ILOCK(diri, cf);
+
+  diri->open_dir();
+  hash_map<string, Dentry*>::iterator p1 = diri->dir->dentries.find(name);
+  if (p1 != diri->dir->dentries.end()) {
+    Dentry *dn = p1->second;
     if (dn->inode &&
 	dn->lease_mds >= 0 && 
-	dn->lease_ttl > now &&
-	mds_sessions.count(dn->lease_mds)) {
-      MetaSession *s = mds_sessions[dn->lease_mds];
-      if (s->cap_ttl > now &&
-	  s->cap_gen == dn->lease_gen) {
-	if (expect_null)
-	  return -EEXIST;
+	dn->lease_ttl > now) {
+      map<int,MetaSession*>::iterator p2 = mds_sessions.find(dn->lease_mds);
+      if (p2 != mds_sessions.end()) {
+	MetaSession *s = p2->second;
+	if (s->cap_ttl > now &&
+	    s->cap_gen == dn->lease_gen) {
+	  if (expect_null) {
+	    if (! (cf & CF_ILOCK))
+	      IUNLOCK(diri);
+	    return -EEXIST;
+	  }
+	}
       }
     }
     *pdn = dn;
   } else {
     // otherwise link up a new one
-    *pdn = link(dir->dir, name, NULL, NULL);
+    *pdn = link(diri->dir, name, NULL, NULL); // CF_ILOCKED
   }
+
+  if (! (cf & CF_ILOCK))
+    IUNLOCK(diri);
 
   // success
   return 0;
@@ -4522,7 +4534,7 @@ int Client::mknod(const char *relpath, mode_t mode, dev_t rdev)
   
 int Client::symlink(const char *target, const char *relpath)
 {
-  Mutex::Locker lock(client_lock);
+
   tout(cct) << "symlink" << std::endl;
   tout(cct) << target << std::endl;
   tout(cct) << relpath << std::endl;
@@ -4530,11 +4542,13 @@ int Client::symlink(const char *target, const char *relpath)
   filepath path(relpath);
   string name = path.last_dentry();
   path.pop_dentry();
-  Inode *dir;
-  int r = path_walk(path, &dir);
+
+  Inode *diri;
+  int r = path_walk(path, &diri);
   if (r < 0)
     return r;
-  return _symlink(dir, name.c_str(), target);
+
+  return _symlink(diri, name.c_str(), target);
 }
 
 int Client::readlink(const char *relpath, char *buf, loff_t size) 
@@ -6891,7 +6905,7 @@ vinodeno_t Client::ll_get_vino(Inode *in)
 
 Inode *Client::ll_get_inode(vinodeno_t vino)
 {
-  Mutex::Locker lock(client_lock);
+  Mutex::Locker lock(client_lock); // yes
   hash_map<vinodeno_t,Inode*>::iterator p = inode_map.find(vino);
   if (p == inode_map.end())
     return NULL;
@@ -7343,7 +7357,7 @@ int Client::_mknod(Inode *dir, const char *name, mode_t mode, dev_t rdev,
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de);
+  int res = get_or_create(dir, name, &de, CF_NONE); // XXXX
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -7437,7 +7451,7 @@ int Client::_create(Inode *dir, const char *name, int flags, mode_t mode,
   inodeno_t created_ino;
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de);
+  int res = get_or_create(dir, name, &de, CF_NONE); // XXXX
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -7494,7 +7508,7 @@ int Client::_mkdir(Inode *dir, const char *name, mode_t mode, int uid, int gid,
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de);
+  int res = get_or_create(dir, name, &de, CF_NONE); // XXXX
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -7540,41 +7554,58 @@ int Client::ll_mkdir(Inode *parent, const char *name, mode_t mode,
   return r;
 }
 
-int Client::_symlink(Inode *dir, const char *name, const char *target, int uid,
-		     int gid, Inode **inp)
+int Client::_symlink(Inode *diri, const char *name, const char *target, int uid,
+		     int gid, Inode **inp, uint32_t cf)
 {
-  ldout(cct, 3) << "_symlink(" << dir->ino << " " << name << ", " << target
+  ldout(cct, 3) << "_symlink(" << diri->ino << " " << name << ", " << target
 	  << ", uid " << uid << ", gid " << gid << ")" << dendl;
 
   if (strlen(name) > NAME_MAX)
     return -ENAMETOOLONG;
 
-  if (dir->snapid != CEPH_NOSNAP) {
+  if (diri->snapid != CEPH_NOSNAP) {
     return -EROFS;
   }
 
   MetaRequest *req = new MetaRequest(CEPH_MDS_OP_SYMLINK);
-
   filepath path;
-  dir->make_nosnap_relative_path(path);
+
+  ILOCK(diri);
+  diri->make_nosnap_relative_path(path);
+  IUNLOCK(diri);
+
   path.push_dentry(name);
   req->set_filepath(path);
-  req->set_inode(dir);
+  req->set_inode(diri);
   req->set_string2(target); 
   req->dentry_drop = CEPH_CAP_FILE_SHARED;
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de);
+  int res = get_or_create(diri, name, &de, cf); // XXXXXX cf
   if (res < 0)
     goto fail;
   req->set_dentry(de);
 
+  if (! (cf & CF_CLIENT_LOCKED))
+      client_lock.Lock();
+
   res = make_request(req, uid, gid, inp);
 
+  if (! (cf & CF_CLIENT_LOCKED))
+      client_lock.Unlock();
+
+  if (cf & CF_ILOCK)
+    ILOCK(diri);
+
+  if (res == 0) {
+    if (cf & CF_ILOCK2)
+      ILOCK(*inp);
+  }
+
   trim_cache();
-  ldout(cct, 3) << "_symlink(\"" << path << "\", \"" << target << "\") = " <<
-    res << dendl;
+  ldout(cct, 3) << "_symlink(\"" << path << "\", \"" << target << "\") = "
+		<< res << dendl;
   return res;
 
  fail:
@@ -7585,9 +7616,8 @@ int Client::_symlink(Inode *dir, const char *name, const char *target, int uid,
 int Client::ll_symlink(Inode *parent, const char *name, const char *value,
 		       struct stat *attr, Inode **out, int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
 
-  vinodeno_t vparent = ll_get_vino(parent);
+  vinodeno_t vparent = ll_get_vino(parent); // it's immutable
 
   ldout(cct, 3) << "ll_symlink " << vparent << " " << name << " -> " << value
 		<< dendl;
@@ -7597,10 +7627,11 @@ int Client::ll_symlink(Inode *parent, const char *name, const char *value,
   tout(cct) << value << std::endl;
 
   Inode *in = NULL;
-  int r = _symlink(parent, name, value, uid, gid, &in);
+  int r = _symlink(parent, name, value, uid, gid, &in, CF_ILOCK2);
   if (r == 0) {
     fill_stat(in, attr);
     _ll_get(in);
+    IUNLOCK(in);
   }
   tout(cct) << attr->st_ino << std::endl;
   ldout(cct, 3) << "ll_symlink " << vparent << " " << name
@@ -7626,7 +7657,7 @@ int Client::_unlink(Inode *dir, const char *name, int uid, int gid)
   req->set_filepath(path);
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de);
+  int res = get_or_create(dir, name, &de, CF_NONE); // XXXX
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -7695,7 +7726,7 @@ int Client::_rmdir(Inode *dir, const char *name, int uid, int gid)
   req->inode_drop = CEPH_CAP_LINK_SHARED | CEPH_CAP_LINK_EXCL;
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de);
+  int res = get_or_create(dir, name, &de, CF_NONE); // XXXX
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -7764,7 +7795,7 @@ int Client::_rename(Inode *fromdir, const char *fromname, Inode *todir,
   req->set_filepath2(from);
 
   Dentry *oldde;
-  int res = get_or_create(fromdir, fromname, &oldde);
+  int res = get_or_create(fromdir, fromname, &oldde, CF_NONE); // XXXX
   if (res < 0)
     goto fail;
   req->set_old_dentry(oldde);
@@ -7772,7 +7803,7 @@ int Client::_rename(Inode *fromdir, const char *fromname, Inode *todir,
   req->old_dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  res = get_or_create(todir, toname, &de);
+  res = get_or_create(todir, toname, &de, CF_NONE); // XXXX
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -7857,7 +7888,7 @@ int Client::_link(Inode *in, Inode *dir, const char *newname, int uid, int gid,
   req->inode_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(dir, newname, &de);
+  int res = get_or_create(dir, newname, &de, CF_NONE); // XXXX
   if (res < 0)
     goto fail;
   req->set_dentry(de);
