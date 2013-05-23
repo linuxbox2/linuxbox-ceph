@@ -3097,6 +3097,7 @@ void Client::trim_caps(MetaSession *s, int max)
 
 void Client::mark_caps_dirty(Inode *in, int caps)
 {
+  // CF_ILOCKED
   ldout(cct, 10) << "mark_caps_dirty " << *in << " "
 		 << ccap_string(in->dirty_caps) << " -> "
 		 << ccap_string(in->dirty_caps | caps) << dendl;
@@ -4612,12 +4613,12 @@ int Client::_getattr(Inode *in, int mask, int uid, int gid, bool force,
     return 0;
   }
 
-  MetaRequest *req = new MetaRequest(CEPH_MDS_OP_GETATTR);
   filepath path;
   in->make_nosnap_relative_path(path);
 
   IUNLOCK(in);
 
+  MetaRequest *req = new MetaRequest(CEPH_MDS_OP_GETATTR);
   req->set_filepath(path);
   req->set_inode(in);
   req->head.args.getattr.mask = mask;
@@ -4638,14 +4639,17 @@ int Client::_getattr(Inode *in, int mask, int uid, int gid, bool force,
 }
 
 int Client::_setattr(Inode *in, struct stat *attr, int mask, int uid, int gid,
-		     Inode **inp)
+		     Inode **inp, uint32_t cf)
 {
+  COND_ILOCK(in, cf);
+
   int issued = in->caps_issued();
 
   ldout(cct, 10) << "_setattr mask " << mask << " issued "
 		 << ccap_string(issued) << dendl;
 
   if (in->snapid != CEPH_NOSNAP) {
+    COND_IUNLOCK(in, cf);
     return -EROFS;
   }
   // make the change locally?
@@ -4695,13 +4699,17 @@ int Client::_setattr(Inode *in, struct stat *attr, int mask, int uid, int gid,
       mask &= ~(CEPH_SETATTR_MTIME|CEPH_SETATTR_ATIME);
     }
   }
-  if (!mask)
+  if (!mask) {
+    COND_IUNLOCK(in, cf);
     return 0;
-
-  MetaRequest *req = new MetaRequest(CEPH_MDS_OP_SETATTR);
+  }
 
   filepath path;
   in->make_nosnap_relative_path(path);
+
+  IUNLOCK(in);
+
+  MetaRequest *req = new MetaRequest(CEPH_MDS_OP_SETATTR);
   req->set_filepath(path);
   req->set_inode(in);
 
@@ -4734,23 +4742,32 @@ int Client::_setattr(Inode *in, struct stat *attr, int mask, int uid, int gid,
       req->head.args.setattr.size = attr->st_size;
     else { //too big!
       delete req;
+      COND_IUNLOCK(in, cf);
       return -EFBIG;
     }
     req->inode_drop |= CEPH_CAP_AUTH_SHARED | CEPH_CAP_FILE_RD |
       CEPH_CAP_FILE_WR;
   }
   req->head.args.setattr.mask = mask;
-
   req->regetattr_mask = mask;
 
+  if (! (cf & CF_CLIENT_LOCKED))
+      client_lock.Lock();
+
   int res = make_request(req, uid, gid, inp);
+
+  if (! (cf & CF_CLIENT_LOCKED))
+    client_lock.Unlock();
+
+  if (cf & CF_ILOCK)
+    ILOCK(in);
+
   ldout(cct, 10) << "_setattr result=" << res << dendl;
   return res;
 }
 
 int Client::setattr(const char *relpath, struct stat *attr, int mask)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "setattr" << std::endl;
   tout(cct) << relpath << std::endl;
   tout(cct) << mask  << std::endl;
@@ -4760,12 +4777,11 @@ int Client::setattr(const char *relpath, struct stat *attr, int mask)
   int r = path_walk(path, &in);
   if (r < 0)
     return r;
-  return _setattr(in, attr, mask); 
+  return _setattr(in, attr, mask, CF_NONE); 
 }
 
 int Client::fsetattr(int fd, struct stat *attr, int mask)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "fsetattr" << std::endl;
   tout(cct) << fd << std::endl;
   tout(cct) << mask  << std::endl;
@@ -4773,28 +4789,31 @@ int Client::fsetattr(int fd, struct stat *attr, int mask)
   Fh *f = get_filehandle(fd);
   if (!f)
     return -EBADF;
-  return _setattr(f->inode, attr, mask); 
+  return _setattr(f->inode, attr, mask, CF_NONE); 
 }
 
 int Client::stat(const char *relpath, struct stat *stbuf,
-			  frag_info_t *dirstat, int mask)
+		 frag_info_t *dirstat, int mask)
 {
   ldout(cct, 3) << "stat enter (relpath" << relpath << " mask " << mask
 		<< ")" << dendl;
-  Mutex::Locker lock(client_lock);
+
   tout(cct) << "stat" << std::endl;
   tout(cct) << relpath << std::endl;
+
   filepath path(relpath);
   Inode *in;
   int r = path_walk(path, &in);
   if (r < 0)
     return r;
-  r = _getattr(in, mask);
+  r = _getattr(in, mask, CF_ILOCK);
   if (r < 0) {
     ldout(cct, 3) << "stat exit on error!" << dendl;
     return r;
   }
   fill_stat(in, stbuf, dirstat);
+  IUNLOCK(in);
+
   ldout(cct, 3) << "stat exit (relpath" << relpath << " mask " << mask << ")"
 		<< dendl;
   return r;
@@ -4805,21 +4824,23 @@ int Client::lstat(const char *relpath, struct stat *stbuf,
 {
   ldout(cct, 3) << "lstat enter (relpath" << relpath << " mask " << mask << ")"
 		<< dendl;
-  Mutex::Locker lock(client_lock);
   tout(cct) << "lstat" << std::endl;
   tout(cct) << relpath << std::endl;
+
   filepath path(relpath);
   Inode *in;
   // don't follow symlinks
   int r = path_walk(path, &in, false);
   if (r < 0)
     return r;
-  r = _getattr(in, mask);
+  r = _getattr(in, mask, CF_ILOCK);
   if (r < 0) {
     ldout(cct, 3) << "lstat exit on error!" << dendl;
     return r;
   }
   fill_stat(in, stbuf, dirstat);
+  IUNLOCK(in);
+
   ldout(cct, 3) << "lstat exit (relpath" << relpath << " mask " << mask << ")"
 		<< dendl;
   return r;
@@ -4828,6 +4849,7 @@ int Client::lstat(const char *relpath, struct stat *stbuf,
 int Client::fill_stat(Inode *in, struct stat *st, frag_info_t *dirstat,
 		      nest_info_t *rstat)
 {
+  // CF_ILOCKED
   ldout(cct, 10) << "fill_stat on " << in->ino << " snap/dev" << in->snapid
 	   << " mode 0" << oct << in->mode << dec
 	   << " mtime " << in->mtime << " ctime " << in->ctime << dendl;
@@ -4875,10 +4897,10 @@ void Client::touch_dn(Dentry *dn)
 
 int Client::chmod(const char *relpath, mode_t mode)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "chmod" << std::endl;
   tout(cct) << relpath << std::endl;
   tout(cct) << mode << std::endl;
+
   filepath path(relpath);
   Inode *in;
   int r = path_walk(path, &in);
@@ -4886,29 +4908,29 @@ int Client::chmod(const char *relpath, mode_t mode)
     return r;
   struct stat attr;
   attr.st_mode = mode;
-  return _setattr(in, &attr, CEPH_SETATTR_MODE);
+  return _setattr(in, &attr, CEPH_SETATTR_MODE, CF_NONE);
 }
 
 int Client::fchmod(int fd, mode_t mode)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "fchmod" << std::endl;
   tout(cct) << fd << std::endl;
   tout(cct) << mode << std::endl;
+
   Fh *f = get_filehandle(fd);
   if (!f)
     return -EBADF;
   struct stat attr;
   attr.st_mode = mode;
-  return _setattr(f->inode, &attr, CEPH_SETATTR_MODE);
+  return _setattr(f->inode, &attr, CEPH_SETATTR_MODE, CF_NONE);
 }
 
 int Client::lchmod(const char *relpath, mode_t mode)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "lchmod" << std::endl;
   tout(cct) << relpath << std::endl;
   tout(cct) << mode << std::endl;
+
   filepath path(relpath);
   Inode *in;
   // don't follow symlinks
@@ -4917,16 +4939,16 @@ int Client::lchmod(const char *relpath, mode_t mode)
     return r;
   struct stat attr;
   attr.st_mode = mode;
-  return _setattr(in, &attr, CEPH_SETATTR_MODE);
+  return _setattr(in, &attr, CEPH_SETATTR_MODE, CF_NONE);
 }
 
 int Client::chown(const char *relpath, int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "chown" << std::endl;
   tout(cct) << relpath << std::endl;
   tout(cct) << uid << std::endl;
   tout(cct) << gid << std::endl;
+
   filepath path(relpath);
   Inode *in;
   int r = path_walk(path, &in);
@@ -4938,17 +4960,17 @@ int Client::chown(const char *relpath, int uid, int gid)
   int mask = 0;
   if (uid != -1) mask |= CEPH_SETATTR_UID;
   if (gid != -1) mask |= CEPH_SETATTR_GID;
-  return _setattr(in, &attr, mask);
+  return _setattr(in, &attr, mask, CF_NONE);
 }
 
 int Client::fchown(int fd, int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "fchown" << std::endl;
   tout(cct) << fd << std::endl;
   tout(cct) << uid << std::endl;
   tout(cct) << gid << std::endl;
-  Fh *f = get_filehandle(fd);
+ 
+ Fh *f = get_filehandle(fd);
   if (!f)
     return -EBADF;
   struct stat attr;
@@ -4957,16 +4979,16 @@ int Client::fchown(int fd, int uid, int gid)
   int mask = 0;
   if (uid != -1) mask |= CEPH_SETATTR_UID;
   if (gid != -1) mask |= CEPH_SETATTR_GID;
-  return _setattr(f->inode, &attr, mask);
+  return _setattr(f->inode, &attr, mask, CF_NONE);
 }
 
 int Client::lchown(const char *relpath, int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "lchown" << std::endl;
   tout(cct) << relpath << std::endl;
   tout(cct) << uid << std::endl;
   tout(cct) << gid << std::endl;
+
   filepath path(relpath);
   Inode *in;
   // don't follow symlinks
@@ -4979,16 +5001,16 @@ int Client::lchown(const char *relpath, int uid, int gid)
   int mask = 0;
   if (uid != -1) mask |= CEPH_SETATTR_UID;
   if (gid != -1) mask |= CEPH_SETATTR_GID;
-  return _setattr(in, &attr, mask);
+  return _setattr(in, &attr, mask, CF_NONE);
 }
 
 int Client::utime(const char *relpath, struct utimbuf *buf)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "utime" << std::endl;
   tout(cct) << relpath << std::endl;
   tout(cct) << buf->modtime << std::endl;
   tout(cct) << buf->actime << std::endl;
+
   filepath path(relpath);
   Inode *in;
   int r = path_walk(path, &in);
@@ -4999,12 +5021,11 @@ int Client::utime(const char *relpath, struct utimbuf *buf)
   attr.st_mtim.tv_nsec = 0;
   attr.st_atim.tv_sec = buf->actime;
   attr.st_atim.tv_nsec = 0;
-  return _setattr(in, &attr, CEPH_SETATTR_MTIME|CEPH_SETATTR_ATIME);
+  return _setattr(in, &attr, CEPH_SETATTR_MTIME|CEPH_SETATTR_ATIME, CF_NONE);
 }
 
 int Client::lutime(const char *relpath, struct utimbuf *buf)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "lutime" << std::endl;
   tout(cct) << relpath << std::endl;
   tout(cct) << buf->modtime << std::endl;
@@ -5020,7 +5041,7 @@ int Client::lutime(const char *relpath, struct utimbuf *buf)
   attr.st_mtim.tv_nsec = 0;
   attr.st_atim.tv_sec = buf->actime;
   attr.st_atim.tv_nsec = 0;
-  return _setattr(in, &attr, CEPH_SETATTR_MTIME|CEPH_SETATTR_ATIME);
+  return _setattr(in, &attr, CEPH_SETATTR_MTIME|CEPH_SETATTR_ATIME, CF_NONE);
 }
 
 int Client::opendir(const char *relpath, dir_result_t **dirpp) 
@@ -6996,9 +7017,7 @@ int Client::ll_getattr(Inode *in, struct stat *attr, int uid, int gid)
 int Client::ll_setattr(Inode *in, struct stat *attr, int mask, int uid,
 		       int gid)
 {
-  Mutex::Locker lock(client_lock);
-
-  vinodeno_t vino = ll_get_vino(in);
+  vinodeno_t vino = ll_get_vino(in); // it's immutable
 
   ldout(cct, 3) << "ll_setattr " << vino << " mask " << hex << mask << dec
 		<< dendl;
@@ -7013,10 +7032,11 @@ int Client::ll_setattr(Inode *in, struct stat *attr, int mask, int uid,
   tout(cct) << mask << std::endl;
 
   Inode *target = in;
-  int res = _setattr(in, attr, mask, uid, gid, &target);
+  int res = _setattr(in, attr, mask, uid, gid, &target, CF_ILOCK);
   if (res == 0) {
     assert(in == target);
     fill_stat(in, attr);
+    IUNLOCK(in);
   }
   ldout(cct, 3) << "ll_setattr " << vino << " = " << res << dendl;
   return res;

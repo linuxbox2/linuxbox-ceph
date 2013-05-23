@@ -561,7 +561,7 @@ private:
   int _rmdir(Inode *dir, const char *name, int uid=-1, int gid=-1);
   int _symlink(Inode *dir, const char *name, const char *target, int uid=-1, int gid=-1, Inode **inp = 0, uint32_t cf=CF_NONE);
   int _mknod(Inode *dir, const char *name, mode_t mode, dev_t rdev, int uid=-1, int gid=-1, Inode **inp = 0);
-  int _setattr(Inode *in, struct stat *attr, int mask, int uid=-1, int gid=-1, Inode **inp = 0);
+  int _setattr(Inode *in, struct stat *attr, int mask, int uid=-1, int gid=-1, Inode **inp = 0, uint32_t cf=CF_NONE);
   int _getattr(Inode *in, int mask, int uid=-1, int gid=-1, bool force=false,
 	       uint32_t cf=CF_CLIENT_LOCKED);
   int _getxattr(Inode *in, const char *name, void *value, size_t len, int uid=-1, int gid=-1);
