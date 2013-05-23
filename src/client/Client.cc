@@ -4280,8 +4280,7 @@ int Client::get_or_create(Inode *diri, const char* name, Dentry **pdn,
 	if (s->cap_ttl > now &&
 	    s->cap_gen == dn->lease_gen) {
 	  if (expect_null) {
-	    if (! (cf & CF_ILOCK))
-	      IUNLOCK(diri);
+	      COND_IUNLOCK(diri, cf);
 	    return -EEXIST;
 	  }
 	}
@@ -4293,8 +4292,7 @@ int Client::get_or_create(Inode *diri, const char* name, Dentry **pdn,
     *pdn = link(diri->dir, name, NULL, NULL); // CF_ILOCKED
   }
 
-  if (! (cf & CF_ILOCK))
-    IUNLOCK(diri);
+  COND_IUNLOCK(diri, cf);
 
   // success
   return 0;
@@ -4610,8 +4608,7 @@ int Client::_getattr(Inode *in, int mask, int uid, int gid, bool force,
 
   // fast path--it's concurrent
   if (yes && !force) {
-    if (! (cf & CF_ILOCK))
-      IUNLOCK(in);
+    COND_IUNLOCK(in, cf);
     return 0;
   }
 
@@ -4619,7 +4616,7 @@ int Client::_getattr(Inode *in, int mask, int uid, int gid, bool force,
   filepath path;
   in->make_nosnap_relative_path(path);
 
-  COND_IUNLOCK(in, cf);
+  IUNLOCK(in);
 
   req->set_filepath(path);
   req->set_inode(in);
@@ -5841,8 +5838,7 @@ int Client::_open(Inode *in, int flags, mode_t mode, Fh **fhp, int uid, int gid,
 
   if (in->snapid != CEPH_NOSNAP &&
       (flags & (O_WRONLY | O_RDWR | O_CREAT | O_TRUNC | O_APPEND))) {
-    if (! (cf & CF_ILOCK))
-      IUNLOCK(in);
+    COND_IUNLOCK(in, cf);
     return -EROFS;
   }
 
@@ -5875,13 +5871,12 @@ int Client::_open(Inode *in, int flags, mode_t mode, Fh **fhp, int uid, int gid,
   // success?
   if (result >= 0) {
     if (fhp)
-      *fhp = _create_fh(in, flags, cmode, CF_ILOCKED);
+      *fhp = _create_fh(in, flags, cmode, CF_ILOCKED|CF_ILOCK);
   } else {
     in->put_open_ref(cmode);
   }
 
-  if (! (cf & CF_ILOCK))
-    IUNLOCK(in);
+  COND_IUNLOCK(in, cf);
 
   trim_cache();
 
@@ -6895,6 +6890,7 @@ int Client::_ll_put(Inode *in, int num, uint32_t cf)
 
 void Client::_ll_drop_pins()
 {
+  // XXXX locking
   ldout(cct, 10) << "_ll_drop_pins" << dendl;
   hash_map<vinodeno_t, Inode*>::iterator next;
   for (hash_map<vinodeno_t, Inode*>::iterator it = inode_map.begin();

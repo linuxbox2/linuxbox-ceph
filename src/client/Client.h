@@ -207,7 +207,7 @@ struct dir_result_t {
 
 #define COND_IUNLOCK(in, cf) \
   do { \
-    if (! ((cf) & CF_ILOCKED)) (in)->unlock(); \
+    if (! ((cf) & CF_ILOCK)) (in)->unlock(); \
   } while(0)
 
 class Client : public Dispatcher {
