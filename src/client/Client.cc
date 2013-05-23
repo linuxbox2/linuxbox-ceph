@@ -5750,8 +5750,11 @@ int Client::lookup_ino(inodeno_t ino)
   return r;
 }
 
-Fh *Client::_create_fh(Inode *in, int flags, int cmode)
+Fh *Client::_create_fh(Inode *in, int flags, int cmode, uint32_t cf)
 {
+
+  ldout(cct, 10) << "_create_fh " << in->ino << " mode " << cmode << dendl;
+
   // yay
   Fh *f = new Fh;
   f->mode = cmode;
@@ -5759,10 +5762,12 @@ Fh *Client::_create_fh(Inode *in, int flags, int cmode)
 
   // inode
   assert(in);
-  f->inode = in;
-  f->inode->get();
 
-  ldout(cct, 10) << "_create_fh " << in->ino << " mode " << cmode << dendl;
+  f->inode = in;
+
+  COND_ILOCK(in, cf);
+
+  in->get();
 
   if (in->snapid != CEPH_NOSNAP) {
     in->snap_cap_refs++;
@@ -5770,6 +5775,8 @@ Fh *Client::_create_fh(Inode *in, int flags, int cmode)
 		  << " combined IMMUTABLE SNAP caps " 
 		  << ccap_string(in->caps_issued()) << dendl;
   }
+
+  COND_IUNLOCK(in, cf);
 
   return f;
 }
@@ -7462,20 +7469,25 @@ int Client::_create(Inode *dir, const char *name, int flags, mode_t mode,
   inodeno_t created_ino;
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de, CF_NONE); // XXXX
+  int res = get_or_create(dir, name, &de, CF_NONE);
   if (res < 0)
     goto fail;
   req->set_dentry(de);
 
+  client_lock.Lock();
   res = make_request(req, uid, gid, inp, created);
+  client_lock.Unlock();
+
   if (res < 0) {
     goto reply_error;
   }
 
   /* If the caller passed a value in fhp, do the open */
   if(fhp) {
+    ILOCK(*inp);
     (*inp)->get_open_ref(cmode);
-    *fhp = _create_fh(*inp, flags, cmode);
+    *fhp = _create_fh(*inp, flags, cmode, CF_ILOCKED);
+    IUNLOCK(*inp);
   }
 
  reply_error:
@@ -8138,9 +8150,7 @@ int Client::ll_create(Inode *parent, const char *name, mode_t mode,
 		      int flags, struct stat *attr, Inode **outp, Fh **fhp,
 		      int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
-
-  vinodeno_t vparent = ll_get_vino(parent);
+  vinodeno_t vparent = ll_get_vino(parent); // it's immutable
 
   ldout(cct, 3) << "ll_create " << vparent << " " << name << " 0" << oct <<
     mode << dec << " " << flags << ", uid " << uid << ", gid " << gid
@@ -8153,7 +8163,7 @@ int Client::ll_create(Inode *parent, const char *name, mode_t mode,
 
   bool created = false;
   Inode *in = NULL;
-  int r = _lookup(parent, name, &in, CF_CLIENT_LOCKED); // XXXX
+  int r = _lookup(parent, name, &in, CF_NONE);
 
   if (r == 0 && (flags & O_CREAT) && (flags & O_EXCL))
     return -EEXIST;
@@ -8164,6 +8174,7 @@ int Client::ll_create(Inode *parent, const char *name, mode_t mode,
     if (r < 0)
       goto out;
 
+    // XXX 
     if ((!in) && fhp)
       in = (*fhp)->inode;
   }
@@ -8171,12 +8182,21 @@ int Client::ll_create(Inode *parent, const char *name, mode_t mode,
   if (r < 0)
     goto out;
 
+  ILOCK(in);
+
   assert(in);
   fill_stat(in, attr);
+
+  // passing an Inode in outp requires an additional ref
+  if (outp) {
+    _ll_get(in);
+    *outp = in;
+  }
 
   ldout(cct, 20) << "ll_create created = " << created << dendl;
   if (!created) {
     r = check_permissions(in, flags, uid, gid);
+    IUNLOCK(in);
     if (r < 0) {
       if (fhp && *fhp) {
 	_release_fh(*fhp);
@@ -8188,6 +8208,8 @@ int Client::ll_create(Inode *parent, const char *name, mode_t mode,
       if (r < 0)
 	goto out;
     }
+  } else {
+    IUNLOCK(in);
   }
 
 out:
@@ -8201,12 +8223,6 @@ out:
 		<< mode << dec << " " << flags << " = " << r << " ("
 		<< fhptr << " " << hex << attr->st_ino << dec << ")"
 		<< dendl;
-
-  // passing an Inode in outp requires an additional ref
-  if (outp) {
-    _ll_get(in);
-    *outp = in;
-  }
 
   return r;
 }

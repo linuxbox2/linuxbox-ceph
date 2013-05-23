@@ -545,7 +545,7 @@ private:
   int _ll_put(Inode *in, int num, uint32_t cf=CF_NONE);
   void _ll_drop_pins();
 
-  Fh *_create_fh(Inode *in, int flags, int cmode);
+  Fh *_create_fh(Inode *in, int flags, int cmode, uint32_t cf=CF_NONE);
   int _release_fh(Fh *fh);
 
   int _read_sync(Fh *f, uint64_t off, uint64_t len, bufferlist *bl);
