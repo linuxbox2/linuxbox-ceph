@@ -6903,11 +6903,7 @@ Inode *Client::ll_get_inode(vinodeno_t vino)
 int Client::ll_getattr(Inode *in, struct stat *attr, int uid, int gid)
 {
 
-  ILOCK(in);
-
-  vinodeno_t vino = ll_get_vino(in);
-
-  IUNLOCK(in);
+  vinodeno_t vino = ll_get_vino(in); // it's immutable
 
   ldout(cct, 3) << "ll_getattr " << vino << dendl;
   tout(cct) << "ll_getattr" << std::endl;
