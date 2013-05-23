@@ -2168,7 +2168,7 @@ void Client::put_inode(Inode *in, int n, uint32_t cf)
     Inode *snapdir_parent = in->snapdir_parent;
 
     if (snapdir_parent)
-      put_inode(snapdir_parent, 1, (cf & ~CF_CLIENT_LOCK));
+      put_inode(snapdir_parent, 1, CF_NONE);
       
     inode_map.erase(in->vino());
 
