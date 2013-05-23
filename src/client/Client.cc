@@ -6832,16 +6832,23 @@ void Client::_ll_get(Inode *in)
 		 << in->ll_ref << dendl;
 }
 
-int Client::_ll_put(Inode *in, int num)
+int Client::_ll_put(Inode *in, int num, uint32_t cf)
 {
+  COND_ILOCK(in, cf);
+
   in->ll_put(num);
   ldout(cct, 20) << "_ll_put " << in << " " << in->ino << " " << num
 		 << " -> " << in->ll_ref << dendl;
   if (in->ll_ref == 0) {
-    put_inode(in);
+    put_inode(in, 1, CF_ILOCKED);
+    if (! (cf & CF_ILOCK))
+      IUNLOCK(in);
     return 0;
   } else {
-    return in->ll_ref;
+    int32_t ll_refs = in->ll_ref;
+    if (! (cf & CF_ILOCK))
+      IUNLOCK(in);
+    return ll_refs;
   }
 }
 
@@ -6862,8 +6869,7 @@ void Client::_ll_drop_pins()
 
 bool Client::ll_forget(Inode *in, int count)
 {
-  Mutex::Locker lock(client_lock);
-  inodeno_t ino = ll_get_inodeno(in);
+  inodeno_t ino = ll_get_inodeno(in); // it's immutable
 
   ldout(cct, 3) << "ll_forget " << ino << " " << count << dendl;
   tout(cct) << "ll_forget" << std::endl;
@@ -6873,13 +6879,15 @@ bool Client::ll_forget(Inode *in, int count)
   if (ino == 1) return true;  // ignore forget on root.
 
   bool last = false;
+
+  ILOCK(in);
   if (in->ll_ref < count) {
     ldout(cct, 1) << "WARNING: ll_forget on " << ino << " " << count
 		  << ", which only has ll_ref=" << in->ll_ref << dendl;
-    _ll_put(in, in->ll_ref);
+    _ll_put(in, in->ll_ref, CF_ILOCKED);
       last = true;
     } else {
-    if (_ll_put(in, count) == 0)
+    if (_ll_put(in, count, CF_ILOCKED) == 0)
       last = true;
   }
   

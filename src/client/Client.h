@@ -542,7 +542,7 @@ private:
 
   // other helpers
   void _ll_get(Inode *in);
-  int _ll_put(Inode *in, int num);
+  int _ll_put(Inode *in, int num, uint32_t cf=CF_NONE);
   void _ll_drop_pins();
 
   Fh *_create_fh(Inode *in, int flags, int cmode);
