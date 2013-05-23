@@ -5865,7 +5865,7 @@ int Client::_open(Inode *in, int flags, mode_t mode, Fh **fhp, int uid, int gid,
   // success?
   if (result >= 0) {
     if (fhp)
-      *fhp = _create_fh(in, flags, cmode);
+      *fhp = _create_fh(in, flags, cmode, CF_ILOCKED);
   } else {
     in->put_open_ref(cmode);
   }
