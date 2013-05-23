@@ -2175,6 +2175,8 @@ void Client::put_inode(Inode *in, int n, uint32_t cf)
     remove_all_caps(in);
 
     ldout(cct, 10) << "put_inode deleting " << *in << dendl;
+
+    // needs further review
     bool unclean = objectcacher->release_set(&in->oset);
     assert(!unclean);
     Inode *snapdir_parent = in->snapdir_parent;
@@ -2270,22 +2272,29 @@ Dentry* Client::link(Dir *dir, const string& name, Inode *in, Dentry *dn)
 
 void Client::unlink(Dentry *dn, bool keepdir)
 {
-  Inode *in = dn->inode;
   ldout(cct, 15) << "unlink dir " << dn->dir->parent_inode << " '" 
 		 << dn->name << "' dn " << dn
 		 << " inode " << dn->inode << dendl;
 
+  Inode *in = dn->inode;
+
   // unlink from inode
   if (in) {
+    ILOCK(in);
     if (in->dir)
       dn->put();        // dir -> dn pin
     dn->inode = 0;
     assert(in->dn_set.count(dn));
     in->dn_set.erase(dn);
     ldout(cct, 20) << "unlink  inode " << in << " parents now "
-		   << in->dn_set << dendl; 
-    put_inode(in);
+		   << in->dn_set << dendl;
+
+    // XXXX IUNLOCK behavior bad juju esp. in put_inode, rewrite it!!
+    put_inode(in, 1, CF_ILOCKED);
+    IUNLOCK(in);
   }
+
+  // XXXX locking on dir with no inode?
         
   // unlink from dir
   dn->dir->dentries.erase(dn->name);
@@ -4514,17 +4523,17 @@ int Client::mkdirs(const char *relpath, mode_t mode)
 
 int Client::rmdir(const char *relpath)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "rmdir" << std::endl;
   tout(cct) << relpath << std::endl;
+
   filepath path(relpath);
   string name = path.last_dentry();
   path.pop_dentry();
-  Inode *dir;
-  int r = path_walk(path, &dir);
+  Inode *diri;
+  int r = path_walk(path, &diri);
   if (r < 0)
     return r;
-  return _rmdir(dir, name.c_str());
+  return _rmdir(diri, name.c_str());
 }
 
 int Client::mknod(const char *relpath, mode_t mode, dev_t rdev) 
@@ -7767,50 +7776,73 @@ int Client::ll_unlink(Inode *in, const char *name, int uid, int gid)
   return _unlink(in, name, uid, gid);
 }
 
-int Client::_rmdir(Inode *dir, const char *name, int uid, int gid)
+int Client::_rmdir(Inode *diri, const char *name, int uid, int gid)
 {
-  ldout(cct, 3) << "_rmdir(" << dir->ino << " " << name << " uid " << uid <<
+  ldout(cct, 3) << "_rmdir(" << diri->ino << " " << name << " uid " << uid <<
     " gid " << gid << ")" << dendl;
 
-  if (dir->snapid != CEPH_NOSNAP && dir->snapid != CEPH_SNAPDIR) {
+  ILOCK(diri);
+  snapid_t dsnap = diri->snapid;
+
+  if (dsnap != CEPH_NOSNAP && dsnap != CEPH_SNAPDIR) {
+    IUNLOCK(diri);
     return -EROFS;
   }
 
-  MetaRequest *req = new MetaRequest(dir->snapid == CEPH_SNAPDIR ?
-				     CEPH_MDS_OP_RMSNAP:CEPH_MDS_OP_RMDIR);
-  filepath path;
-  dir->make_nosnap_relative_path(path);
-  path.push_dentry(name);
-  req->set_filepath(path);
+  int op =
+    (dsnap == CEPH_SNAPDIR) ? CEPH_MDS_OP_RMSNAP : CEPH_MDS_OP_RMDIR;
 
+  filepath path;
+  diri->make_nosnap_relative_path(path);
+
+  IUNLOCK(diri);
+
+  path.push_dentry(name);
+
+  MetaRequest *req = new MetaRequest(op);
+  req->set_filepath(path);
   req->dentry_drop = CEPH_CAP_FILE_SHARED;
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
   req->inode_drop = CEPH_CAP_LINK_SHARED | CEPH_CAP_LINK_EXCL;
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de, CF_NONE); // XXXX
+  int res = get_or_create(diri, name, &de, CF_NONE);
   if (res < 0)
     goto fail;
   req->set_dentry(de);
   Inode *in;
-  res = _lookup(dir, name, &in, CF_CLIENT_LOCKED); // XXXX
+  res = _lookup(diri, name, &in, CF_NONE); // by def., CF_CLIENT_LOCKED
   if (res < 0)
     goto fail;
   req->set_inode(in);
 
+  client_lock.Lock();
   res = make_request(req, uid, gid);
+  client_lock.Unlock();
+
   if (res == 0) {
-    if (dir->dir && dir->dir->dentries.count(name) ) {
-      Dentry *dn = dir->dir->dentries[name];
-      if (dn->inode->dir && dn->inode->dir->is_empty() &&
-	  (dn->inode->dn_set.size() == 1))
-	close_dir(dn->inode->dir);  // FIXME: maybe i should proactively hose
-                                    // the whole subtree from cache?
-      unlink(dn, false);
-    }
+    ILOCK(diri);
+    hash_map<string, Dentry*>::iterator p1 = diri->dir->dentries.find(name);
+    if (p1 != diri->dir->dentries.end()) {
+      Dentry *dn = p1->second;
+      Inode *in2 = dn->inode;
+      bool unlock2 = false;
+      if (in2 != diri) {
+	ILOCK(in2);
+	unlock2 = true;
+      }
+      if (in2->dir && in2->dir->is_empty() &&
+	  (in2->dn_set.size() == 1))
+	close_dir(in2->dir);  // FIXME: maybe i should proactively hose
+                              // the whole subtree from cache?
+      if (unlock2)
+	IUNLOCK(in2);
+       unlink(dn, false);
+     }
+    IUNLOCK(diri);
   }
 
-  trim_cache(CF_CLIENT_LOCKED); // XXXX
+  trim_cache();
   ldout(cct, 3) << "rmdir(" << path << ") = " << res << dendl;
   return res;
 
@@ -7821,9 +7853,7 @@ int Client::_rmdir(Inode *dir, const char *name, int uid, int gid)
 
 int Client::ll_rmdir(Inode *in, const char *name, int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
-
-  vinodeno_t vino = ll_get_vino(in);
+  vinodeno_t vino = ll_get_vino(in); // it's immutable
 
   ldout(cct, 3) << "ll_rmdir " << vino << " " << name << dendl;
   tout(cct) << "ll_rmdir" << std::endl;
