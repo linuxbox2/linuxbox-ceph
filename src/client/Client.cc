@@ -2150,7 +2150,7 @@ void Client::put_inode(Inode *in, int n, uint32_t cf)
 {
   ldout(cct, 10) << "put_inode on " << *in << dendl;
 
-  COND_ILOCK(in, cf);
+  COND_ILOCK(in, cf); // NB:, this routine ALWAYS unlocks locked 'in'
 
   int left = in->put(n);
   if (left == 0) {
@@ -2166,7 +2166,7 @@ void Client::put_inode(Inode *in, int n, uint32_t cf)
       left = in->get_num_ref();
       if (left > 0) {
 	client_lock.Unlock();
-	COND_IUNLOCK(in, cf);
+	IUNLOCK(in);
 	return;
       }
     }
@@ -2192,7 +2192,7 @@ void Client::put_inode(Inode *in, int n, uint32_t cf)
     in->cap_item.remove_myself();
     in->snaprealm_item.remove_myself();
 
-    COND_IUNLOCK(in, cf);
+    IUNLOCK(in);
 
     if (in == root)
       root = 0;
@@ -2201,7 +2201,7 @@ void Client::put_inode(Inode *in, int n, uint32_t cf)
     return;
   }
 
-  COND_IUNLOCK(in, cf);
+  IUNLOCK(in);
 }
 
 void Client::close_dir(Dir *dir)
@@ -2290,8 +2290,7 @@ void Client::unlink(Dentry *dn, bool keepdir)
 		   << in->dn_set << dendl;
 
     // XXXX IUNLOCK behavior bad juju esp. in put_inode, rewrite it!!
-    put_inode(in, 1, CF_ILOCKED);
-    IUNLOCK(in);
+    put_inode(in, 1, CF_ILOCKED); // ! CF_ILOCKED
   }
 
   // XXXX locking on dir with no inode?
