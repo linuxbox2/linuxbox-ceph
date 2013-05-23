@@ -4562,23 +4562,44 @@ int Client::readlink(const char *relpath, char *buf, loff_t size)
 
 // inode stuff
 
-int Client::_getattr(Inode *in, int mask, int uid, int gid, bool force)
+int Client::_getattr(Inode *in, int mask, int uid, int gid, bool force,
+		     uint32_t cf)
 {
+
+  COND_ILOCK(in, cf);
   bool yes = in->caps_issued_mask(mask);
 
   ldout(cct, 10) << "_getattr mask " << ccap_string(mask) << " issued="
 		 << yes << dendl;
-  if (yes && !force)
+
+  // fast path--it's concurrent
+  if (yes && !force) {
+    if (! (cf & CF_ILOCK))
+      IUNLOCK(in);
     return 0;
+  }
 
   MetaRequest *req = new MetaRequest(CEPH_MDS_OP_GETATTR);
   filepath path;
   in->make_nosnap_relative_path(path);
+
+  COND_IUNLOCK(in, cf);
+
   req->set_filepath(path);
   req->set_inode(in);
   req->head.args.getattr.mask = mask;
+
+  if (! (cf & CF_CLIENT_LOCKED))
+      client_lock.Lock();
   
   int res = make_request(req, uid, gid);
+
+  if (! (cf & CF_CLIENT_LOCKED))
+    client_lock.Unlock();
+
+  if (cf & CF_ILOCK)
+    ILOCK(in);
+
   ldout(cct, 10) << "_getattr result=" << res << dendl;
   return res;
 }
@@ -6881,9 +6902,12 @@ Inode *Client::ll_get_inode(vinodeno_t vino)
 
 int Client::ll_getattr(Inode *in, struct stat *attr, int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
+
+  ILOCK(in);
 
   vinodeno_t vino = ll_get_vino(in);
+
+  IUNLOCK(in);
 
   ldout(cct, 3) << "ll_getattr " << vino << dendl;
   tout(cct) << "ll_getattr" << std::endl;
@@ -6897,12 +6921,16 @@ int Client::ll_getattr(Inode *in, struct stat *attr, int uid, int gid)
   }
 
   int res;
-  if (vino.snapid < CEPH_NOSNAP)
+  if (vino.snapid < CEPH_NOSNAP) {
     res = 0;
-  else
-    res = _getattr(in, CEPH_STAT_CAP_INODE_ALL, uid, gid);
-  if (res == 0)
+    fill_stat(in, attr); // XXXX (this was the old behavior in this case)
+  }
+  else {
+    res = _getattr(in, CEPH_STAT_CAP_INODE_ALL, uid, gid, false, CF_ILOCK);
     fill_stat(in, attr);
+    IUNLOCK(in);
+  }
+
   ldout(cct, 3) << "ll_getattr " << vino << " = " << res << dendl;
   return res;
 }
