@@ -233,7 +233,7 @@ void Client::tear_down_cache()
 
   // empty lru
   lru.lru_set_max(0);
-  trim_cache();
+  trim_cache(CF_CLIENT_LOCKED); // XXXX
   assert(lru.lru_get_size() == 0);
 
   // close root ino
@@ -431,10 +431,15 @@ void Client::shutdown()
 // ===================
 // metadata cache stuff
 
-void Client::trim_cache()
+void Client::trim_cache(uint32_t cf)
 {
+  if (! (cf & CF_CLIENT_LOCKED))
+    client_lock.Lock();
+
   ldout(cct, 20) << "trim_cache size " << lru.lru_get_size() << " max "
 		 << lru.lru_get_max() << dendl;
+
+  // XXX seems rather agressive
   unsigned last = 0;
   while (lru.lru_get_size() != last) {
     last = lru.lru_get_size();
@@ -450,13 +455,20 @@ void Client::trim_cache()
   }
 
   // hose root?
-  if (lru.lru_get_size() == 0 && root && root->get_num_ref() == 0 &&
-      inode_map.size() == 1) {
-    ldout(cct, 15) << "trim_cache trimmed root " << root << dendl;
-    delete root;
-    root = 0;
-    inode_map.clear();
+  if (lru.lru_get_size() == 0 && root) {
+    ILOCK(root);
+    if ((root->get_num_ref() == 0) &&
+	(inode_map.size() == 1)) {
+      ldout(cct, 15) << "trim_cache trimmed root " << root << dendl;
+      delete root;
+      root = 0;
+      inode_map.clear();
+    }
+    IUNLOCK(root);
   }
+
+  if (! (cf & CF_CLIENT_LOCKED))
+    client_lock.Unlock();
 }
 
 void Client::trim_dentry(Dentry *dn)
@@ -1905,7 +1917,7 @@ bool Client::ms_dispatch(Message *m)
     ldout(cct, 10) << "unmounting: trim pass, size was " << lru.lru_get_size() 
              << "+" << inode_map.size() << dendl;
     long unsigned size = lru.lru_get_size() + inode_map.size();
-    trim_cache();
+    trim_cache(CF_CLIENT_LOCKED); // XXXX
     if (size < lru.lru_get_size() + inode_map.size()) {
       ldout(cct, 10) << "unmounting: trim pass, cache shrank, poking unmount()"
 		     << dendl;
@@ -3953,7 +3965,7 @@ void Client::unmount()
 
   // empty lru cache
   lru.lru_set_max(0);
-  trim_cache();
+  trim_cache(CF_CLIENT_LOCKED); // XXXX;
 
   while (lru.lru_get_size() > 0 || 
          !inode_map.empty()) {
@@ -5805,16 +5817,22 @@ int Client::_release_fh(Fh *f)
   return 0;
 }
 
-int Client::_open(Inode *in, int flags, mode_t mode, Fh **fhp, int uid, int gid)
+int Client::_open(Inode *in, int flags, mode_t mode, Fh **fhp, int uid, int gid,
+		  uint32_t cf)
 {
   int cmode = ceph_flags_to_mode(flags);
-  if (cmode < 0)
+  if (cmode < 0) {
     return -EINVAL;
+  }
   int want = ceph_caps_for_mode(cmode);
   int result = 0;
 
+  COND_ILOCK(in, cf);
+
   if (in->snapid != CEPH_NOSNAP &&
       (flags & (O_WRONLY | O_RDWR | O_CREAT | O_TRUNC | O_APPEND))) {
+    if (! (cf & CF_ILOCK))
+      IUNLOCK(in);
     return -EROFS;
   }
 
@@ -5826,16 +5844,22 @@ int Client::_open(Inode *in, int flags, mode_t mode, Fh **fhp, int uid, int gid)
     // update wanted?
     check_caps(in, true);
   } else {
-    MetaRequest *req = new MetaRequest(CEPH_MDS_OP_OPEN);
     filepath path;
     in->make_nosnap_relative_path(path);
+    IUNLOCK(in);
+    MetaRequest *req = new MetaRequest(CEPH_MDS_OP_OPEN);
     req->set_filepath(path); 
     req->head.args.open.flags = flags & ~O_CREAT;
     req->head.args.open.mode = mode;
     req->head.args.open.pool = -1;
     req->head.args.open.old_size = in->size;   // for O_TRUNC
     req->set_inode(in);
+
+    client_lock.Lock();
     result = make_request(req, uid, gid);
+    client_lock.Unlock();
+
+    ILOCK(in);
   }
 
   // success?
@@ -5845,6 +5869,9 @@ int Client::_open(Inode *in, int flags, mode_t mode, Fh **fhp, int uid, int gid)
   } else {
     in->put_open_ref(cmode);
   }
+
+  if (! (cf & CF_ILOCK))
+    IUNLOCK(in);
 
   trim_cache();
 
@@ -7256,7 +7283,7 @@ int Client::_setxattr(Inode *in, const char *name, const void *value,
 
   int res = make_request(req, uid, gid);
 
-  trim_cache();
+  trim_cache(CF_CLIENT_LOCKED); // XXXX
   ldout(cct, 3) << "_setxattr(" << in->ino << ", \"" << name << "\") = " << 
     res << dendl;
   return res;
@@ -7300,7 +7327,7 @@ int Client::_removexattr(Inode *in, const char *name, int uid, int gid)
  
   int res = make_request(req, uid, gid);
 
-  trim_cache();
+  trim_cache(CF_CLIENT_LOCKED); // XXXX
   ldout(cct, 3) << "_removexattr(" << in->ino << ", \"" << name << "\") = "
 		<< res << dendl;
   return res;
@@ -7382,7 +7409,7 @@ int Client::_mknod(Inode *dir, const char *name, mode_t mode, dev_t rdev,
 
   res = make_request(req, uid, gid, inp);
 
-  trim_cache();
+  trim_cache(CF_CLIENT_LOCKED); // XXXX
 
   ldout(cct, 3) << "mknod(" << path << ", 0" << oct << mode << dec << ") = "
 		<< res << dendl;
@@ -7540,7 +7567,7 @@ int Client::_mkdir(Inode *dir, const char *name, mode_t mode, int uid, int gid,
   res = make_request(req, uid, gid, inp);
   ldout(cct, 10) << "_mkdir result is " << res << dendl;
 
-  trim_cache();
+  trim_cache(CF_CLIENT_LOCKED); // XXXX
 
   ldout(cct, 3) << "_mkdir(" << path << ", 0" << oct << mode << dec << ") = "
 		<< res << dendl;
@@ -7705,7 +7732,7 @@ int Client::_unlink(Inode *dir, const char *name, int uid, int gid)
   }
   ldout(cct, 10) << "unlink result is " << res << dendl;
 
-  trim_cache();
+  trim_cache(CF_CLIENT_LOCKED); // XXXX
   ldout(cct, 3) << "unlink(" << path << ") = " << res << dendl;
   return res;
 
@@ -7771,7 +7798,7 @@ int Client::_rmdir(Inode *dir, const char *name, int uid, int gid)
     }
   }
 
-  trim_cache();
+  trim_cache(CF_CLIENT_LOCKED); // XXXX
   ldout(cct, 3) << "rmdir(" << path << ") = " << res << dendl;
   return res;
 
@@ -7858,7 +7885,7 @@ int Client::_rename(Inode *fromdir, const char *fromname, Inode *todir,
 
   // renamed item from our cache
 
-  trim_cache();
+  trim_cache(CF_CLIENT_LOCKED); // XXXX
   ldout(cct, 3) << "_rename(" << from << ", " << to << ") = " << res << dendl;
   return res;
 
@@ -7919,7 +7946,7 @@ int Client::_link(Inode *in, Inode *dir, const char *newname, int uid, int gid,
   res = make_request(req, uid, gid, inp);
   ldout(cct, 10) << "link result is " << res << dendl;
 
-  trim_cache();
+  trim_cache(CF_CLIENT_LOCKED); // XXXX
   ldout(cct, 3) << "link(" << existing << ", " << path << ") = " << res
 		<< dendl;
   return res;
@@ -8118,9 +8145,7 @@ int Client::ll_open(Inode *in, int flags, Fh **fhp, int uid, int gid)
 {
   assert(!(flags & O_CREAT));
 
-  Mutex::Locker lock(client_lock);
-
-  vinodeno_t vino = ll_get_vino(in);
+  vinodeno_t vino = ll_get_vino(in); // it's immutable
 
   ldout(cct, 3) << "ll_open " << vino << " " << flags << dendl;
   tout(cct) << "ll_open" << std::endl;
@@ -8132,11 +8157,15 @@ int Client::ll_open(Inode *in, int flags, Fh **fhp, int uid, int gid)
     uid = geteuid();
     gid = getegid();
   }
-  r = check_permissions(in, flags, uid, gid);
-  if (r < 0)
-    goto out;
 
-  r = _open(in, flags, 0, fhp /* may be NULL */, uid, gid);
+  ILOCK(in);
+  r = check_permissions(in, flags, uid, gid);
+  if (r < 0) {
+    IUNLOCK(in);
+    goto out;
+  }
+
+  r = _open(in, flags, 0, fhp /* may be NULL */, uid, gid, CF_ILOCKED);
 
  out:
   Fh *fhptr = fhp ? *fhp : NULL;

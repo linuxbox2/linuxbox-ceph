@@ -395,7 +395,7 @@ protected:
   void touch_dn(Dentry *dn);
 
   // trim cache.
-  void trim_cache();
+  void trim_cache(uint32_t cf=CF_NONE);
   void trim_dentry(Dentry *dn);
   void trim_caps(MetaSession *s, int max);
   
@@ -521,7 +521,6 @@ protected:
 			      Dentry *old_dentry = NULL);
   void update_dentry_lease(Dentry *dn, LeaseStat *dlease, utime_t from, MetaSession *session);
 
-
   // ----------------------
   // fs ops.
 private:
@@ -569,7 +568,8 @@ private:
   int _listxattr(Inode *in, char *names, size_t len, int uid=-1, int gid=-1);
   int _setxattr(Inode *in, const char *name, const void *value, size_t len, int flags, int uid=-1, int gid=-1);
   int _removexattr(Inode *in, const char *nm, int uid=-1, int gid=-1);
-  int _open(Inode *in, int flags, mode_t mode, Fh **fhp, int uid=-1, int gid=-1);
+  int _open(Inode *in, int flags, mode_t mode, Fh **fhp, int uid=-1, int gid=-1,
+	    uint32_t cf=CF_NONE);
   int _create(Inode *in, const char *name, int flags, mode_t mode, Inode **inp, Fh **fhp,
               int stripe_unit, int stripe_count, int object_size, const char *data_pool,
 	      bool *created = NULL, int uid=-1, int gid=-1);
