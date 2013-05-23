@@ -4449,7 +4449,6 @@ int Client::rename(const char *relfrom, const char *relto)
 
 int Client::mkdir(const char *relpath, mode_t mode)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "mkdir" << std::endl;
   tout(cct) << relpath << std::endl;
   tout(cct) << mode << std::endl;
@@ -4468,7 +4467,6 @@ int Client::mkdir(const char *relpath, mode_t mode)
 
 int Client::mkdirs(const char *relpath, mode_t mode)
 {
-  Mutex::Locker lock(client_lock);
   ldout(cct, 10) << "Client::mkdirs " << relpath << dendl;
   tout(cct) << "mkdirs" << std::endl;
   tout(cct) << relpath << std::endl;
@@ -4480,23 +4478,27 @@ int Client::mkdirs(const char *relpath, mode_t mode)
   int r=0;
   Inode *cur = cwd;
   Inode *next;
-  for (i=0; i<path.depth(); ++i) {
-    r=_lookup(cur, path[i].c_str(), &next, CF_CLIENT_LOCKED); // XXXX
-    if (r < 0) break;
+  for (i=0; i < path.depth(); ++i) {
+    r=_lookup(cur, path[i].c_str(), &next, CF_NONE);
+    if (r < 0)
+      break;
     cur = next;
   }
   //check that we have work left to do
-  if (i==path.depth()) return -EEXIST;
-  if (r!=-ENOENT) return r;
+  if (i == path.depth())
+    return -EEXIST;
+  if (r!=-ENOENT)
+    return r;
   ldout(cct, 20) << "mkdirs got through " << i << " directories on path "
 		 << relpath << dendl;
   //make new directory at each level
-  for (; i<path.depth(); ++i) {
+  for (; i < path.depth(); ++i) {
     //make new dir
     r = _mkdir(cur, path[i].c_str(), mode);
     //check proper creation/existence
-    if (r < 0) return r;
-    r = _lookup(cur, path[i], &next, CF_CLIENT_LOCKED); // XXXX
+    if (r < 0)
+      return r;
+    r = _lookup(cur, path[i], &next, CF_NONE);
     if(r < 0) {
       ldout(cct, 0) << "mkdirs: successfully created new directory " << path[i]
 	      << " but can't _lookup it!" << dendl;
@@ -4505,7 +4507,7 @@ int Client::mkdirs(const char *relpath, mode_t mode)
     //move to new dir and continue
     cur = next;
     ldout(cct, 20) << "mkdirs: successfully created directory "
-	     << filepath(cur->ino).get_path() << dendl;
+		   << filepath(cur->ino).get_path() << dendl;
   }
   return 0;
 }
@@ -7532,43 +7534,53 @@ int Client::_create(Inode *dir, const char *name, int flags, mode_t mode,
   return res;
 }
 
-int Client::_mkdir(Inode *dir, const char *name, mode_t mode, int uid, int gid,
+int Client::_mkdir(Inode *diri, const char *name, mode_t mode, int uid, int gid,
 		   Inode **inp)
 {
-  ldout(cct, 3) << "_mkdir(" << dir->ino << " " << name << ", 0" << oct
+  ldout(cct, 3) << "_mkdir(" << diri->ino << " " << name << ", 0" << oct
 		<< mode << dec << ", uid " << uid << ", gid " << gid << ")"
 		<< dendl;
 
   if (strlen(name) > NAME_MAX)
     return -ENAMETOOLONG;
 
-  if (dir->snapid != CEPH_NOSNAP && dir->snapid != CEPH_SNAPDIR) {
+  ILOCK(diri);
+
+  if (diri->snapid != CEPH_NOSNAP && diri->snapid != CEPH_SNAPDIR) {
+    IUNLOCK(diri);
     return -EROFS;
   }
-  MetaRequest *req = new MetaRequest(dir->snapid == CEPH_SNAPDIR ?
-				     CEPH_MDS_OP_MKSNAP : CEPH_MDS_OP_MKDIR);
+
+  int op =
+    diri->snapid == CEPH_SNAPDIR ? CEPH_MDS_OP_MKSNAP : CEPH_MDS_OP_MKDIR;
+
+  IUNLOCK(diri);
+
+  MetaRequest *req = new MetaRequest(op);
 
   filepath path;
-  dir->make_nosnap_relative_path(path);
+  diri->make_nosnap_relative_path(path);
   path.push_dentry(name);
   req->set_filepath(path);
-  req->set_inode(dir);
+  req->set_inode(diri);
   req->head.args.mkdir.mode = mode;
   req->dentry_drop = CEPH_CAP_FILE_SHARED;
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de, CF_NONE); // XXXX
+  int res = get_or_create(diri, name, &de, CF_NONE);
   if (res < 0)
     goto fail;
   req->set_dentry(de);
   
   ldout(cct, 10) << "_mkdir: making request" << dendl;
+
+  client_lock.Lock();
   res = make_request(req, uid, gid, inp);
+  trim_cache(CF_CLIENT_LOCKED);
+  client_lock.Unlock();
+
   ldout(cct, 10) << "_mkdir result is " << res << dendl;
-
-  trim_cache(CF_CLIENT_LOCKED); // XXXX
-
   ldout(cct, 3) << "_mkdir(" << path << ", 0" << oct << mode << dec << ") = "
 		<< res << dendl;
   return res;
@@ -7581,9 +7593,7 @@ int Client::_mkdir(Inode *dir, const char *name, mode_t mode, int uid, int gid,
 int Client::ll_mkdir(Inode *parent, const char *name, mode_t mode,
 		     struct stat *attr, Inode **out, int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
-
-  vinodeno_t vparent = ll_get_vino(parent);
+  vinodeno_t vparent = ll_get_vino(parent); // it's immutable
 
   ldout(cct, 3) << "ll_mkdir " << vparent << " " << name << dendl;
   tout(cct) << "ll_mkdir" << std::endl;
@@ -7594,8 +7604,10 @@ int Client::ll_mkdir(Inode *parent, const char *name, mode_t mode,
   Inode *in = NULL;
   int r = _mkdir(parent, name, mode, uid, gid, &in);
   if (r == 0) {
+    ILOCK(in);
     fill_stat(in, attr);
     _ll_get(in);
+    IUNLOCK(in);
   }
   tout(cct) << attr->st_ino << std::endl;
   ldout(cct, 3) << "ll_mkdir " << vparent << " " << name
