@@ -530,14 +530,15 @@ private:
   // some readdir helpers
   typedef int (*add_dirent_cb_t)(void *p, struct dirent *de, struct stat *st, int stmask, off_t off);
 
-  int _opendir(Inode *in, dir_result_t **dirpp, int uid=-1, int gid=-1);
+  int _opendir(Inode *in, dir_result_t **dirpp, int uid=-1, int gid=-1,
+	       uint32_t cf=CF_NONE);
   void _readdir_drop_dirp_buffer(dir_result_t *dirp);
   bool _readdir_have_frag(dir_result_t *dirp);
   void _readdir_next_frag(dir_result_t *dirp);
   void _readdir_rechoose_frag(dir_result_t *dirp);
   int _readdir_get_frag(dir_result_t *dirp);
   int _readdir_cache_cb(dir_result_t *dirp, add_dirent_cb_t cb, void *p);
-  void _closedir(dir_result_t *dirp);
+  void _closedir(dir_result_t *dirp, uint32_t cf=CF_NONE);
 
   // other helpers
   void _ll_get(Inode *in);

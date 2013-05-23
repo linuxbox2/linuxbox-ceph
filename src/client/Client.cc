@@ -5046,9 +5046,9 @@ int Client::lutime(const char *relpath, struct utimbuf *buf)
 
 int Client::opendir(const char *relpath, dir_result_t **dirpp) 
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "opendir" << std::endl;
   tout(cct) << relpath << std::endl;
+
   filepath path(relpath);
   Inode *in;
   int r = path_walk(path, &in);
@@ -5059,25 +5059,32 @@ int Client::opendir(const char *relpath, dir_result_t **dirpp)
   return r;
 }
 
-int Client::_opendir(Inode *in, dir_result_t **dirpp, int uid, int gid) 
+int Client::_opendir(Inode *in, dir_result_t **dirpp, int uid, int gid,
+		     uint32_t cf) 
 {
-  if (!in->is_dir())
+  COND_ILOCK(in, cf);
+
+  if (!in->is_dir()) {
+    COND_IUNLOCK(in, cf);
     return -ENOTDIR;
+  }
   *dirpp = new dir_result_t(in);
   (*dirpp)->set_frag(in->dirfragtree[0]);
   if (in->dir)
     (*dirpp)->release_count = in->dir->release_count;
   (*dirpp)->start_shared_gen = in->shared_gen;
+  COND_IUNLOCK(in, cf);
+
   ldout(cct, 10) << "_opendir " << in->ino << ", our cache says the first "
     "dirfrag is " << (*dirpp)->frag() << dendl;
   ldout(cct, 3) << "_opendir(" << in->ino << ") = " << 0 << " (" << *dirpp
 		<< ")" << dendl;
+
   return 0;
 }
 
 int Client::closedir(dir_result_t *dir) 
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "closedir" << std::endl;
   tout(cct) << (unsigned long)dir << std::endl;
 
@@ -5086,16 +5093,17 @@ int Client::closedir(dir_result_t *dir)
   return 0;
 }
 
-void Client::_closedir(dir_result_t *dirp)
+void Client::_closedir(dir_result_t *dir, uint32_t cf)
 {
-  ldout(cct, 10) << "_closedir(" << dirp << ")" << dendl;
-  if (dirp->inode) {
-    ldout(cct, 10) << "_closedir detaching inode " << dirp->inode << dendl;
-    put_inode(dirp->inode);
-    dirp->inode = 0;
+  ldout(cct, 10) << "_closedir(" << dir << ")" << dendl;
+
+  if (dir->inode) {
+    ldout(cct, 10) << "_closedir detaching inode " << dir->inode << dendl;
+    put_inode(dir->inode);
+    dir->inode = 0;
   }
-  _readdir_drop_dirp_buffer(dirp);
-  delete dirp;
+  _readdir_drop_dirp_buffer(dir);
+  delete dir;
 }
 
 void Client::rewinddir(dir_result_t *dirp)
