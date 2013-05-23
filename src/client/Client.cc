@@ -2134,26 +2134,60 @@ void Client::handle_lease(MClientLease *m)
   m->put();
 }
 
-void Client::put_inode(Inode *in, int n)
+void Client::put_inode(Inode *in, int n, uint32_t cf)
 {
   ldout(cct, 10) << "put_inode on " << *in << dendl;
+
+  COND_ILOCK(in, cf);
+
   int left = in->put(n);
   if (left == 0) {
+
+    // lock ordering
+    if (cf & CF_CLIENT_LOCK) {
+
+      IUNLOCK(in);
+      client_lock.Lock();
+      ILOCK(in);
+
+      // recheck refcnt
+      left = in->get_num_ref();
+      if (left > 0) {
+	client_lock.Unlock();
+	COND_IUNLOCK(in, cf);
+	return;
+      }
+    }
+
     // release any caps
     remove_all_caps(in);
 
     ldout(cct, 10) << "put_inode deleting " << *in << dendl;
     bool unclean = objectcacher->release_set(&in->oset);
     assert(!unclean);
-    if (in->snapdir_parent)
-      put_inode(in->snapdir_parent);
+    Inode *snapdir_parent = in->snapdir_parent;
+
+    if (snapdir_parent)
+      put_inode(snapdir_parent, 1, (cf & ~CF_CLIENT_LOCK));
+      
     inode_map.erase(in->vino());
+
+    if (cf & CF_CLIENT_LOCK)
+      client_lock.Unlock();
+
     in->cap_item.remove_myself();
     in->snaprealm_item.remove_myself();
+
+    COND_IUNLOCK(in, cf);
+
     if (in == root)
       root = 0;
     delete in;
+
+    return;
   }
+
+  COND_IUNLOCK(in, cf);
 }
 
 void Client::close_dir(Dir *dir)

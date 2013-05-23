@@ -190,10 +190,11 @@ struct dir_result_t {
   }
 };
 
-#define CF_NONE      0x0000
-#define CF_ILOCKED   0x0001
-#define CF_ILOCK     0x0002
-#define CF_ILOCK2    0x0004
+#define CF_NONE        0x0000
+#define CF_ILOCKED     0x0001
+#define CF_ILOCK       0x0002
+#define CF_ILOCK2      0x0004
+#define CF_CLIENT_LOCK 0x0008
 
 #define ILOCK(in) ((in)->lock())
 #define IUNLOCK(in) ((in)->unlock())
@@ -367,7 +368,7 @@ protected:
   // -- metadata cache stuff
 
   // decrease inode ref.  delete if dangling.
-  void put_inode(Inode *in, int n=1);
+  void put_inode(Inode *in, int n=1, uint32_t cf=CF_NONE);
   void close_dir(Dir *dir);
 
   friend class C_Client_PutInode; // calls put_inode()
