@@ -143,6 +143,7 @@ struct dir_result_t {
     return p & MASK;
   }
 
+  Mutex mtx;
 
   Inode *inode;
 
@@ -161,6 +162,14 @@ struct dir_result_t {
   string at_cache_name;  // last entry we successfully returned
 
   dir_result_t(Inode *in);
+
+  void lock() {
+    mtx.Lock();
+  }
+
+  void unlock() {
+    mtx.Unlock();
+  }
 
   frag_t frag() { return frag_t(offset >> SHIFT); }
   unsigned fragpos() { return offset & MASK; }
@@ -196,6 +205,7 @@ struct dir_result_t {
 #define CF_ILOCK2         0x0004
 #define CF_CLIENT_LOCKED  0x0008
 #define CF_CLIENT_LOCK    0x0010
+#define CF_DRLOCKED       0x0020
 
 #define ILOCK(in) ((in)->lock())
 #define IUNLOCK(in) ((in)->unlock())
@@ -532,12 +542,13 @@ private:
 
   int _opendir(Inode *in, dir_result_t **dirpp, int uid=-1, int gid=-1,
 	       uint32_t cf=CF_NONE);
-  void _readdir_drop_dirp_buffer(dir_result_t *dirp);
+  void _readdir_drop_dirp_buffer(dir_result_t *dirp, uint32_t cf=CF_NONE);
   bool _readdir_have_frag(dir_result_t *dirp);
   void _readdir_next_frag(dir_result_t *dirp);
-  void _readdir_rechoose_frag(dir_result_t *dirp);
-  int _readdir_get_frag(dir_result_t *dirp);
-  int _readdir_cache_cb(dir_result_t *dirp, add_dirent_cb_t cb, void *p);
+  void _readdir_rechoose_frag(dir_result_t *dirp, uint32_t cf=CF_NONE);
+  int _readdir_get_frag(dir_result_t *dirp, uint32_t cf=CF_NONE);
+  int _readdir_cache_cb(dir_result_t *dirp, add_dirent_cb_t cb, void *p,
+    uint32_t cf=CF_NONE);
   void _closedir(dir_result_t *dirp, uint32_t cf=CF_NONE);
 
   // other helpers

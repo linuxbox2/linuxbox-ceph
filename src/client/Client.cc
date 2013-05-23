@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
+// -*- Mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -123,7 +123,7 @@ bool Client::CommandHook::call(std::string command, std::string args,
 // -------------
 
 dir_result_t::dir_result_t(Inode *in)
-  : inode(in), offset(0), this_offset(2), next_offset(2),
+  : mtx("Dir Res Lock"), inode(in), offset(0), this_offset(2), next_offset(2),
     release_count(0), start_shared_gen(0),
     buffer(0) {
   inode->get();
@@ -5096,44 +5096,48 @@ int Client::closedir(dir_result_t *dir)
 void Client::_closedir(dir_result_t *dir, uint32_t cf)
 {
   ldout(cct, 10) << "_closedir(" << dir << ")" << dendl;
-
+  dir->lock();
   if (dir->inode) {
     ldout(cct, 10) << "_closedir detaching inode " << dir->inode << dendl;
     put_inode(dir->inode);
     dir->inode = 0;
   }
-  _readdir_drop_dirp_buffer(dir);
+  _readdir_drop_dirp_buffer(dir, CF_DRLOCKED);
+  dir->unlock();
   delete dir;
 }
 
 void Client::rewinddir(dir_result_t *dirp)
 {
-  Mutex::Locker lock(client_lock);
-
   ldout(cct, 3) << "rewinddir(" << dirp << ")" << dendl;
   dir_result_t *d = static_cast<dir_result_t*>(dirp);
-  _readdir_drop_dirp_buffer(d);
+  dirp->lock();
+  _readdir_drop_dirp_buffer(d, CF_DRLOCKED);
   d->reset();
+  dirp->unlock();
 }
  
 loff_t Client::telldir(dir_result_t *dirp)
 {
   dir_result_t *d = static_cast<dir_result_t*>(dirp);
-  ldout(cct, 3) << "telldir(" << dirp << ") = " << d->offset << dendl;
-  return d->offset;
+  dirp->lock();
+  loff_t off = d->offset;
+  dirp->unlock();
+  ldout(cct, 3) << "telldir(" << dirp << ") = " << off << dendl;
+  return off;
 }
 
 void Client::seekdir(dir_result_t *dirp, loff_t offset)
 {
-  Mutex::Locker lock(client_lock);
-
   ldout(cct, 3) << "seekdir(" << dirp << ", " << offset << ")" << dendl;
   dir_result_t *d = static_cast<dir_result_t*>(dirp);
+
+  dirp->lock();
 
   if (offset == 0 ||
       dir_result_t::fpos_frag(offset) != d->frag() ||
       dir_result_t::fpos_off(offset) < d->fragpos()) {
-    _readdir_drop_dirp_buffer(d);
+    _readdir_drop_dirp_buffer(d, CF_DRLOCKED);
     d->reset();
   }
 
@@ -5143,6 +5147,8 @@ void Client::seekdir(dir_result_t *dirp, loff_t offset)
   d->offset = offset;
   if (!d->frag().is_leftmost() && d->next_offset == 2)
     d->next_offset = 0;  // not 2 on non-leftmost frags!
+
+  dirp->unlock();
 }
 
 //struct dirent {
@@ -5173,6 +5179,7 @@ void Client::fill_dirent(struct dirent *de, const char *name, int type,
 
 void Client::_readdir_next_frag(dir_result_t *dirp)
 {
+  dirp->lock();
   frag_t fg = dirp->frag();
 
   // advance
@@ -5180,82 +5187,131 @@ void Client::_readdir_next_frag(dir_result_t *dirp)
   if (dirp->at_end()) {
     ldout(cct, 10) << "_readdir_next_frag advance from " << fg << " to END"
 		   << dendl;
+    dirp->unlock();
   } else {
     ldout(cct, 10) << "_readdir_next_frag advance from " << fg << " to "
 		   << dirp->frag() << dendl;
-    _readdir_rechoose_frag(dirp);
+    _readdir_rechoose_frag(dirp, CF_DRLOCKED);
   }
 }
 
-void Client::_readdir_rechoose_frag(dir_result_t *dirp)
+void Client::_readdir_rechoose_frag(dir_result_t *dirp, uint32_t cf)
 {
   assert(dirp->inode);
+
+  if (! (cf & CF_DRLOCKED))
+    dirp->lock();
+
   frag_t cur = dirp->frag();
-  frag_t f = dirp->inode->dirfragtree[cur.value()];
+  Inode *in = dirp->inode;
+  dirp->unlock();
+
+  ILOCK(in);
+  frag_t f = in->dirfragtree[cur.value()];
+  IUNLOCK(in);
+
   if (f != cur) {
     ldout(cct, 10) << "_readdir_rechoose_frag frag " << cur << " maps to "
 		   << f << dendl;
+    dirp->lock();
     dirp->set_frag(f);
   }
+
+  if (cf & CF_DRLOCKED)
+    dirp->lock();
 }
 
-void Client::_readdir_drop_dirp_buffer(dir_result_t *dirp)
+void Client::_readdir_drop_dirp_buffer(dir_result_t *dirp, uint32_t cf)
 {
   ldout(cct, 10) << "_readdir_drop_dirp_buffer " << dirp << dendl;
+
+  if (! (cf & CF_DRLOCKED))
+    dirp->lock();
+
   if (dirp->buffer) {
-    for (unsigned i = 0; i < dirp->buffer->size(); i++)
-      put_inode((*dirp->buffer)[i].second);
-    delete dirp->buffer;
+    // just dup it
+    vector<pair<string,Inode*> > *pbuffer = dirp->buffer;
     dirp->buffer = NULL;
+    for (unsigned i = 0; i < pbuffer->size(); i++) {
+      Inode *in = (*pbuffer)[i].second;
+      put_inode(in); // will take in.mtx
+    }
   }
+
+  if (! (cf & CF_DRLOCKED))
+    dirp->unlock();
 }
 
-int Client::_readdir_get_frag(dir_result_t *dirp)
+int Client::_readdir_get_frag(dir_result_t *dirp, uint32_t cf)
 {
   assert(dirp);
+
+  if (! (cf & CF_DRLOCKED))
+    dirp->lock();
+
   assert(dirp->inode);
 
   // get the current frag.
   frag_t fg = dirp->frag();
+  Inode *diri = dirp->inode;
+  snapid_t dsnap = dirp->inode->snapid;
   
   ldout(cct, 10) << "_readdir_get_frag " << dirp << " on " << dirp->inode->ino
 		 << " fg " << fg
 		 << " next_offset " << dirp->next_offset
 		 << dendl;
 
-  int op = CEPH_MDS_OP_READDIR;
-  if (dirp->inode && dirp->inode->snapid == CEPH_SNAPDIR)
-    op = CEPH_MDS_OP_LSSNAP;
+  dirp->unlock();
 
-  Inode *diri = dirp->inode;
+  int op =
+    (dsnap == CEPH_SNAPDIR) ? CEPH_MDS_OP_LSSNAP : CEPH_MDS_OP_READDIR;
 
   MetaRequest *req = new MetaRequest(op);
   filepath path;
+
+  ILOCK(diri);
   diri->make_nosnap_relative_path(path);
+  IUNLOCK(diri);
+
   req->set_filepath(path); 
   req->set_inode(diri);
   req->head.args.readdir.frag = fg;
+  dirp->lock();
   if (dirp->last_name.length()) {
     req->path2.set_path(dirp->last_name.c_str());
     req->readdir_start = dirp->last_name;
   }
   req->readdir_offset = dirp->next_offset;
+  dirp->unlock();
   req->readdir_frag = fg;
 
   bufferlist dirbl;
+
+  if (! (cf & CF_CLIENT_LOCKED))
+      client_lock.Lock();
+
   int res = make_request(req, -1, -1, NULL, NULL, -1, &dirbl);
+
+  if (! (cf & CF_CLIENT_LOCKED))
+      client_lock.Unlock();
+
+  dirp->lock();
   
+  // NB:  Casey has a change removing the need for this retry
   if (res == -EAGAIN) {
     ldout(cct, 10) << "_readdir_get_frag got EAGAIN, retrying" << dendl;
-    _readdir_rechoose_frag(dirp);
-    return _readdir_get_frag(dirp);
+    _readdir_rechoose_frag(dirp, CF_DRLOCKED);
+    // XXX caller MUST retry, until above change obviates it
+    if (! (cf & CF_DRLOCKED))
+      dirp->unlock();
+    return res;
   }
 
   if (res == 0) {
     // stuff dir contents to cache, dir_result_t
     assert(diri);
 
-    _readdir_drop_dirp_buffer(dirp);
+    _readdir_drop_dirp_buffer(dirp, CF_DRLOCKED);
 
     dirp->buffer = new vector<pair<string,Inode*> >;
     dirp->buffer->swap(req->readdir_result);
@@ -5283,28 +5339,42 @@ int Client::_readdir_get_frag(dir_result_t *dirp)
     dirp->set_end();
   }
 
+  if (! (cf & CF_DRLOCKED))
+    dirp->unlock();
+
   return res;
 }
 
-int Client::_readdir_cache_cb(dir_result_t *dirp, add_dirent_cb_t cb, void *p)
+int Client::_readdir_cache_cb(dir_result_t *dirp, add_dirent_cb_t cb, void *p,
+			      uint32_t cf)
 {
-  assert(client_lock.is_locked());
+  if (! (cf & CF_DRLOCKED))
+    dirp->lock();
+
   ldout(cct, 10) << "_readdir_cache_cb " << dirp << " on " << dirp->inode->ino
 		 << " at_cache_name " << dirp->at_cache_name << " offset "
 		 << hex << dirp->offset << dec << dendl;
-  Dir *dir = dirp->inode->dir;
+  Inode *in = dirp->inode;
+  ILOCK(in);
+  Dir *dir = in->dir;
+  IUNLOCK(in);
 
   if (!dir) {
     ldout(cct, 10) << " dir is empty" << dendl;
     dirp->set_end();
+    if (! (cf & CF_DRLOCKED))
+      dirp->lock();
     return 0;
   }
 
   map<string,Dentry*>::iterator pd;
   if (dirp->at_cache_name.length()) {
     pd = dir->dentry_map.find(dirp->at_cache_name);
-    if (pd == dir->dentry_map.end())
+    if (pd == dir->dentry_map.end()) {
+      if (! (cf & CF_DRLOCKED))
+	dirp->lock();
       return -EAGAIN;  // weird, i give up
+    }
     ++pd;
   } else {
     pd = dir->dentry_map.begin();
@@ -5321,7 +5391,10 @@ int Client::_readdir_cache_cb(dir_result_t *dirp, add_dirent_cb_t cb, void *p)
 
     struct stat st;
     struct dirent de;
-    int stmask = fill_stat(dn->inode, &st);  
+    Inode *in2 = dn->inode;
+    ILOCK(in2);
+    int stmask = fill_stat(in2, &st);
+    IUNLOCK(in2);
     fill_dirent(&de, pd->first.c_str(), st.st_mode, st.st_ino,
 		dirp->offset + 1);
       
@@ -5330,34 +5403,47 @@ int Client::_readdir_cache_cb(dir_result_t *dirp, add_dirent_cb_t cb, void *p)
     if (pd == dir->dentry_map.end())
       next_off = dir_result_t::END;
 
-    client_lock.Unlock();
     int r = cb(p, &de, &st, stmask, next_off);  // _next_ offset
-    client_lock.Lock();
+
     ldout(cct, 15) << " de " << de.d_name << " off " << hex << dn->offset
 		   << dec << " = " << r << dendl;
     if (r < 0) {
       dirp->next_offset = dn->offset;
       dirp->at_cache_name = prev_name;
+      if (! (cf & CF_DRLOCKED))
+	dirp->lock();
       return r;
     }
 
     prev_name = dn->name;
     dirp->offset = next_off;
-    if (r > 0)
+    if (r > 0) {
+      if (! (cf & CF_DRLOCKED))
+	dirp->lock();
       return r;
+    }
   }
 
   ldout(cct, 10) << "_readdir_cache_cb " << dirp << " on "
 		 << dirp->inode->ino << " at end" << dendl;
   dirp->set_end();
+
+  if (! (cf & CF_DRLOCKED))
+    dirp->lock();
+
   return 0;
 }
 
 int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p)
 {
-  Mutex::Locker lock(client_lock);
+  struct dirent de;
+  struct stat st;
+  memset(&de, 0, sizeof(de));
+  memset(&st, 0, sizeof(st));
 
   dir_result_t *dirp = static_cast<dir_result_t*>(d);
+
+  dirp->lock(); // XXX cf?
 
   ldout(cct, 10) << "readdir_r_cb " << *dirp->inode << " offset " << hex
 		 << dirp->offset << dec
@@ -5366,60 +5452,71 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p)
 		 << " at_end=" << dirp->at_end()
 		 << dendl;
 
-  struct dirent de;
-  struct stat st;
-  memset(&de, 0, sizeof(de));
-  memset(&st, 0, sizeof(st));
-
   frag_t fg = dirp->frag();
   uint32_t off = dirp->fragpos();
 
   Inode *diri = dirp->inode;
 
-  if (dirp->at_end())
+  if (dirp->at_end()) {
+    dirp->unlock();
     return 0;
+  }
 
   if (dirp->offset == 0) {
     ldout(cct, 15) << " including ." << dendl;
-    assert(diri->dn_set.size() < 2); // can't have multiple hard-links to a dir
+
+    // XXX trial lock order!
     uint64_t next_off = 1;
 
     fill_dirent(&de, ".", S_IFDIR, diri->ino, next_off);
-    fill_stat(diri, &st);
 
-    client_lock.Unlock();
+    ILOCK(diri);
+    assert(diri->dn_set.size() < 2); // can't have multiple hard-links to a dir
+    fill_stat(diri, &st);
+    IUNLOCK(diri);
+
     int r = cb(p, &de, &st, -1, next_off);
-    client_lock.Lock();
-    if (r < 0)
+    if (r < 0) {
+      dirp->unlock();
       return r;
+    }
 
     dirp->offset = next_off;
     off = next_off;
-    if (r > 0)
+    if (r > 0) {
+      dirp->unlock();
       return r;
+    }
   }
   if (dirp->offset == 1) {
     ldout(cct, 15) << " including .." << dendl;
+    ILOCK(diri);
     if (!diri->dn_set.empty()) {
       Inode* in = diri->get_first_parent()->inode;
+      IUNLOCK(diri);
       fill_dirent(&de, "..", S_IFDIR, in->ino, 2);
+      ILOCK(in);
       fill_stat(in, &st);
+      IUNLOCK(in);
     } else {
+      IUNLOCK(diri);
       /* must be at the root (no parent),
        * so we add the dotdot with a special inode (3) */
       fill_dirent(&de, "..", S_IFDIR, CEPH_INO_DOTDOT, 2);
     }
 
-    client_lock.Unlock();
     int r = cb(p, &de, &st, -1, 2);
-    client_lock.Lock();
-    if (r < 0)
+    if (r < 0) {
+      dirp->unlock();
       return r;
+    }
 
     dirp->offset = 2;
     off = 2;
-    if (r > 0)
+    if (r > 0) {
+      dirp->unlock();
       return r;
+    }
   }
 
   // can we read from our cache?
@@ -5429,27 +5526,39 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p)
 		 << (bool)(dirp->inode->flags & I_COMPLETE)
 		 << " issued " << ccap_string(dirp->inode->caps_issued())
 		 << dendl;
+
+  Inode* in =  dirp->inode;
+  ILOCK(in);
   if ((dirp->offset == 2 || dirp->at_cache_name.length()) &&
       dirp->inode->snapid != CEPH_SNAPDIR &&
       (dirp->inode->flags & I_COMPLETE) &&
       dirp->inode->caps_issued_mask(CEPH_CAP_FILE_SHARED)) {
-    int err = _readdir_cache_cb(dirp, cb, p);
-    if (err != -EAGAIN)
+    IUNLOCK(in);
+    int err = _readdir_cache_cb(dirp, cb, p, CF_DRLOCKED);
+    if (err != -EAGAIN) {
+      dirp->unlock();
       return err;
-  }
+    }
+  } else
+    IUNLOCK(in);
+
   if (dirp->at_cache_name.length()) {
     dirp->last_name = dirp->at_cache_name;
     dirp->at_cache_name.clear();
   }
 
   while (1) {
-    if (dirp->at_end())
+    if (dirp->at_end()) {
+      dirp->unlock();
       return 0;
+    }
 
     if (dirp->buffer_frag != dirp->frag() || dirp->buffer == NULL) {
-      int r = _readdir_get_frag(dirp);
-      if (r)
+      int r = _readdir_get_frag(dirp, CF_DRLOCKED);
+      if (r) {
+	dirp->unlock();
 	return r;
+      }
       fg = dirp->buffer_frag;
     }
 
@@ -5461,29 +5570,34 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p)
 	   off - dirp->this_offset < dirp->buffer->size()) {
       uint64_t pos = dir_result_t::make_fpos(fg, off);
       pair<string,Inode*>& ent = (*dirp->buffer)[off - dirp->this_offset];
-
-      int stmask = fill_stat(ent.second, &st);  
+      in = ent.second;
+      ILOCK(in);
+      int stmask = fill_stat(in, &st);  
       fill_dirent(&de, ent.first.c_str(), st.st_mode, st.st_ino,
 		  dirp->offset + 1);
-      
-      client_lock.Unlock();
+      IUNLOCK(in);
+
       int r = cb(p, &de, &st, stmask, dirp->offset + 1);  // _next_ offset
-      client_lock.Lock();
+
       ldout(cct, 15) << " de " << de.d_name << " off " << hex
 		     << dirp->offset << dec
 		     << " = " << r << dendl;
-      if (r < 0)
+      if (r < 0) {
+	dirp->unlock();
 	return r;
+      }
       
       off++;
       dirp->offset = pos + 1;
-      if (r > 0)
+      if (r > 0) {
+	dirp->unlock();
 	return r;
+      }
     }
 
     if (dirp->last_name.length()) {
       ldout(cct, 10) << " fetching next chunk of this frag" << dendl;
-      _readdir_drop_dirp_buffer(dirp);
+      _readdir_drop_dirp_buffer(dirp, CF_DRLOCKED);
       continue;  // more!
     }
 
@@ -5497,6 +5611,7 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p)
       continue;
     }
 
+    ILOCK(diri);
     if (diri->dir &&
 	diri->dir->release_count == dirp->release_count &&
 	diri->shared_gen == dirp->start_shared_gen) {
@@ -5505,11 +5620,14 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p)
       if (diri->dir)
 	diri->dir->max_offset = dirp->offset;
     }
+    IUNLOCK(diri);
 
     dirp->set_end();
+    dirp->unlock();
     return 0;
   }
   assert(0);
+  dirp->unlock();
   return 0;
 }
 
@@ -5668,11 +5786,8 @@ static int _getdir_cb(void *p, struct dirent *de, struct stat *st,
 int Client::getdir(const char *relpath, list<string>& contents)
 {
   ldout(cct, 3) << "getdir(" << relpath << ")" << dendl;
-  {
-    Mutex::Locker lock(client_lock);
     tout(cct) << "getdir" << std::endl;
     tout(cct) << relpath << std::endl;
-  }
 
   dir_result_t *d;
   int r = opendir(relpath, &d);
