@@ -5711,7 +5711,6 @@ int Client::open(const char *relpath, int flags, mode_t mode)
 
 int Client::lookup_hash(inodeno_t ino, inodeno_t dirino, const char *name)
 {
-  Mutex::Locker lock(client_lock);
   ldout(cct, 3) << "lookup_hash enter(" << ino << ", #" << dirino << "/"
 		<< name << ") = " << dendl;
 
@@ -5726,6 +5725,8 @@ int Client::lookup_hash(inodeno_t ino, inodeno_t dirino, const char *name)
   path2.push_dentry(string(f));
   req->set_filepath2(path2);
 
+  Mutex::Locker lock(client_lock);
+
   int r = make_request(req, -1, -1, NULL, NULL,
 		       rand() % mdsmap->get_num_in_mds());
   ldout(cct, 3) << "lookup_hash exit(" << ino << ", #" << dirino << "/"
@@ -5735,12 +5736,13 @@ int Client::lookup_hash(inodeno_t ino, inodeno_t dirino, const char *name)
 
 int Client::lookup_ino(inodeno_t ino)
 {
-  Mutex::Locker lock(client_lock);
   ldout(cct, 3) << "lookup_ino enter(" << ino << ") = " << dendl;
 
   MetaRequest *req = new MetaRequest(CEPH_MDS_OP_LOOKUPINO);
   filepath path(ino);
   req->set_filepath(path);
+
+  Mutex::Locker lock(client_lock);
 
   int r = make_request(req, -1, -1, NULL, NULL,
 		       rand() % mdsmap->get_num_in_mds());
