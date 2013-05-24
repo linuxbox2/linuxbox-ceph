@@ -1,4 +1,4 @@
-// -*- Mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -92,6 +92,33 @@ void client_flush_set_callback(void *p, ObjectCacher::ObjectSet *oset)
   Client *client = static_cast<Client*>(p);
   client->flush_set_callback(oset);
 }
+
+static void ilock_both(Inode *i1, Inode *i2)
+{
+  if (i1 == i2) {
+    ILOCK(i1);
+  } else {
+    if (i1 < i2) {
+      ILOCK(i1);
+      ILOCK(i2);
+    } else {
+      ILOCK(i2);
+      ILOCK(i1);
+    }
+  }
+}
+
+/*
+static void iunlock_both(Inode *i1, Inode *i2)
+{
+  if (i1 == i2) {
+    IUNLOCK(i1);
+  } else {
+      ILOCK(i2);
+      ILOCK(i1);
+  }
+}
+*/
 
 // -------------
 
@@ -4377,7 +4404,6 @@ int Client::path_walk(const filepath& origpath, Inode **final, bool followsym,
 
 int Client::link(const char *relexisting, const char *relpath) 
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "link" << std::endl;
   tout(cct) << relexisting << std::endl;
   tout(cct) << relpath << std::endl;
@@ -4405,7 +4431,6 @@ int Client::link(const char *relexisting, const char *relpath)
 
 int Client::unlink(const char *relpath)
 {
-  Mutex::Locker lock(client_lock);
   tout(cct) << "unlink" << std::endl;
   tout(cct) << relpath << std::endl;
 
@@ -7521,44 +7546,63 @@ int Client::ll_readlink(Inode *in, const char **value, int uid, int gid)
   return r;
 }
 
-int Client::_mknod(Inode *dir, const char *name, mode_t mode, dev_t rdev,
-		   int uid, int gid, Inode **inp)
+int Client::_mknod(Inode *diri, const char *name, mode_t mode, dev_t rdev,
+		   int uid, int gid, Inode **inp, uint32_t cf)
 { 
-  ldout(cct, 3) << "_mknod(" << dir->ino << " " << name << ", 0" << oct 
+  ldout(cct, 3) << "_mknod(" << diri->ino << " " << name << ", 0" << oct 
 		<< mode << dec << ", " << rdev << ", uid " << uid << ", gid "
 		<< gid << ")" << dendl;
 
   if (strlen(name) > NAME_MAX)
     return -ENAMETOOLONG;
 
-  if (dir->snapid != CEPH_NOSNAP) {
+  COND_ILOCK(diri, cf);
+
+  if (diri->snapid != CEPH_NOSNAP) {
+    COND_IUNLOCK(diri, cf);
     return -EROFS;
   }
 
+  filepath path;
+  diri->make_nosnap_relative_path(path);
+  path.push_dentry(name);
+
+  IUNLOCK(diri);
+
   MetaRequest *req = new MetaRequest(CEPH_MDS_OP_MKNOD);
 
-  filepath path;
-  dir->make_nosnap_relative_path(path);
-  path.push_dentry(name);
-  req->set_filepath(path); 
-  req->set_inode(dir);
+  req->set_filepath(path);
+  req->set_inode(diri);
   req->head.args.mknod.mode = mode;
   req->head.args.mknod.rdev = rdev;
   req->dentry_drop = CEPH_CAP_FILE_SHARED;
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de, CF_NONE); // XXXX
+  int res = get_or_create(diri, name, &de, CF_NONE);
   if (res < 0)
     goto fail;
   req->set_dentry(de);
 
+  if (! (cf & CF_CLIENT_LOCKED))
+    client_lock.Lock();
+
   res = make_request(req, uid, gid, inp);
 
-  trim_cache(CF_CLIENT_LOCKED); // XXXX
+  trim_cache(CF_CLIENT_LOCKED);
+
+  if (! (cf & CF_CLIENT_LOCKED))
+    client_lock.Unlock();
 
   ldout(cct, 3) << "mknod(" << path << ", 0" << oct << mode << dec << ") = "
 		<< res << dendl;
+
+  if (cf & CF_ILOCK)
+    ILOCK(diri);
+
+  if (cf & CF_ILOCK2)
+    ILOCK(*inp);
+
   return res;
 
  fail:
@@ -7570,9 +7614,7 @@ int Client::ll_mknod(Inode *parent, const char *name, mode_t mode,
 		     dev_t rdev, struct stat *attr, Inode **out,
 		     int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
-
-  vinodeno_t vparent = ll_get_vino(parent);
+  vinodeno_t vparent = ll_get_vino(parent); // it's immutable
 
   ldout(cct, 3) << "ll_mknod " << vparent << " " << name << dendl;
   tout(cct) << "ll_mknod" << std::endl;
@@ -7582,9 +7624,10 @@ int Client::ll_mknod(Inode *parent, const char *name, mode_t mode,
   tout(cct) << rdev << std::endl;
 
   Inode *in = NULL;
-  int r = _mknod(parent, name, mode, rdev, uid, gid, &in);
+  int r = _mknod(parent, name, mode, rdev, uid, gid, &in, CF_ILOCK2);
   if (r == 0) {
     fill_stat(in, attr);
+    IUNLOCK(in);
     _ll_get(in);
   }
   tout(cct) << attr->st_ino << std::endl;
@@ -7846,62 +7889,70 @@ int Client::ll_symlink(Inode *parent, const char *name, const char *value,
   return r;
 }
 
-int Client::_unlink(Inode *dir, const char *name, int uid, int gid)
+int Client::_unlink(Inode *diri, const char *name, int uid, int gid)
 {
-  ldout(cct, 3) << "_unlink(" << dir->ino << " " << name << " uid " << uid
+  ldout(cct, 3) << "_unlink(" << diri->ino << " " << name << " uid " << uid
 		<< " gid " << gid << ")" << dendl;
 
-  if (dir->snapid != CEPH_NOSNAP) {
+  if (diri->snapid != CEPH_NOSNAP) {
     return -EROFS;
   }
 
-  MetaRequest *req = new MetaRequest(CEPH_MDS_OP_UNLINK);
+  ILOCK(diri);
 
   filepath path;
-  dir->make_nosnap_relative_path(path);
+  diri->make_nosnap_relative_path(path);
   path.push_dentry(name);
-  req->set_filepath(path);
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de, CF_NONE); // XXXX
+  int res = get_or_create(diri, name, &de, CF_ILOCKED);
   if (res < 0)
-    goto fail;
+    return res;
+
+  MetaRequest *req = new MetaRequest(CEPH_MDS_OP_UNLINK);
+
+  req->set_filepath(path);
   req->set_dentry(de);
   req->dentry_drop = CEPH_CAP_FILE_SHARED;
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
-  Inode *otherin;
-  res = _lookup(dir, name, &otherin, CF_CLIENT_LOCKED); // XXXX
+  Inode *in;
+  res = _lookup(diri, name, &in, CF_NONE); // !CF_ILOCKED
   if (res < 0)
     goto fail;
-  req->set_other_inode(otherin);
+
+  req->set_other_inode(in);
   req->other_inode_drop = CEPH_CAP_LINK_SHARED | CEPH_CAP_LINK_EXCL;
+  req->set_inode(diri);
 
-  req->set_inode(dir);
-
+  client_lock.Lock();
   res = make_request(req, uid, gid);
+  client_lock.Unlock();
+
   if (res == 0) {
-    if (dir->dir && dir->dir->dentries.count(name)) {
-      Dentry *dn = dir->dir->dentries[name];
+    ILOCK(diri);
+    hash_map<string, Dentry*>::iterator p1 = diri->dir->dentries.find(name);
+    if (p1 != diri->dir->dentries.end()) {
+      Dentry *dn = p1->second;
       unlink(dn, false);
     }
+    IUNLOCK(diri);
   }
+
   ldout(cct, 10) << "unlink result is " << res << dendl;
 
-  trim_cache(CF_CLIENT_LOCKED); // XXXX
+  trim_cache();
   ldout(cct, 3) << "unlink(" << path << ") = " << res << dendl;
   return res;
 
- fail:
+fail:
   delete req;
   return res;
 }
 
 int Client::ll_unlink(Inode *in, const char *name, int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
-
-  vinodeno_t vino = ll_get_vino(in);
+  vinodeno_t vino = ll_get_vino(in); // it's immutable
 
   ldout(cct, 3) << "ll_unlink " << vino << " " << name << dendl;
   tout(cct) << "ll_unlink" << std::endl;
@@ -8090,42 +8141,57 @@ int Client::ll_rename(Inode *parent, const char *name, Inode *newparent,
   return _rename(parent, name, newparent, newname, uid, gid);
 }
 
-int Client::_link(Inode *in, Inode *dir, const char *newname, int uid, int gid,
-		  Inode **inp)
+int Client::_link(Inode *i1, Inode *i2, const char *newname, int uid, int gid,
+		  Inode **inp, uint32_t cf)
 {
-  ldout(cct, 3) << "_link(" << in->ino << " to " << dir->ino << " " << newname
+  ldout(cct, 3) << "_link(" << i1->ino << " to " << i2->ino << " " << newname
 	  << " uid " << uid << " gid " << gid << ")" << dendl;
 
   if (strlen(newname) > NAME_MAX)
     return -ENAMETOOLONG;
 
-  if (in->snapid != CEPH_NOSNAP || dir->snapid != CEPH_NOSNAP) {
+  ilock_both(i1, i2);
+
+  if (i1->snapid != CEPH_NOSNAP || i2->snapid != CEPH_NOSNAP) {
     return -EROFS;
   }
 
   MetaRequest *req = new MetaRequest(CEPH_MDS_OP_LINK);
 
-  filepath path(newname, dir->ino);
+  filepath path(newname, i2->ino);
   req->set_filepath(path);
-  filepath existing(in->ino);
+  filepath existing(i1->ino);
   req->set_filepath2(existing);
 
-  req->set_inode(dir);
+  req->set_inode(i2);
   req->inode_drop = CEPH_CAP_FILE_SHARED;
   req->inode_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(dir, newname, &de, CF_NONE); // XXXX
-  if (res < 0)
+  int res = get_or_create(i2, newname, &de, CF_ILOCKED);
+  if (res < 0) {
+    IUNLOCK(i1); // !CF_ILOCKED diri
     goto fail;
+  }
+  IUNLOCK(i1); // !CF_ILOCKED diri
   req->set_dentry(de);
-  
+
+  client_lock.Lock();
   res = make_request(req, uid, gid, inp);
+  client_lock.Unlock();
+
   ldout(cct, 10) << "link result is " << res << dendl;
 
-  trim_cache(CF_CLIENT_LOCKED); // XXXX
+  trim_cache();
   ldout(cct, 3) << "link(" << existing << ", " << path << ") = " << res
 		<< dendl;
+
+  if (cf & CF_ILOCK)
+    ILOCK(i1);
+
+  if (cf & CF_ILOCK2)
+    ILOCK(i2);
+
   return res;
 
  fail:
@@ -8136,8 +8202,7 @@ int Client::_link(Inode *in, Inode *dir, const char *newname, int uid, int gid,
 int Client::ll_link(Inode *parent, Inode *newparent, const char *newname,
 		    struct stat *attr, int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
-
+  // both immutable
   vinodeno_t vparent = ll_get_vino(parent);
   vinodeno_t vnewparent = ll_get_vino(newparent);
 
@@ -8148,9 +8213,10 @@ int Client::ll_link(Inode *parent, Inode *newparent, const char *newname,
   tout(cct) << vnewparent << std::endl;
   tout(cct) << newname << std::endl;
 
-  int r = _link(parent, newparent, newname, uid, gid, &parent);
+  int r = _link(parent, newparent, newname, uid, gid, &parent, CF_ILOCK);
   if (r == 0) {
     fill_stat(parent, attr);
+    IUNLOCK(parent);
     _ll_get(parent);
   }
   return r;

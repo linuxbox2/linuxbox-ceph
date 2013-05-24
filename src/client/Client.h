@@ -563,16 +563,15 @@ private:
   int _read_async(Fh *f, uint64_t off, uint64_t len, bufferlist *bl);
 
   // internal interface
-  //   call these with client_lock held!
   int _do_lookup(Inode *diri, const string& name, Inode **target, uint32_t cf);
   int _lookup(Inode *diri, const string& dname, Inode **target, uint32_t cf);
-  int _link(Inode *in, Inode *dir, const char *name, int uid=-1, int gid=-1, Inode **inp = 0);
+  int _link(Inode *in, Inode *dir, const char *name, int uid=-1, int gid=-1, Inode **inp = 0, uint32_t cf=CF_NONE);
   int _unlink(Inode *dir, const char *name, int uid=-1, int gid=-1);
   int _rename(Inode *olddir, const char *oname, Inode *ndir, const char *nname, int uid=-1, int gid=-1);
   int _mkdir(Inode *dir, const char *name, mode_t mode, int uid=-1, int gid=-1, Inode **inp = 0);
   int _rmdir(Inode *dir, const char *name, int uid=-1, int gid=-1);
   int _symlink(Inode *dir, const char *name, const char *target, int uid=-1, int gid=-1, Inode **inp = 0, uint32_t cf=CF_NONE);
-  int _mknod(Inode *dir, const char *name, mode_t mode, dev_t rdev, int uid=-1, int gid=-1, Inode **inp = 0);
+  int _mknod(Inode *dir, const char *name, mode_t mode, dev_t rdev, int uid=-1, int gid=-1, Inode **inp = 0, uint32_t cf=CF_NONE);
   int _setattr(Inode *in, struct stat *attr, int mask, int uid=-1, int gid=-1, Inode **inp = 0, uint32_t cf=CF_NONE);
   int _getattr(Inode *in, int mask, int uid=-1, int gid=-1, bool force=false,
 	       uint32_t cf=CF_CLIENT_LOCKED);
