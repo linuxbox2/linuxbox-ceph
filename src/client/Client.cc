@@ -8351,8 +8351,6 @@ uint64_t Client::ll_get_internal_offset(Inode *in, uint64_t blockno)
 int Client::ll_opendir(Inode *in, dir_result_t** dirpp,
 		       int uid, int gid)
 {
-  Mutex::Locker lock(client_lock);
-
   vinodeno_t vino = ll_get_vino(in);
 
   ldout(cct, 3) << "ll_opendir " << vino << dendl;
@@ -8375,7 +8373,6 @@ int Client::ll_opendir(Inode *in, dir_result_t** dirpp,
 
 int Client::ll_releasedir(dir_result_t *dirp)
 {
-  Mutex::Locker lock(client_lock);
   ldout(cct, 3) << "ll_releasedir " << dirp << dendl;
   tout(cct) << "ll_releasedir" << std::endl;
   tout(cct) << (unsigned long)dirp << std::endl;
