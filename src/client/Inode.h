@@ -214,8 +214,7 @@ class Inode {
       snaprealm(0), snaprealm_item(this), snapdir_parent(0),
       oset((void *)this, newlayout->fl_pg_pool, ino),
       reported_size(0), wanted_max_size(0), requested_max_size(0),
-      _ref(0), ll_ref(0), 
-      dir(0), dn_set()
+      _ref(0), ll_ref(0), dir(0), dn_set(), revoke_serial(0)
   {
     memset(&dir_layout, 0, sizeof(dir_layout));
     memset(&layout, 0, sizeof(layout));
@@ -257,6 +256,29 @@ class Inode {
   Dir *open_dir();
 
   void dump(Formatter *f) const;
+
+  struct revoke_notifier {
+    bool write;
+    bool(*cb)(vinodeno_t, bool, void*);
+    void *opaque;
+
+    revoke_notifier(bool write_,
+                    bool(*cb_)(vinodeno_t, bool, void*),
+                    void* opaque_)
+    : write(write_),
+      cb(cb_),
+      opaque(opaque_)
+    { }
+  };
+
+  map<uint64_t,revoke_notifier*> revoke_notifiers;
+  uint64_t revoke_serial;
+  void add_revoke_notifier(bool write,
+                           bool(*cb)(vinodeno_t, bool, void*),
+                           void *opaque,
+                           uint64_t *serial);
+  bool remove_revoke_notifier(uint64_t serial);
+  void recall_rw_caps(bool write);
 };
 
 ostream& operator<<(ostream &out, Inode &in);

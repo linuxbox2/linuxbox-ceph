@@ -3533,6 +3533,7 @@ void Client::handle_cap_grant(MetaSession *session, Inode *in, Cap *cap, MClient
   // update inode
   int implemented = 0;
   int issued = in->caps_issued(&implemented) | in->caps_dirty();
+  int revoked = 0;
   issued |= implemented;
 
   if ((issued & CEPH_CAP_AUTH_EXCL) == 0) {
@@ -3567,20 +3568,33 @@ void Client::handle_cap_grant(MetaSession *session, Inode *in, Cap *cap, MClient
   check_cap_issue(in, cap, issued);
 
   // update caps
-  if (old_caps & ~new_caps) { 
-    ldout(cct, 10) << "  revocation of " << ccap_string(~new_caps & old_caps) << dendl;
+  revoked = old_caps & ~new_caps;
+  if (revoked) {
+    ldout(cct, 10) << "  revocation of " << ccap_string(revoked) << dendl;
     cap->issued = new_caps;
     cap->implemented |= new_caps;
 
     if ((~cap->issued & old_caps) & CEPH_CAP_FILE_CACHE)
       _release(in);
-    
+
     if (((used & ~new_caps) & CEPH_CAP_FILE_BUFFER) &&
 	!_flush(in)) {
       // waitin' for flush
     } else {
       cap->wanted = 0; // don't let check_caps skip sending a response to MDS
       check_caps(in, true);
+    }
+
+
+    if (revoked & (CEPH_CAP_FILE_CACHE  |
+		   CEPH_CAP_FILE_RD     |
+		   CEPH_CAP_FILE_WR     |
+		   CEPH_CAP_FILE_BUFFER |
+		   CEPH_CAP_FILE_WREXTEND)) {
+      in->recall_rw_caps(revoked &
+			 (CEPH_CAP_FILE_WR     |
+			  CEPH_CAP_FILE_BUFFER |
+			  CEPH_CAP_FILE_WREXTEND));
     }
 
   } else if (old_caps == new_caps) {
@@ -7596,6 +7610,50 @@ int Client::ll_file_layout(Inode *in, ceph_file_layout *layout)
   return -1;
 }
 
+/* Allow the client to get and hold a read capability or read and
+   write capabilities.  If write is true, get both read and write
+   capabilities.  The cb function is called when the the read or write
+   capabilities are recalled. Opaque is passed to ths function.
+   Serial is an identifier that should be passed to ll_release_rw, and
+   max_fs, if write is set to true, is the requested maximum filesize
+   to which the file may be extended as input, and the allowed maximum
+   filesize on output.  If write is false, it is undefined.  The cb
+   function should return true if it intends to return the
+   capabilities later, and false if to return them now. */
+
+uint32_t Client::ll_hold_rw(Inode *in,
+			    bool write,
+			    bool(*cb)(vinodeno_t, bool, void*),
+			    void *opaque,
+			    uint64_t* serial,
+			    uint64_t* max_fs)
+{
+  Mutex::Locker lock(client_lock);
+  int r = 0;
+  int got = 0;
+  int need = CEPH_CAP_FILE_RD | (write ? CEPH_CAP_FILE_WR : 0);
+  r = get_caps(in, need, 0, &got, (write ? *max_fs : 0));
+  if (r != 0) {
+    return r;
+  }
+  if (need & ~got) {
+    return -EBUSY;
+  }
+  in->add_revoke_notifier(write, cb, opaque, serial);
+  /* Assume the client will actually use them */
+  mark_caps_dirty(in, need);
+  if (write) {
+    *max_fs = max(in->max_size, mdsmap->get_max_filesize());
+  }
+  return 0;
+}
+
+void Client::ll_return_rw(Inode *in, uint64_t serial)
+{
+  Mutex::Locker lock(client_lock);
+  bool write = in->remove_revoke_notifier(serial);
+  in->put_cap_ref(CEPH_CAP_FILE_RD | (write ? CEPH_CAP_FILE_WR : 0));
+}
 
 /* Currently we cannot take advantage of redundancy in reads, since we
    would have to go through all possible placement groups (a

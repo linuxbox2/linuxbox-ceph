@@ -494,3 +494,45 @@ void CapSnap::dump(Formatter *f) const
   f->dump_int("dirty_data", (int)dirty_data);
   f->dump_unsigned("flush_tid", flush_tid);
 }
+
+void Inode::add_revoke_notifier(bool write,
+                                bool(*cb)(vinodeno_t, bool, void*),
+                                void *opaque,
+                                uint64_t *serial)
+{
+  revoke_notifier *revoker = new revoke_notifier(write, cb, opaque);
+  *serial = revoke_serial++;
+  revoke_notifiers[*serial] = revoker;
+}
+
+bool Inode::remove_revoke_notifier(uint64_t serial)
+{
+  revoke_notifier *revoker = revoke_notifiers[serial];
+  bool write = revoker->write;
+  revoke_notifiers.erase(serial);
+  delete revoker;
+  return write;
+}
+
+void Inode::recall_rw_caps(bool write)
+{
+
+  map<uint64_t,revoke_notifier*>::iterator p
+    = revoke_notifiers.begin();
+  bool will_return = false;
+  while (p != revoke_notifiers.end()) {
+    revoke_notifier *revoker = p->second;
+    if (write && !revoker->write) {
+	continue;
+    }
+    will_return = revoker->cb(vino(), revoker->write,
+			      revoker->opaque);
+    if (will_return) {
+      ++p;
+    } else {
+      put_cap_ref(CEPH_CAP_FILE_RD | (write ? CEPH_CAP_FILE_WR : 0));
+      revoke_notifiers.erase(p++);
+      delete revoker;
+    }
+  }
+}
