@@ -7579,7 +7579,7 @@ int Client::_mknod(Inode *diri, const char *name, mode_t mode, dev_t rdev,
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(diri, name, &de, CF_NONE);
+  int res = get_or_create(diri, name, &de);
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -7685,7 +7685,7 @@ int Client::_create(Inode *dir, const char *name, int flags, mode_t mode,
   inodeno_t created_ino;
 
   Dentry *de;
-  int res = get_or_create(dir, name, &de, CF_NONE);
+  int res = get_or_create(dir, name, &de);
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -7754,7 +7754,7 @@ int Client::_mkdir(Inode *diri, const char *name, mode_t mode, int uid, int gid,
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(diri, name, &de, CF_NONE);
+  int res = get_or_create(diri, name, &de);
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -7830,7 +7830,7 @@ int Client::_symlink(Inode *diri, const char *name, const char *target, int uid,
   req->dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(diri, name, &de, cf); // XXXXXX cf
+  int res = get_or_create(diri, name, &de);
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -7904,7 +7904,7 @@ int Client::_unlink(Inode *diri, const char *name, int uid, int gid)
   path.push_dentry(name);
 
   Dentry *de;
-  int res = get_or_create(diri, name, &de, CF_ILOCKED);
+  int res = get_or_create(diri, name, &de, false, CF_ILOCKED);
   if (res < 0)
     return res;
 
@@ -7991,7 +7991,7 @@ int Client::_rmdir(Inode *diri, const char *name, int uid, int gid)
   req->inode_drop = CEPH_CAP_LINK_SHARED | CEPH_CAP_LINK_EXCL;
 
   Dentry *de;
-  int res = get_or_create(diri, name, &de, CF_NONE);
+  int res = get_or_create(diri, name, &de);
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -8072,7 +8072,7 @@ int Client::_rename(Inode *fromdir, const char *fromname, Inode *todir,
   req->set_filepath2(from);
 
   Dentry *oldde;
-  int res = get_or_create(fromdir, fromname, &oldde, CF_NONE); // XXXX
+  int res = get_or_create(fromdir, fromname, &oldde);
   if (res < 0)
     goto fail;
   req->set_old_dentry(oldde);
@@ -8080,7 +8080,7 @@ int Client::_rename(Inode *fromdir, const char *fromname, Inode *todir,
   req->old_dentry_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  res = get_or_create(todir, toname, &de, CF_NONE); // XXXX
+  res = get_or_create(todir, toname, &de);
   if (res < 0)
     goto fail;
   req->set_dentry(de);
@@ -8167,7 +8167,7 @@ int Client::_link(Inode *i1, Inode *i2, const char *newname, int uid, int gid,
   req->inode_unless = CEPH_CAP_FILE_EXCL;
 
   Dentry *de;
-  int res = get_or_create(i2, newname, &de, CF_ILOCKED);
+  int res = get_or_create(i2, newname, &de, false, CF_ILOCKED);
   if (res < 0) {
     IUNLOCK(i1); // !CF_ILOCKED diri
     goto fail;
