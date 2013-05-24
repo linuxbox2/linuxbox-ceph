@@ -1002,7 +1002,6 @@ void SyntheticClient::up()
   clear_dir();
 }
 
-
 int SyntheticClient::play_trace(Trace& t, string& prefix, bool metadata_only)
 {
   dout(4) << "play trace prefix '" << prefix << "'" << dendl;
@@ -1014,7 +1013,7 @@ int SyntheticClient::play_trace(Trace& t, string& prefix, bool metadata_only)
   utime_t start = ceph_clock_now(g_ceph_context);
 
   hash_map<int64_t, int64_t> open_files;
-  hash_map<int64_t, dir_result_t*>    open_dirs;
+  hash_map<int64_t, dir_result_t*> open_dirs;
 
   hash_map<int64_t, Fh*> ll_files;
   hash_map<int64_t, void*> ll_dirs;
@@ -1037,7 +1036,7 @@ int SyntheticClient::play_trace(Trace& t, string& prefix, bool metadata_only)
 
 
   utime_t last_status = start;
-  
+
   int n = 0;
 
   // for object traces
@@ -1393,7 +1392,7 @@ int SyntheticClient::play_trace(Trace& t, string& prefix, bool metadata_only)
       int64_t i = t.get_int();
       if (ll_inos.count(i))
 	{} //client->ll_statfs(vinodeno_t(ll_inos[i],CEPH_NOSNAP));
-    } 
+    }
 
 
     // object-level traces
