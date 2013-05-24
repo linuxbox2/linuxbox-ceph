@@ -7703,7 +7703,6 @@ int Client::_create(Inode *dir, const char *name, int flags, mode_t mode,
     ILOCK(*inp);
     (*inp)->get_open_ref(cmode);
     *fhp = _create_fh(*inp, flags, cmode, CF_ILOCKED);
-    IUNLOCK(*inp);
   }
 
  reply_error:
