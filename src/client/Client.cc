@@ -4996,6 +4996,8 @@ int Client::_readdir_cache_cb(dir_result_t *dirp, add_dirent_cb_t cb, void *p)
 
     prev_name = dn->name;
     dirp->offset = next_off;
+    if (r > 0)
+      return r;
   }
 
   ldout(cct, 10) << "_readdir_cache_cb " << dirp << " on " << dirp->inode->ino << " at end" << dendl;
@@ -5044,6 +5046,8 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p)
 
     dirp->offset = next_off;
     off = next_off;
+    if (r > 0)
+      return r;
   }
   if (dirp->offset == 1) {
     ldout(cct, 15) << " including .." << dendl;
@@ -5066,6 +5070,8 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p)
 
     dirp->offset = 2;
     off = 2;
+    if (r > 0)
+      return r;
   }
 
   // can we read from our cache?
@@ -5118,6 +5124,8 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p)
       
       off++;
       dirp->offset = pos + 1;
+      if (r > 0)
+	return r;
     }
 
     if (dirp->last_name.length()) {
@@ -5187,7 +5195,7 @@ static int _readdir_single_dirent_cb(void *p, struct dirent *de, struct stat *st
   if (c->stmask)
     *c->stmask = stmask;
   c->full = true;
-  return 0;  
+  return 1;
 }
 
 struct dirent *Client::readdir(dir_result_t *d)
