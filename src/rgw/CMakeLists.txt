@@ -12,11 +12,20 @@ set(rgw_acl_s3 rgw_acl_s3.cc)
 
 add_library(rgwacls3 STATIC ${rgw_acl_s3})
 
+set(librgw librgw.cc)
+
+add_library(librgw STATIC ${librgw})
+
+set(rgw_acl  rgw_acl.cc )
+
+add_library(rgw_acl STATIC ${rgw_acl})
+
+set(rgw_acl_s3 rgw_acl_s3.cc)
+
+add_library(rgwacls3 STATIC ${rgw_acl_s3})
 
  
-	  
-	  
-	rgw_acl_swift.cc  
+  
 	rgw_client_io.cc  
 	 rgw_fcgi.cc  
 	 rgw_xml.cc  

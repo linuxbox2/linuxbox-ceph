@@ -27,7 +27,14 @@ add_subdirectory(/home/ali/ceph-local/src/librados)
 
 message( STATUS "librados is here" )
 
+add_subdirectory(/home/ali/ceph-local/src/rgw)
+
+message( STATUS "rgw is here" )
+
 # sort out which allocator to use
+set(ALLOCATOR "tcmalloc" CACHE STRING
+  "specify the memory allocator to use: jemalloc|tcmalloc|libc")
+
 if(${ALLOCATOR} STREQUAL "jemalloc")
   find_package(JeMalloc)
   if(JEMALLOC_FOUND)
