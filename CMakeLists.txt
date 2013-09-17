@@ -6,26 +6,33 @@ project(Ceph)
 
 add_subdirectory(/home/ali/ceph-local/src)
 
-# Find packages and libs we need for building
 include(CheckIncludeFiles)
-include(CheckLibraryExists)
-include(CheckCSourceCompiles)
-include(TestBigEndian)
 
-check_include_files(stdbool.h HAVE_STDBOOL_H)
-check_include_files(strings.h HAVE_STRINGS_H)
-check_include_files(string.h HAVE_STRING_H)
+CHECK_INCLUDE_FILES("stdint.h" HAVE_STDINT_H)
+CHECK_INCLUDE_FILES("inttypes.h" HAVE_INTTYPES_H)
 
-find_package(libuuid)
-set(CMAKE_MODULE_PATH ${extralibs} "$/home/ali/ceph-local/cmake/modules")
+add_definitions(-D__linux__)
 
-find_package(cryptopp)
-set(CMAKE_MODULE_PATH ${cryptopp} "$/home/ali/ceph-local/cmake/modules")
+# Find packages and libs we need for building
+#include(CheckIncludeFiles)
+#include(CheckLibraryExists)
+#include(CheckCSourceCompiles)
+#include(TestBigEndian)
 
-find_package(threads)
-set(CMAKE_MODULE_PATH ${threads} "$/home/ali/ceph-local/cmake/modules")
+#check_include_files(stdbool.h HAVE_STDBOOL_H)
+#check_include_files(strings.h HAVE_STRINGS_H)
+#check_include_files(string.h HAVE_STRING_H)
 
-message(STATUS" do I need to target link libraries this these things!?")
+#find_package(libuuid)
+#set(CMAKE_MODULE_PATH ${extralibs} "$/home/ali/ceph-local/cmake/modules")
+
+#find_package(cryptopp)
+#set(CMAKE_MODULE_PATH ${cryptopp} "$/home/ali/ceph-local/cmake/modules")
+
+#find_package(threads)
+#set(CMAKE_MODULE_PATH ${threads} "$/home/ali/ceph-local/cmake/modules")
+
+# message(STATUS" do I need to target link libraries this these things!?")
 # do I need to 
 #target_link_libraries(pthreads ${CMAKE_THREAD_LIBS_INIT})
 

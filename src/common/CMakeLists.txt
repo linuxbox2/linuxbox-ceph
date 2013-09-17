@@ -1,17 +1,155 @@
-message( STATUS "SRC is here" )
+# libs
 
-add_subdirectory(/home/ali/ceph-local/src/cls/rbd)
+#add_definitions(cxxflags ${CXXFLAGS})
+#add_definitions(cflags ${CFLAGS})
+#add_definitions(cryptoflags ${CRYPTO_CFLAGS})
+#add_definitions(cryptoflags -version-info 2:0:0 -export-symbols-regex '^rados_.* ${LDFLAGS})
 
-message( STATUS "rbd is here" )
 
-add_subdirectory(/home/ali/ceph-local/src/cls/refcount)
 
-message( STATUS "refcount is here" )
+#(important in cmake) libcommon_la_SOURCES = $(libcommon_files)
+# libcommon_la_CFLAGS= ${CRYPTO_CFLAGS} ${AM_CFLAGS}
+# libcommon_la_CXXFLAGS= ${AM_CXXFLAGS}
+# libcommon_la_LDFLAGS = -lrt
+# noinst_LTLIBRARIES += libcommon.la
 
-add_subdirectory(/home/ali/ceph-local/src/cls/rgw)
+# libglobal_la_SOURCES = \
+#	global/global_context.cc \
+#	global/global_init.cc \
+#	global/pidfile.cc 	
+#        global/signal_handler.cc
+# libglobal_la_CFLAGS= ${CRYPTO_CFLAGS} ${AM_CFLAGS}
+# libglobal_la_CXXFLAGS= ${AM_CXXFLAGS}
+# libglobal_la_LIBADD= libcommon.la
+# noinst_LTLIBRARIES += libglobal.la
 
-message( STATUS "rgw is here" )
 
-add_subdirectory(/home/ali/ceph-local/src/cls/lock)
+set (crush_files 
+	../crush/builder.c 
+	../crush/mapper.c 
+	../crush/crush.c 
+	../crush/hash.c 
+	../crush/CrushWrapper.cc 
+	../crush/CrushCompiler.cc 
+	../crush/CrushTester.cc
+)
 
-message( STATUS "lock is here" )
+# this list ommits the ceph_ver.c file
+set (libcommon_files
+	/home/ali/ceph-local/src/ceph_ver.c 
+	../auth/AuthAuthorizeHandler.cc 
+	../auth/AuthClientHandler.cc 
+	../auth/AuthSessionHandler.cc 
+	../auth/AuthMethodList.cc 
+	../auth/cephx/CephxAuthorizeHandler.cc 
+	../auth/cephx/CephxClientHandler.cc 
+	../auth/cephx/CephxProtocol.cc 
+	../auth/cephx/CephxSessionHandler.cc 
+	../auth/none/AuthNoneAuthorizeHandler.cc 
+	../auth/unknown/AuthUnknownAuthorizeHandler.cc 
+	../auth/Crypto.cc 
+	../auth/KeyRing.cc 
+	../auth/RotatingKeyRing.cc 
+	../common/DecayCounter.cc 
+	../common/LogClient.cc 
+	../common/LogEntry.cc 
+	../common/PrebufferedStreambuf.cc 
+	../common/BackTrace.cc 
+	../common/perf_counters.cc 
+	../common/Mutex.cc 
+	../common/OutputDataSocket.cc 
+	../common/admin_socket.cc 
+	../common/admin_socket_client.cc 
+	../common/cmdparse.cc 
+	../common/escape.c 
+	../common/Clock.cc 
+	../common/Throttle.cc 
+	../common/Timer.cc 
+	../common/Finisher.cc 
+	../common/environment.cc
+	../common/sctp_crc32.c
+	../common/assert.cc 
+        ../common/run_cmd.cc 
+	../common/WorkQueue.cc 
+	../common/ConfUtils.cc 
+	../common/MemoryModel.cc 
+	../common/armor.c 
+	../common/fd.cc 
+	../common/xattr.c 
+	../common/safe_io.c 
+	../common/snap_types.cc 
+	../common/str_list.cc 
+	../common/errno.cc 
+	../json_spirit/json_spirit_reader.cpp 
+	../json_spirit/json_spirit_writer.cpp 
+	../json_spirit/json_spirit_value.cpp 
+	../log/Log.cc 
+	../log/SubsystemMap.cc 
+	../mon/MonCap.cc 
+	../mon/MonClient.cc 
+	../mon/MonMap.cc
+	../msg/Accepter.cc 
+	../msg/DispatchQueue.cc 
+	../msg/Message.cc 
+	../common/RefCountedObj.cc 
+	../msg/Messenger.cc 
+	../msg/Pipe.cc 
+	../msg/SimpleMessenger.cc 
+	../msg/msg_types.cc 
+	../os/hobject.cc 
+	../osd/OSDMap.cc 
+	../osd/osd_types.cc 
+	../mds/MDSMap.cc 
+	../mds/inode_backtrace.cc 
+	../mds/mdstypes.cc 
+	../common/blkdev.cc 
+	../common/common_init.cc 
+	../common/pipe.c 
+	../common/ceph_argparse.cc 
+	../common/ceph_context.cc 
+	../common/buffer.cc 
+	../common/code_environment.cc 
+	../common/dout.cc 
+	../common/signal.cc 
+	../common/simple_spin.cc 
+	../common/Thread.cc 
+	../common/Formatter.cc 
+	../common/HeartbeatMap.cc 
+	../include/ceph_fs.cc 
+	../include/ceph_hash.cc 
+	../include/ceph_strings.cc 
+	../include/ceph_frag.cc
+	../common/config.cc 
+	../common/utf8.c 
+	../common/mime.c 
+	../common/strtol.cc 
+	../common/page.cc 
+	../common/lockdep.cc 
+	../common/version.cc 
+	../common/hex.cc 
+	../common/entity_name.cc 
+	../common/ceph_crypto.cc 
+	../common/ceph_crypto_cms.cc 
+	../common/ceph_json.cc 
+	../common/ipaddr.cc 
+	../common/pick_address.cc
+	../include/addr_parsing.c 
+	${crush_files}
+)
+
+add_definitions("-DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE")
+
+
+#libtool: compile:  g++ -DHAVE_CONFIG_H -I. -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE -rdynamic -Wall -Wtype-limits -Wignored-qualifiers -Winit-self -Wpointer-arith -Werror=format-security -fno-strict-aliasing -fsigned-char -DCEPH_LIBDIR=\"/usr/local/lib\" -Wnon-virtual-dtor -Wno-invalid-offsetof -Wstrict-null-sentinel -g -O2 -MT libcommon_la-config.lo -MD -MP -MF .deps/libcommon_la-config.Tpo -c common/config.cc -o libcommon_la-config.o >/dev/null 2>&1
+
+include_directories("..")
+
+add_library (libcommon ${libcommon_files})
+
+
+#if WITH_PROFILER
+#libcommon_files += perfglue/cpu_profiler.cc
+#else
+#libcommon_files += perfglue/disabled_stubs.cc
+#endif
+
