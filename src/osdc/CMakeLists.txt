@@ -1,17 +1,13 @@
 message( STATUS "osdc is here" )
 
-set(Journaler Journaler.cc)
+set(osdc_files
+	../osdc/Objecter.cc 
+	../osdc/ObjectCacher.cc 
+	../osdc/Filer.cc 
+	../osdc/Striper.cc
+)
 
-add_library(Journaler STATIC ${Journaler})
+include_directories("..")
 
-set(objectcacher ObjectCacher.cc)
+add_library(osdc ${osdc_files})
 
-add_library(objectcacher STATIC ${objectcacher})
-
-set(objecter Objecter.cc)
-
-add_library(objecter STATIC ${objecter})
-
-set(striper Striper.cc)
-
-add_library(striper STATIC ${striper})

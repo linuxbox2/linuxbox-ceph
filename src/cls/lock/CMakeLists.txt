@@ -1,17 +1,19 @@
-message( STATUS "lock is here" )
+message( STATUS "cls_lock is here" )
 
-set(cls_lock cls_lock.cc)
+set(cls_lock_files
+	../lock/cls_lock_client.cc  
+	../lock/cls_lock_types.cc 
+	../lock/cls_lock_ops.cc
+)
 
-add_library(clslock STATIC ${cls_lock})
+#libcls_lock_client_a_SOURCES =  \
+#	cls/lock/cls_lock_client.cc  \
+#	cls/lock/cls_lock_types.cc \
+#	cls/lock/cls_lock_ops.cc
+#noinst_LIBRARIES += libcls_lock_client.a
 
-set(cls_lock_client cls_lock_client.cc)
+include_directories("../..")
 
-add_library(clslockclient STATIC ${cls_lock_client})
+add_library(cls_lock ${cls_lock_files})
 
-set(cls_lock_ops cls_lock_ops.cc)
 
-add_library(clslockops STATIC ${cls_lock_ops})
-
-set(cls_lock_types cls_lock_types.cc)
-
-add_library(clslocktypes STATIC ${cls_lock_types})

@@ -139,14 +139,11 @@ set (libcommon_files
 
 add_definitions("-DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE")
 
-
-#libtool: compile:  g++ -DHAVE_CONFIG_H -I. -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE -rdynamic -Wall -Wtype-limits -Wignored-qualifiers -Winit-self -Wpointer-arith -Werror=format-security -fno-strict-aliasing -fsigned-char -DCEPH_LIBDIR=\"/usr/local/lib\" -Wnon-virtual-dtor -Wno-invalid-offsetof -Wstrict-null-sentinel -g -O2 -MT libcommon_la-config.lo -MD -MP -MF .deps/libcommon_la-config.Tpo -c common/config.cc -o libcommon_la-config.o >/dev/null 2>&1
-
 include_directories("..")
 
 add_library (libcommon ${libcommon_files})
 
-
+#COME BACK TO THIS LATER
 #if WITH_PROFILER
 #libcommon_files += perfglue/cpu_profiler.cc
 #else
