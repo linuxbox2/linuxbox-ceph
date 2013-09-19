@@ -6,15 +6,13 @@ set(CMAKE_CXX_FLAGS "-Wno-invalid-offsetof" )
 
 add_definitions("-DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE")
 
-set(EXTRALIBS uuid rt)
-
-set(PTHREAD_LIBS pthread)
+set(EXTRALIBS uuid rt ${Boost_LIBRARIES})
 
 set(CRYPTO_LIBS cryptopp)
 
 set(LIBOS_LIBS leveldb snappy libos) 
 
-set(LIBGLOBAL_LIBS ${EXTRALIBS} ${PTHREAD_LIBS} ${CRYPTO_LIBS} libglobal m)
+set(LIBGLOBAL_LIBS ${EXTRALIBS} ${CMAKE_THREAD_LIBS_INIT} ${CRYPTO_LIBS} libglobal m)
 
 add_subdirectory(common)
 add_subdirectory(cls/lock)
@@ -31,14 +29,12 @@ set(ceph_mon_srcs
 
 option(WITH_TCMALLOC "Use TCMalloc as Allocator" ON)
 
-set(tcmalloc_safety_flags -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-fre)
+set(tcmalloc_safety_flags "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-fre")
 
 if(${WITH_TCMALLOC})
   set(CEPH_MON_LIBS tcmalloc)
-#  add_definitions("${tcmalloc_safety_flags}")
-  set(ceph_mon_srcs
-	perfglue/heap_profiler.cc
-	${ceph_mon_srcs})
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${tcmalloc_safety_flags}" )
+  set(ceph_mon_srcs perfglue/heap_profiler.cc ${ceph_mon_srcs})
 else()
   set(ceph_mon_srcs
 	perfglue/disabled_heap_profiler.cc
@@ -49,7 +45,7 @@ include_directories(".")
 
 add_executable(ceph_mon ${ceph_mon_srcs})
 
-target_link_libraries(ceph_mon libmon libcommon ${LIBOS_LIBS} ${LIBGLOBAL_LIBS} ${CEPH_MON_LIBS})
+target_link_libraries(ceph_mon libmon libcommon boost_thread ${LIBOS_LIBS} ${LIBGLOBAL_LIBS} ${CEPH_MON_LIBS})
 
 # tcmalloc?
 #if WITH_TCMALLOC
