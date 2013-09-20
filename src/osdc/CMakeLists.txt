@@ -1,5 +1,3 @@
-message( STATUS "osdc is here" )
-
 set(osdc_files
 	../osdc/Objecter.cc 
 	../osdc/ObjectCacher.cc 
@@ -9,5 +7,6 @@ set(osdc_files
 
 include_directories("..")
 
-add_library(osdc ${osdc_files})
+add_library(libosdc ${osdc_files})
 
+message( STATUS "osdc is here" )

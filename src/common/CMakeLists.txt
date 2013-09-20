@@ -1,29 +1,3 @@
-# libs
-
-#add_definitions(cxxflags ${CXXFLAGS})
-#add_definitions(cflags ${CFLAGS})
-#add_definitions(cryptoflags ${CRYPTO_CFLAGS})
-#add_definitions(cryptoflags -version-info 2:0:0 -export-symbols-regex '^rados_.* ${LDFLAGS})
-
-
-
-#(important in cmake) libcommon_la_SOURCES = $(libcommon_files)
-# libcommon_la_CFLAGS= ${CRYPTO_CFLAGS} ${AM_CFLAGS}
-# libcommon_la_CXXFLAGS= ${AM_CXXFLAGS}
-# libcommon_la_LDFLAGS = -lrt
-# noinst_LTLIBRARIES += libcommon.la
-
-# libglobal_la_SOURCES = \
-#	global/global_context.cc \
-#	global/global_init.cc \
-#	global/pidfile.cc 	
-#        global/signal_handler.cc
-# libglobal_la_CFLAGS= ${CRYPTO_CFLAGS} ${AM_CFLAGS}
-# libglobal_la_CXXFLAGS= ${AM_CXXFLAGS}
-# libglobal_la_LIBADD= libcommon.la
-# noinst_LTLIBRARIES += libglobal.la
-
-
 set (crush_files 
 	../crush/builder.c 
 	../crush/mapper.c 
@@ -137,16 +111,30 @@ set (libcommon_files
 	${crush_files}
 )
 
+if (${WITH_PROFILER})
+  set (libcommon_files
+	../perfglue/cpu_profiler.cc
+	${libcommon_files})
+
+else ()
+  set (libcommon_files
+	../perfglue/disabled_stubs.cc
+	${libcommon_files}) 
+endif (${WITH_PROFILER})
+
 add_definitions("-DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE")
 
 include_directories("..")
 
 add_library (libcommon ${libcommon_files})
 
-#COME BACK TO THIS LATER
-#if WITH_PROFILER
-#libcommon_files += perfglue/cpu_profiler.cc
-#else
-#libcommon_files += perfglue/disabled_stubs.cc
-#endif
+if (${WITH_PROFILER})
+  target_link_libraries(libcommon profiler)
+endif(${WITH_PROFILER})
+
+target_link_libraries(libcommon ${CRYPTO_LIBS} rt ${Boost_LIBRARIES}) 
+
+message( STATUS "libcommon is here" )
+
+
 
