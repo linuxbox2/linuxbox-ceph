@@ -20,6 +20,12 @@ include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(Threads REQUIRED)
 
+# find out which platform we are building on
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(LINUX ON)
+  set(UNIX ON)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+
 option(WITH_TCMALLOC "Use TCMalloc as Allocator" ON)
 
 option(WITH_PROFILER "The Profiler is ON" ON)

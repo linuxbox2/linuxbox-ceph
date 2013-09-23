@@ -212,3 +212,13 @@ mds
 	../mds/SessionMap.cc 
 	../mds/MDLog.cc
 	../osdc/Journaler.cc
+
+client
+	../client/Client.cc 
+	../client/barrier.cc
+	../client/Inode.cc 
+	../client/Dentry.cc 
+	../client/MetaRequest.cc 
+	../client/ClientSnapRealm.cc 
+	../client/MetaSession.cc 
+	../client/Trace.cc

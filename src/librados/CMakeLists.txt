@@ -1,17 +1,20 @@
 message( STATUS "librados is here" )
 
-set(srcs
+set(librados_srcs
 	../librados/librados.cc 
 	../librados/RadosClient.cc
 	../librados/IoCtxImpl.cc 
 )
 
-
 include_directories("..")
 
-add_library(librados ${srcs})
+add_library(librados ${librados_srcs})
 
 add_dependencies(librados cls_lock osdc)
+
+target_link_libraries(librados libosdc cls_lock libcommon ${CRYPTO_LIBS} ${EXTRALIBS})
+
+set_target_properties(librados PROPERTIES VERSION 2.0.0 SOVERSION 1)
 
 # librados
 #librados_SOURCES = \
@@ -28,8 +31,5 @@ add_dependencies(librados cls_lock osdc)
 #librados_la_CXXFLAGS = ${AM_CXXFLAGS}
 #librados_la_LIBADD = libcommon.la $(PTHREAD_LIBS) $(CRYPTO_LIBS) $(EXTRALIBS)
 #librados_la_LDFLAGS = ${AM_LDFLAGS} -version-info 2:0:0 -export-symbols-regex '^rados_.*'
-
-
-
-
+#lib_LTLIBRARIES += librados.la
 
