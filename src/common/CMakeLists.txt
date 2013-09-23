@@ -10,7 +10,7 @@ set (crush_files
 
 # this list ommits the ceph_ver.c file
 set (libcommon_files
-	/home/ali/ceph-local/src/ceph_ver.c 
+	../ceph_ver.c 
 	../auth/AuthAuthorizeHandler.cc 
 	../auth/AuthClientHandler.cc 
 	../auth/AuthSessionHandler.cc 
