@@ -13,8 +13,8 @@ set(libclient_srcs
 
 include_directories("..")
 
-add_library(libclient ${libclient_srcs})
+add_library(client ${libclient_srcs})
 
-target_link_libraries(libclient libosdc ${LIBEDIT_LIBS})
+target_link_libraries(client osdc ${LIBEDIT_LIBS})
 
 message(STATUS "client is here")

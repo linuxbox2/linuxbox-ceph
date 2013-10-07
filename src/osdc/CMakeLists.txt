@@ -7,6 +7,6 @@ set(osdc_files
 
 include_directories("..")
 
-add_library(libosdc ${osdc_files})
+add_library(osdc ${osdc_files})
 
 message( STATUS "osdc is here" )

@@ -13,8 +13,8 @@ set(osd_srcs
 
 include_directories("..")
 
-add_library(libosd ${osd_srcs})
+add_library(osd ${osd_srcs})
 
-target_link_libraries(libosd dl leveldb)
+target_link_libraries(osd dl leveldb)
 
 message( STATUS "osd is here" )

@@ -28,7 +28,7 @@ set(lib_mon_srcs
 
 include_directories("..")
 
-add_library(libmon ${lib_mon_srcs})
+add_library(mon ${lib_mon_srcs})
 
 
 

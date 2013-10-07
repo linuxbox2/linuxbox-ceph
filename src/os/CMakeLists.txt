@@ -17,10 +17,10 @@ set(libos_srcs
 
 include_directories("..")
 
-add_library(libos ${libos_srcs})
+add_library(os ${libos_srcs})
 
 if(${HAVE_LIBAIO})
-target_link_libraries(libos aio)
+target_link_libraries(os aio)
 endif(${HAVE_LIBAIO})
 
-target_link_libraries(libos leveldb snappy)
+target_link_libraries(os leveldb snappy)

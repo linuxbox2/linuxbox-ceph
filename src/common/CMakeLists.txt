@@ -126,13 +126,13 @@ add_definitions("-DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT 
 
 include_directories("..")
 
-add_library (libcommon ${libcommon_files})
+add_library (common ${libcommon_files})
 
 if (${WITH_PROFILER})
-  target_link_libraries(libcommon profiler)
+  target_link_libraries(common profiler)
 endif(${WITH_PROFILER})
 
-target_link_libraries(libcommon ${CRYPTO_LIBS} rt ${Boost_LIBRARIES}) 
+target_link_libraries(common ${CRYPTO_LIBS} rt ${Boost_LIBRARIES}) 
 
 message( STATUS "libcommon is here" )
 

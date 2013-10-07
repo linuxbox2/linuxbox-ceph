@@ -9,9 +9,9 @@ set(libglobal_srcs
 
 include_directories("..")
 
-add_library(libglobal ${libglobal_srcs})
+add_library(global ${libglobal_srcs})
 
 
-target_link_libraries(libglobal libcommon ${CMAKE_THREAD_LIBS_INIT} ${CRYPTO_LIBS} m ${EXTRALIBS})
+target_link_libraries(global common ${CMAKE_THREAD_LIBS_INIT} ${CRYPTO_LIBS} m ${EXTRALIBS})
 
 

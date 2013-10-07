@@ -33,6 +33,6 @@ set(mds_srcs
 
 include_directories("..")
 
-add_library(libmds ${mds_srcs})
+add_library(mds ${mds_srcs})
 
 message( STATUS "libmds is here" )
