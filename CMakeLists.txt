@@ -12,7 +12,6 @@ include_directories(
 
 include(CheckIncludeFiles)
 
-
 #cmakedefine CEPH_HAVE_FALLOCATE no
 #cmakedefine DARWIN no
 #cmakedefine DEBUG_GATHER no 
@@ -114,6 +113,7 @@ endif(CRYPTOPP_FOUND)
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/include/config-h.in.cmake
   ${PROJECT_BINARY_DIR}/src/include/acconfig.h
+  ${PROJECT_BINARY_DIR}/src/ceph_ver.h
 )
 
 add_definitions(-D__linux__)
