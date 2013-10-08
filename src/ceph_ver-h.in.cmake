@@ -1,0 +1,7 @@
+#ifndef CEPH_VERSION_H
+#define CEPH_VERSION_H
+
+#cmakedefine CEPH_GIT_VER 651d62a22d90ef6f7dd80f40f662b985b19011c9
+#cmakedefine CEPH_GIT_NICE_VER "51d62a22d90ef6f7dd80f40f662b985b19011c9"
+
+#endif 

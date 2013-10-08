@@ -116,6 +116,11 @@ configure_file(
   ${PROJECT_SOURCE_DIR}/src/ceph_ver.h
 )
 
+configure_file(
+  ${PROJECT_SOURCE_DIR}/src/ceph_ver-h.in.cmake
+  ${PROJECT_SOURCE_DIR}/src/ceph_ver.h
+)
+
 add_definitions(-D__linux__)
 
 set(Boost_USE_STATIC_LIBS   ON)
