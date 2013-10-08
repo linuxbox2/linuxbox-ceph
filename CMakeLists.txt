@@ -113,7 +113,7 @@ endif(CRYPTOPP_FOUND)
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/include/config-h.in.cmake
   ${PROJECT_BINARY_DIR}/src/include/acconfig.h
-  ${PROJECT_BINARY_DIR}/src/ceph_ver.h
+  ${PROJECT_SOURCE_DIR}/src/ceph_ver.h
 )
 
 add_definitions(-D__linux__)
