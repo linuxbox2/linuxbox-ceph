@@ -117,7 +117,10 @@ static void fuse_ll_forget(fuse_req_t req, fuse_ino_t ino,
 			   long unsigned nlookup)
 {
   CephFuse::Handle *cfuse = (CephFuse::Handle *)fuse_req_userdata(req);
-  cfuse->client->ll_forget(cfuse->iget(ino), nlookup+1);
+  Inode *in = cfuse->iget(ino);
+  if (in) {
+    cfuse->client->ll_forget(in, nlookup+1);
+  }
   fuse_reply_none(req);
 }
 
