@@ -8,8 +8,17 @@ set (crush_files
 	../crush/CrushTester.cc
 )
 
+add_custom_command(
+PRE_BUILD
+OUTPUT ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
+COMMAND ${CMAKE_SOURCE_DIR}/src/input.txt > ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
+DEPENDS ${CMAKE_SOURCE_DIR}/src/input.txt
+COMMENT "Winter is coming"
+)
+
 # this list ommits the ceph_ver.c file
 set (libcommon_files
+	${CMAKE_SOURCE_DIR}/src/ceph_ver.h
 	../ceph_ver.c 
 	../auth/AuthAuthorizeHandler.cc 
 	../auth/AuthClientHandler.cc 
@@ -111,6 +120,7 @@ set (libcommon_files
 	${crush_files}
 )
 
+
 if (${WITH_PROFILER})
   set (libcommon_files
 	../perfglue/cpu_profiler.cc
@@ -127,6 +137,8 @@ add_definitions("-DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT 
 include_directories("..")
 
 add_library (common ${libcommon_files})
+
+add_dependencies(common ${CMAKE_SOURCE_DIR}/src/input.txt)
 
 if (${WITH_PROFILER})
   target_link_libraries(common profiler)

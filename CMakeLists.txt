@@ -113,13 +113,34 @@ endif(CRYPTOPP_FOUND)
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/include/config-h.in.cmake
   ${PROJECT_BINARY_DIR}/src/include/acconfig.h
-  ${PROJECT_SOURCE_DIR}/src/ceph_ver.h
 )
 
-configure_file(
-  ${PROJECT_SOURCE_DIR}/src/ceph_ver-h.in.cmake
-  ${PROJECT_SOURCE_DIR}/src/ceph_ver.h
-)
+#set(CEPH_GIT_VER 
+
+#configure_file(
+#  ${PROJECT_SOURCE_DIR}/src/ceph_ver-h.in.cmake
+#  ${PROJECT_SOURCE_DIR}/src/ceph_ver.h
+#)
+
+#add_custom_command(
+#PRE_BUILD
+#OUTPUT ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
+#COMMAND ${CMAKE_SOURCE_DIR}/src/input.txt > ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
+#DEPENDS ${CMAKE_SOURCE_DIR}/src/input.txt
+#COMMENT "Winter is coming"
+#)
+
+#set(ceph_ver_files
+#${CMAKE_SOURCE_DIR}/src/ceph_ver.h
+#)
+#
+#add_library(ceph_ver_src ${ceph_ver_files})
+
+#ADD_CUSTOM_COMMAND(
+#  OUTPUT ceph_ver.h
+#  COMMAND generate ${PROJECT_SOURCE_DIR}/src/input.txt ${PROJECT_SOURCE_DIR}/ceph_ver.h
+#  DEPENDS generate ${PROJECT_SOURCE_DIR}/input.txt
+#)
 
 add_definitions(-D__linux__)
 
