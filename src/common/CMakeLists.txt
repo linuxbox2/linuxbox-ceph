@@ -8,12 +8,21 @@ set (crush_files
 	../crush/CrushTester.cc
 )
 
+add_custom_target(check_version ALL ${CMAKE_SOURCE_DIR}/src/check_version ${CMAKE_SOURCE_DIR}/src/.git_version 
+COMMENT "ceph_ver.h is up to date")
+
+add_custom_command(
+PRE_BUILD
+OUTPUT ${CMAKE_SOURCE_DIR}/src/.git_version
+COMMAND ${CMAKE_SOURCE_DIR}/src/check_version ${CMAKE_SOURCE_DIR}/src/.git_version
+DEPENDS ${CMAKE_SOURCE_DIR}/src/check_version
+)
+
 add_custom_command(
 PRE_BUILD
 OUTPUT ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
-COMMAND ${CMAKE_SOURCE_DIR}/src/input.txt > ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
-DEPENDS ${CMAKE_SOURCE_DIR}/src/input.txt
-COMMENT "Winter is coming"
+COMMAND ${CMAKE_SOURCE_DIR}/src/make_version ${CMAKE_SOURCE_DIR}/src/.git_version ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
+DEPENDS ${CMAKE_SOURCE_DIR}/src/make_version ${CMAKE_SOURCE_DIR}/src/.git_version
 )
 
 # this list ommits the ceph_ver.c file
@@ -138,7 +147,7 @@ include_directories("..")
 
 add_library (common ${libcommon_files})
 
-add_dependencies(common ${CMAKE_SOURCE_DIR}/src/input.txt)
+add_dependencies(common check_version)
 
 if (${WITH_PROFILER})
   target_link_libraries(common profiler)

@@ -115,33 +115,6 @@ configure_file(
   ${PROJECT_BINARY_DIR}/src/include/acconfig.h
 )
 
-#set(CEPH_GIT_VER 
-
-#configure_file(
-#  ${PROJECT_SOURCE_DIR}/src/ceph_ver-h.in.cmake
-#  ${PROJECT_SOURCE_DIR}/src/ceph_ver.h
-#)
-
-#add_custom_command(
-#PRE_BUILD
-#OUTPUT ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
-#COMMAND ${CMAKE_SOURCE_DIR}/src/input.txt > ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
-#DEPENDS ${CMAKE_SOURCE_DIR}/src/input.txt
-#COMMENT "Winter is coming"
-#)
-
-#set(ceph_ver_files
-#${CMAKE_SOURCE_DIR}/src/ceph_ver.h
-#)
-#
-#add_library(ceph_ver_src ${ceph_ver_files})
-
-#ADD_CUSTOM_COMMAND(
-#  OUTPUT ceph_ver.h
-#  COMMAND generate ${PROJECT_SOURCE_DIR}/src/input.txt ${PROJECT_SOURCE_DIR}/ceph_ver.h
-#  DEPENDS generate ${PROJECT_SOURCE_DIR}/input.txt
-#)
-
 add_definitions(-D__linux__)
 
 set(Boost_USE_STATIC_LIBS   ON)
@@ -158,12 +131,5 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 add_subdirectory(src)
-
-# example of boost libraries
-# target_link_libraries(my_exe
-#            ${CMAKE_THREAD_LIBS_INIT}
-#            #...
-#        ${Boost_LIBRARIES}
-#    )
 
 
