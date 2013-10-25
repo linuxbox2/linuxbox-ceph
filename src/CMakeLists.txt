@@ -61,6 +61,7 @@ add_subdirectory(osd)
 add_subdirectory(mds)
 add_subdirectory(client)
 add_subdirectory(tools)
+add_subdirectory(test)
 
 if(${WITH_RADOSGW})
 add_subdirectory(rgw)
