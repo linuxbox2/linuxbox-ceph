@@ -67,6 +67,7 @@ add_subdirectory(global)
 add_subdirectory(osd)
 add_subdirectory(mds)
 add_subdirectory(client)
+add_subdirectory(test)
 
 if(${WITH_TCMALLOC})
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
