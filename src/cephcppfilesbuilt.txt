@@ -222,3 +222,43 @@ client
 	../client/ClientSnapRealm.cc 
 	../client/MetaSession.cc 
 	../client/Trace.cc
+
+
+
+
+#cmakedefine's
+
+Should be good on
+#PTHREAD need to put in 
+#NO_ATOMIC_OPS some logic in there
+#cmakedefine PG_DEBUG_REFS -something ceph specific
+#cmakedefine PTHREAD_CREATE_JOINABLE if pthread.h is there
+#cmakedefine WITH_RADOSGW -something ceph specific
+
+
+don't need to worry about now
+
+ #cmakedefine NO_MINUS_C_MINUS_O 
+#cmakedefine DARWIN 
+-is running on Darwin or not
+#cmakedefine DEBUG_GATHER  
+in configure.ac, "Define if you want C_Gather debugging"
+#cmakedefine ENABLE_COVERAGE  
+in configure.ac "Define if enabling code coverage"
+-future cpack stuff??
+
+results of AC_LANG_PROGRAM Macro when run https://www.gnu.org/software/autoconf/manual/autoconf-2.67/html_node/Generating-Sources.html
+#cmakedefine PACKAGE -has to do with autoconf
+#cmakedefine PACKAGE_BUGREPORT -has to do with autoconf 
+#cmakedefine PACKAGE_NAME -has to do with autoconf
+#cmakedefine PACKAGE_STRING -has to do with autoconf
+#cmakedefine PACKAGE_TARNAME -has to do with autoconf
+#cmakedefine PACKAGE_URL -has to do with autoconf
+#cmakedefine PACKAGE_VERSION -has to do with autoconf
+# HAVE_SYS_SYNCFS 
+#HAVE_SYNC_FS
+#cmakedefine VERSION 
+-no sign in config.ac
+#LT_OBJDIR
+-no sign in config.ac
+#cmakedefine STDC_HEADERS 

@@ -132,41 +132,5 @@ set(ceph_osdomap_tool_srcs
 
 add_executable(ceph-osdomap-tool ${ceph_osdomap_tool_srcs})
 target_link_libraries(ceph-osdomap-tool os global -lboost_program_options)
-# has these: ${UNITTEST_CXXFLAGS}
-
-#set(ceph_monstore_tool_srcs
-#	tools/ceph-monstore-tool.cc
-#	os/LevelDBStore.cc
-#)
-
-#add_executable(ceph-monstore-tool ${ceph_monstore_tool_srcs})
-#ceph_monstore_tool_LDFLAGS = ${AM_LDFLAGS}
-#target_link_libraries(ceph-monstore-tool os global -lboost_program_options)
-#has these too: ${UNITTEST_CXXFLAGS}
-
-
-#monmaptool_SOURCES = monmaptool.cc
-#monmaptool_LDADD = $(LIBGLOBAL_LDA)
-#crushtool_SOURCES = crushtool.cc
-#crushtool_LDADD = $(LIBGLOBAL_LDA)
-#osdmaptool_SOURCES = osdmaptool.cc
-#osdmaptool_LDADD = $(LIBGLOBAL_LDA)
-#bin_PROGRAMS += monmaptool crushtool osdmaptool
-#ceph-filestore-dump
-#set(ceph_filestore_dump_srcs 
-#	tools/ceph-filestore-dump.cc 
-#	objclass/class_debug.cc 
-#	objclass/class_api.cc
-#	perfglue/disabled_heap_profiler.cc
-#)
-
-#add_executable(ceph-filestore-dump ${ceph_filestore_dump_srcs})
-
-#target_link_libraries(ceph-filestore-dump osd os libglobal boost_program_options)
-
-#if(${LINUX})
-#target_link_libraries(ceph-filestore-dump dl)
-#endif(${LINUX})
 
 message( STATUS "src cmake is here" )
-

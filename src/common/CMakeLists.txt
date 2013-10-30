@@ -147,6 +147,8 @@ include_directories("..")
 
 add_library (common ${libcommon_files})
 
+set_source_files_properties(${CMAKE_SOURCE_DIR}/src/ceph_ver.c ${CMAKE_SOURCE_DIR}/src/common/version.cc ${CMAKE_SOURCE_DIR}/src/test/encoding/ceph_dencoder.cc APPEND PROPERTY OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/src/ceph_ver.h)
+
 add_dependencies(common check_version)
 
 if (${WITH_PROFILER})
@@ -156,6 +158,8 @@ endif(${WITH_PROFILER})
 target_link_libraries(common ${CRYPTO_LIBS} rt ${Boost_LIBRARIES}) 
 
 message( STATUS "libcommon is here" )
+
+
 
 
 
