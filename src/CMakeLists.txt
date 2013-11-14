@@ -10,16 +10,50 @@ set(EXTRALIBS uuid rt profiler)
 
 set(CRYPTO_LIBS cryptopp)
 
-if (${HAVE_ATOMIC_OPS})
+if(${HAVE_ATOMIC_OPS})
   set(EXTRALIBS
 	atomic_ops
 	${EXTRALIBS})
 endif(${HAVE_ATOMIC_OPS})
 
+set(bindir /usr/local/bin)
+set(sbindir /usr/local/sbin)
+set(libdir /usr/local/lib)
+set(sysconfdir /usr/local/etc)
+set(pkgdatadir /usr/share)
+#double check with someone that pkgdatadir is correct
+set(prefix /usr/local)
+set(GCOV_PREFIX_STRIP 4)
+
+configure_file(
+${CMAKE_SOURCE_DIR}/src/init-ceph.in.cmake
+${CMAKE_SOURCE_DIR}/src/init-ceph
+@ONLY
+)
+
+configure_file(
+${CMAKE_SOURCE_DIR}/src/mkcephfs.in.cmake
+${CMAKE_SOURCE_DIR}/src/mkcephfs
+@ONLY
+)
+
+configure_file(
+${CMAKE_SOURCE_DIR}/src/ceph-coverage.in.cmake
+${CMAKE_SOURCE_DIR}/src/ceph-coverage
+@ONLY
+)
+
+configure_file(
+${CMAKE_SOURCE_DIR}/src/ceph-debugpack.in.cmake
+${CMAKE_SOURCE_DIR}/src/ceph-debpack
+@ONLY
+)
+
 add_subdirectory(common)
 add_subdirectory(osdc)
 add_subdirectory(cls/lock)
 add_subdirectory(librados)
+add_subdirectory(rgw)
 add_subdirectory(mon)
 add_subdirectory(os)
 add_subdirectory(global)
@@ -71,22 +105,6 @@ target_link_libraries(ceph-mds mds osdc ${CMAKE_DL_LIBS} global ${TCMALLOC_LIBS}
 
 # admin tools
 
-#ceph-conf
-set(ceph_conf_srcs
-	ceph_conf.cc
-)
-
-add_executable(ceph-conf ${ceph_conf_srcs})
-target_link_libraries(ceph-conf global)
-
-#ceph-authtool
-set(ceph_authtool_srcs
-	ceph_authtool.cc
-)
-
-add_executable(ceph-authtool ${ceph_authtool_srcs})
-target_link_libraries(ceph-authtool global)
-
 #cephfs
 set(cephfs_srcs 
 	cephfs.cc
@@ -116,6 +134,28 @@ set(rados_srcs
 add_executable(rados ${rados_srcs})
 target_link_libraries(rados cls_lock librados global)
 
+#radosgw
+if(WITH_RADOSGW)
+set(radosgw_srcs
+	rgw/rgw_resolve.cc 
+        rgw/rgw_rest.cc 
+        rgw/rgw_rest_swift.cc 
+        rgw/rgw_rest_s3.cc 
+        rgw/rgw_rest_usage.cc 
+        rgw/rgw_rest_user.cc 
+        rgw/rgw_rest_bucket.cc 
+        rgw/rgw_http_client.cc 
+        rgw/rgw_swift.cc 
+	rgw/rgw_swift_auth.cc 
+	rgw/rgw_main.cc
+)
+
+add_executable(radosgw ${radosgw_srcs})
+
+target_link_libraries(radosgw librgw_a librados libcls_rgw_client libcls_lock_client libcls_refcount_client curl expat global fcgi resolv)
+
+endif(WITH_RADOSGW)
+
 #librados_config_srcs
 set(librados_config_srcs
 	librados-config.cc 
@@ -124,13 +164,46 @@ set(librados_config_srcs
 add_executable(librados-config ${librados_config_srcs})
 target_link_libraries(librados-config librados global)
 
-#ceph_osdmap_tool
-set(ceph_osdomap_tool_srcs 
-	tools/ceph-osdomap-tool.cc 
-	os/LevelDBStore.cc
+
+#ceph-conf
+set(ceph_conf_srcs
+	ceph_conf.cc
 )
 
-add_executable(ceph-osdomap-tool ${ceph_osdomap_tool_srcs})
-target_link_libraries(ceph-osdomap-tool os global -lboost_program_options)
+add_executable(ceph-conf ${ceph_conf_srcs})
+target_link_libraries(ceph-conf global)
+
+#monmaptool
+set(monmaptool_srcs
+	monmaptool.cc
+)
+
+add_executable(monmaptool ${monmaptool_srcs})
+target_link_libraries(monmaptool global)
+
+#crushtool
+set(crushtool_srcs
+	crushtool.cc
+)
+
+add_executable(crushtool ${crushtool_srcs})
+target_link_libraries(crushtool global)
+
+#osdmaptool
+set(osdomaptool_srcs 
+osdmaptool.cc
+)
+
+add_executable(osdomaptool  ${osdomaptool_srcs})
+target_link_libraries(osdomaptool global)
+
+#ceph-authtool
+set(ceph_authtool_srcs
+	ceph_authtool.cc
+)
+
+add_executable(ceph-authtool ${ceph_authtool_srcs})
+target_link_libraries(ceph-authtool global)
+
 
 message( STATUS "src cmake is here" )
