@@ -27,27 +27,34 @@ set(GCOV_PREFIX_STRIP 4)
 
 configure_file(
 ${CMAKE_SOURCE_DIR}/src/init-ceph.in.cmake
-${CMAKE_SOURCE_DIR}/src/init-ceph
+${CMAKE_BINARY_DIR}/init-ceph
 @ONLY
 )
 
+#add_custom_target(init-ceph SOURCES init-ceph)
+
 configure_file(
 ${CMAKE_SOURCE_DIR}/src/mkcephfs.in.cmake
-${CMAKE_SOURCE_DIR}/src/mkcephfs
+${CMAKE_BINARY_DIR}/mkcephfs
 @ONLY
 )
 
 configure_file(
 ${CMAKE_SOURCE_DIR}/src/ceph-coverage.in.cmake
-${CMAKE_SOURCE_DIR}/src/ceph-coverage
+${CMAKE_BINARY_DIR}/ceph-coverage
 @ONLY
 )
 
 configure_file(
 ${CMAKE_SOURCE_DIR}/src/ceph-debugpack.in.cmake
-${CMAKE_SOURCE_DIR}/src/ceph-debpack
+${CMAKE_BINARY_DIR}/ceph-debugpack
 @ONLY
 )
+
+add_custom_target(shell_scripts ALL
+COMMAND chmod 755 ${CMAKE_BINARY_DIR}/mkcephfs ${CMAKE_BINARY_DIR}/init-ceph ${CMAKE_BINARY_DIR}/ceph-debugpack ${CMAKE_BINARY_DIR}/ceph-coverage
+DEPENDS ${CMAKE_BINARY_DIR}/mkcephfs ${CMAKE_BINARY_DIR}/init-ceph
+COMMENT "Shell Scripts have permission")
 
 add_subdirectory(common)
 add_subdirectory(osdc)
@@ -134,8 +141,8 @@ set(rados_srcs
 add_executable(rados ${rados_srcs})
 target_link_libraries(rados cls_lock librados global)
 
-#radosgw
-if(WITH_RADOSGW)
+#radosgw worry about option logic at a different time
+if(${WITH_RADOSGW})
 set(radosgw_srcs
 	rgw/rgw_resolve.cc 
         rgw/rgw_rest.cc 
@@ -153,8 +160,8 @@ set(radosgw_srcs
 add_executable(radosgw ${radosgw_srcs})
 
 target_link_libraries(radosgw librgw_a librados libcls_rgw_client libcls_lock_client libcls_refcount_client curl expat global fcgi resolv)
-
-endif(WITH_RADOSGW)
+install(TARGETS radosgw DESTINATION bin)
+endif(${WITH_RADOSGW})
 
 #librados_config_srcs
 set(librados_config_srcs
@@ -194,8 +201,8 @@ set(osdomaptool_srcs
 osdmaptool.cc
 )
 
-add_executable(osdomaptool  ${osdomaptool_srcs})
-target_link_libraries(osdomaptool global)
+add_executable(osdmaptool  ${osdomaptool_srcs})
+target_link_libraries(osdmaptool global)
 
 #ceph-authtool
 set(ceph_authtool_srcs
@@ -205,5 +212,30 @@ set(ceph_authtool_srcs
 add_executable(ceph-authtool ${ceph_authtool_srcs})
 target_link_libraries(ceph-authtool global)
 
+#ceph-fuse
+if(WITH_FUSE)
+set(ceph_fuse_srcs
+ceph_fuse.cc
+client/fuse_ll.cc
+)
+
+add_executable(ceph-fuse ${ceph_fuse_srcs})
+target_link_libraries(ceph-fuse fuse client global)
+endif(WITH_FUSE)
+
+#ceph_mon_store_converter
+set(ceph_mon_store_converter_srcs
+mon_store_converter.cc
+mon/MonitorStore.cc
+)
+
+add_executable(ceph_mon_store_converter ${ceph_mon_store_converter_srcs})
+target_link_libraries(ceph_mon_store_converter os global)
+
+
+# add the install targets
+install(TARGETS ceph-mon ceph-osd ceph-mds cephfs ceph-syn rados librados-config ceph-conf monmaptool osdmaptool crushtool ceph-authtool ceph_mon_store_converter DESTINATION bin)
+
+install(FILES ${CMAKE_BINARY_DIR}/init-ceph ${CMAKE_BINARY_DIR}/mkcephfs ${CMAKE_SOURCE_DIR}/doc/start/ceph.conf ${CMAKE_SOURCE_DIR}/src/vstart.sh ${CMAKE_SOURCE_DIR}/src/ceph_common.sh DESTINATION bin)
 
 message( STATUS "src cmake is here" )
