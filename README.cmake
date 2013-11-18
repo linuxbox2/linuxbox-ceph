@@ -16,6 +16,9 @@ Once the Configuring is done and the Build files have been written to the curren
 build directory run:
 $ make
 
+To build only certain targets type in:
+$ make [target name]
+
 To install, once all the targets are built run:
 $ make install
  
@@ -47,4 +50,7 @@ mkcephfs
 mon_store_converter
 ceph-fuse
 
-Future work will be done to build more targets and include tests. CMake allows ceph to build onto many platforms such as Windows though the shell scripts need bash/unix to run.
+Future work will be done to build more targets, check for libraries and headers more thoroughly
+and include tests to make this build become more robust. CMake allows ceph to build onto many 
+platforms such as Windows though the shell scripts need bash/unix to run.
+
