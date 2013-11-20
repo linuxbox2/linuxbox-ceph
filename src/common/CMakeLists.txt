@@ -87,7 +87,8 @@ set (libcommon_files
 	../common/RefCountedObj.cc 
 	../msg/Messenger.cc 
 	../msg/Pipe.cc 
-	../msg/SimpleMessenger.cc 
+	../msg/SimpleMessenger.cc
+	../msg/XioMessenger.cc
 	../msg/msg_types.cc 
 	../os/hobject.cc 
 	../osd/OSDMap.cc 
