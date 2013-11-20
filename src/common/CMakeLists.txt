@@ -51,6 +51,18 @@ add_custom_target(ceph_ver
 DEPENDS check_version ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
 )
 
+if (HAVE_XIO)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -I${Xio_INCLUDE_DIR}")
+
+set(xio_messenger_cc
+  ../msg/XioConnection.cc
+  ../msg/XioMsg.cc
+  ../msg/XioMessenger.cc
+  )
+
+endif(HAVE_XIO)
+
 # this list ommits the ceph_ver.c file
 set (libcommon_files
 	${CMAKE_SOURCE_DIR}/src/ceph_ver.h
@@ -102,7 +114,8 @@ set (libcommon_files
 	RefCountedObj.cc 
 	../msg/Messenger.cc 
 	../msg/Pipe.cc 
-	../msg/SimpleMessenger.cc 
+	../msg/SimpleMessenger.cc
+	${xio_messenger_cc}
 	../msg/msg_types.cc 
 	hobject.cc 
 	../osd/OSDMap.cc 

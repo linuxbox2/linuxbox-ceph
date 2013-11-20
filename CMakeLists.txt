@@ -5,6 +5,17 @@ set(VERSION "0.71")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
+include_directories(  
+  ${PROJECT_BINARY_DIR}/src/include
+  ${OFED_PREFIX}/include
+  ${LEVELDB_PREFIX}/include
+)
+
+link_directories(
+  ${OFED_PREFIX}/lib
+  ${LEVELDB_PREFIX}/lib
+)
+
 #Check Includes
 
 include(CheckIncludeFiles)
@@ -142,6 +153,12 @@ find_package(NSS)
 		endif(NOT CRYPTOPP_FOUND)
 	endif(NSS_FOUND)
 endif(CRYPTOPP_FOUND)
+
+option(WITH_XIO "Enable XIO messaging" ON)
+if(${WITH_XIO})
+find_package(xio)
+set(HAVE_XIO ${Xio_FOUND})
+endif(${WITH_XIO})
 
 #option for RGW
 option(WITH_RADOSGW "Rados Gateway is enabled" ON)

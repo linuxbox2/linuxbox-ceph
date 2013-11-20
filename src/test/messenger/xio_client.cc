@@ -21,7 +21,7 @@ using namespace std;
 
 #include "common/config.h"
 #include "msg/msg_types.h"
-#include "msg/Messenger.h"
+#include "msg/XioMessenger.h"
 #include "messages/MPing.h"
 #include "common/Timer.h"
 #include "common/ceph_argparse.h"
@@ -30,7 +30,7 @@ using namespace std;
 #include "address_helper.h"
 #include "simple_dispatcher.h"
 
-#define dout_subsys ceph_subsys_simple_client
+#define dout_subsys ceph_subsys_xio_client
 
 int main(int argc, const char **argv)
 {
@@ -41,16 +41,22 @@ int main(int argc, const char **argv)
 	ConnectionRef conn;
 	int r = 0;
 
+	struct timespec ts = {
+		.tv_sec = 1,
+		.tv_nsec = 0
+	};
+
 	argv_to_vec(argc, argv, args);
 	env_to_vec(args);
 
-	global_init(NULL, args, CEPH_ENTITY_TYPE_ANY, CODE_ENVIRONMENT_UTILITY,
-		    0);
+	global_init(NULL, args,
+		    CEPH_ENTITY_TYPE_ANY, CODE_ENVIRONMENT_UTILITY, 0);
 
-	messenger = Messenger::create(g_ceph_context,
-				      entity_name_t::GENERIC(),
-				      "client",
-				      getpid());
+	messenger = new XioMessenger(g_ceph_context,
+				     entity_name_t::GENERIC(),
+				     "xio_client",
+				     0 /* nonce */,
+				     0 /* portals */);
 
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 
@@ -71,7 +77,7 @@ int main(int argc, const char **argv)
 	// do stuff
 	while (conn->is_connected()) {
 	  messenger->send_message(new MPing(), conn);
-	  sleep(1);
+	  //nanosleep(&ts, NULL);
 	}
 
 out:

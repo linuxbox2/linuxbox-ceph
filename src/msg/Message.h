@@ -19,6 +19,7 @@
 #include <ostream>
 
 #include <boost/intrusive_ptr.hpp>
+#include <boost/intrusive/list.hpp>
 // Because intusive_ptr clobbers our assert...
 #include "include/assert.h"
 
@@ -181,6 +182,21 @@ protected:
 
   ConnectionRef connection;
 
+public:
+  class CompletionHook : public Context {
+  protected:
+    Message *m;
+    friend class Message;
+  public:
+    CompletionHook(Message *_m) : m(_m) {}
+    virtual void set_message(Message *_m) { m = _m; }
+    virtual void finish(int r) = 0;
+    virtual ~CompletionHook() {}
+  };
+
+protected:
+  CompletionHook* completion_hook; // owned by Messenger
+
   // release our size in bytes back to this throttler when our payload
   // is adjusted or when we are destroyed.
   Throttle *byte_throttler;
@@ -200,6 +216,7 @@ protected:
 public:
   Message()
     : connection(NULL),
+      completion_hook(NULL),
       byte_throttler(NULL),
       msg_throttler(NULL),
       dispatch_throttle_size(0) {
@@ -208,6 +225,7 @@ public:
   };
   Message(int t, int version=1, int compat_version=0)
     : connection(NULL),
+      completion_hook(NULL),
       byte_throttler(NULL),
       msg_throttler(NULL),
       dispatch_throttle_size(0) {
@@ -225,23 +243,29 @@ public:
   }
 
 protected:
-  virtual ~Message() { 
+  virtual ~Message() {
+    cout << __func__ << " called" << std::endl;
     assert(nref.read() == 0);
     if (byte_throttler)
       byte_throttler->put(payload.length() + middle.length() + data.length());
     if (msg_throttler)
       msg_throttler->put();
+    /* call completion hooks (if any) */
+    if (completion_hook)
+      completion_hook->complete(0);
   }
 public:
-  const ConnectionRef& get_connection() { return connection; }
+  inline const ConnectionRef& get_connection() { return connection; }
   void set_connection(const ConnectionRef& c) {
     connection = c;
   }
+  CompletionHook* get_completion_hook() { return completion_hook; }
+  void set_completion_hook(CompletionHook *hook) { completion_hook = hook; }
   void set_byte_throttler(Throttle *t) { byte_throttler = t; }
   Throttle *get_byte_throttler() { return byte_throttler; }
   void set_message_throttler(Throttle *t) { msg_throttler = t; }
   Throttle *get_message_throttler() { return msg_throttler; }
- 
+
   void set_dispatch_throttle_size(uint64_t s) { dispatch_throttle_size = s; }
   uint64_t get_dispatch_throttle_size() { return dispatch_throttle_size; }
 
