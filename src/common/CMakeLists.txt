@@ -1,3 +1,4 @@
+
 set (crush_files 
 	../crush/builder.c 
 	../crush/mapper.c 
@@ -156,9 +157,6 @@ if (${WITH_PROFILER})
 endif(${WITH_PROFILER})
 
 target_link_libraries(common ${CRYPTO_LIBS} rt ${Boost_LIBRARIES}) 
-
-message( STATUS "libcommon is here" )
-
 
 
 

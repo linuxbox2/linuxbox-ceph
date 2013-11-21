@@ -221,6 +221,7 @@ client/fuse_ll.cc
 
 add_executable(ceph-fuse ${ceph_fuse_srcs})
 target_link_libraries(ceph-fuse fuse client global)
+set(ceph_fuse_bin "ceph-fuse")
 endif(WITH_FUSE)
 
 #ceph_mon_store_converter
@@ -234,8 +235,27 @@ target_link_libraries(ceph_mon_store_converter os global)
 
 
 # add the install targets
-install(TARGETS ceph-mon ceph-osd ceph-mds cephfs ceph-syn rados librados-config ceph-conf monmaptool osdmaptool crushtool ceph-authtool ceph_mon_store_converter DESTINATION bin)
+install(TARGETS
+  ceph-mon
+  ceph-osd
+  ceph-mds
+  cephfs
+  ${ceph_fuse_bin}
+  ceph-syn
+  rados
+  librados-config
+  ceph-conf
+  monmaptool
+  osdmaptool
+  crushtool
+  ceph-authtool
+  ceph_mon_store_converter
+  DESTINATION bin)
 
-install(FILES ${CMAKE_BINARY_DIR}/init-ceph ${CMAKE_BINARY_DIR}/mkcephfs ${CMAKE_SOURCE_DIR}/doc/start/ceph.conf ${CMAKE_SOURCE_DIR}/src/vstart.sh ${CMAKE_SOURCE_DIR}/src/ceph_common.sh DESTINATION bin)
-
-message( STATUS "src cmake is here" )
+install(FILES
+  ${CMAKE_BINARY_DIR}/init-ceph
+  ${CMAKE_BINARY_DIR}/mkcephfs
+  ${CMAKE_SOURCE_DIR}/doc/start/ceph.conf
+  ${CMAKE_SOURCE_DIR}/src/vstart.sh
+  ${CMAKE_SOURCE_DIR}/src/ceph_common.sh
+  DESTINATION bin)

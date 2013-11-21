@@ -55,7 +55,4 @@ add_library(libcls_refcount_client ${libcls_refcount_client_a_srcs})
 
 include_directories("..")
 
-message( STATUS "rgw is here" )
 endif(${WITH_RADOSGW})
-
-

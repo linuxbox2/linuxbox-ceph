@@ -1,4 +1,3 @@
-message( STATUS "libos is here" )
 
 set(libos_srcs
 	../os/FileJournal.cc 

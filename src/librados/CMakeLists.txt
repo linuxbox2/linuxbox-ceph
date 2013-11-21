@@ -1,4 +1,3 @@
-message( STATUS "librados is here" )
 
 set(librados_srcs
 	../librados/librados.cc 

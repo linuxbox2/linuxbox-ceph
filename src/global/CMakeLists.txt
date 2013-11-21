@@ -1,4 +1,3 @@
-message( STATUS "libglobal is here" )
 
 set(libglobal_srcs
 	../global/global_context.cc 

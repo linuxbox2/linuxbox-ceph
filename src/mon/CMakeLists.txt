@@ -1,4 +1,3 @@
-message( STATUS "libmon is here" )
 
 set(lib_mon_srcs
 	../auth/cephx/CephxKeyServer.cc 
@@ -29,6 +28,3 @@ set(lib_mon_srcs
 include_directories("..")
 
 add_library(mon ${lib_mon_srcs})
-
-
-

@@ -1,4 +1,3 @@
-message( STATUS "cls_lock is here" )
 
 set(cls_lock_files
 	../lock/cls_lock_client.cc  

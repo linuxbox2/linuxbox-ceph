@@ -1,3 +1,4 @@
+
 set(mds_srcs
 	../mds/Anchor.cc 
 	../mds/Capability.cc 
@@ -34,5 +35,3 @@ set(mds_srcs
 include_directories("..")
 
 add_library(mds ${mds_srcs})
-
-message( STATUS "libmds is here" )
