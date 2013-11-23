@@ -126,6 +126,12 @@ find_package(NSS)
 	endif(NSS_FOUND)
 endif(CRYPTOPP_FOUND)
 
+option(WITH_XIO "Use TCMalloc as Allocator" ON)
+if(${WITH_XIO})
+find_package(xio)
+set(HAVE_XIO ${Xio_FOUND})
+endif(${WITH_XIO})
+
 #option for RGW
 option(WITH_RADOSGW "Rados Gateway is enabled" ON)
 
