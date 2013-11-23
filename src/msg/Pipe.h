@@ -101,7 +101,7 @@ class DispatchQueue;
     friend class DelayedDelivery;
 
   public:
-    Pipe(SimpleMessenger *r, int st, Connection *con);
+    Pipe(SimpleMessenger *r, int st, PipeConnection *con);
     ~Pipe();
 
     SimpleMessenger *msgr;
@@ -150,7 +150,7 @@ class DispatchQueue;
 
   protected:
     friend class SimpleMessenger;
-    ConnectionRef connection_state;
+    PipeConnectionRef connection_state;
 
     utime_t backoff;         // backoff time
 
