@@ -16,6 +16,8 @@
 #ifndef SIMPLE_POLICY_MESSENGER_H
 #define SIMPLE_POLICY_MESSENGER_H
 
+#include "Messenger.h"
+
 class SimplePolicyMessenger : public Messenger
 {
 private:

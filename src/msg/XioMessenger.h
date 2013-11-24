@@ -16,10 +16,10 @@
 #ifndef XIO_MESSENGER_H
 #define XIO_MESSENGER_H
 
+#include "SimplePolicyMessenger.h"
 extern "C" {
 #include "libxio.h"
 }
-#include "msg/SimplePolicyMessenger.h"
 #include "XioConnection.h"
 
 
@@ -29,9 +29,7 @@ private:
   struct xio_context *ctx;
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
-	       string mname, uint64_t nonce)
-    : SimplePolicyMessenger(cct, name, mname, nonce)
-    { }
+	       string mname, uint64_t nonce);
 
   virtual ~XioMessenger()
     { }
