@@ -25,3 +25,19 @@ set(simple_client_srcs
 add_executable(simple_client ${simple_client_srcs})
 
 target_link_libraries(simple_client os global ${TCMALLOC_LIBS})
+
+if (HAVE_XIO)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -lboost_regex -I${Xio_INCLUDE_DIR}")
+
+set(xio_server_srcs
+	xio_server.cc
+	address_helper.cc
+	simple_dispatcher.cc
+	${TCMALLOC_srcs}
+)
+add_executable(xio_server ${xio_server_srcs})
+target_link_libraries(xio_server os global ${TCMALLOC_LIBS}
+  ${Xio_LIBRARY} ibverbs rdmacm pthread rt)
+
+endif(HAVE_XIO)

@@ -134,6 +134,7 @@ public:
     assert(!started && !did_bind);
     cluster_protocol = p;
   }
+
   /**
    * Set a policy which is applied to all peers who do not have a type-specific
    * Policy.
@@ -179,6 +180,7 @@ public:
       default_policy.throttler_messages = msg_throttle;
     }
   }
+
   /**
    * Bind the SimpleMessenger to a specific address. If bind_addr
    * is not completely filled in the system will use the
@@ -661,4 +663,4 @@ public:
    */
 } ;
 
-#endif
+#endif /* CEPH_SIMPLEMESSENGER_H */

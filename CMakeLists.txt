@@ -126,7 +126,7 @@ find_package(NSS)
 	endif(NSS_FOUND)
 endif(CRYPTOPP_FOUND)
 
-option(WITH_XIO "Use TCMalloc as Allocator" ON)
+option(WITH_XIO "Enable XIO messaging" ON)
 if(${WITH_XIO})
 find_package(xio)
 set(HAVE_XIO ${Xio_FOUND})
