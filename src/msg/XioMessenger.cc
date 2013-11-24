@@ -14,7 +14,7 @@
  */
 
 #include "XioMessenger.h"
-
+#include "common/Mutex.h"
 
 extern "C" {
 
@@ -57,12 +57,34 @@ extern "C" {
 } /* extern "C" */
 
 atomic_t initialized;
+Mutex mtx("XioMessenger Package Lock");
+void *ev_loop;
+
+atomic_t XioMessenger::nInstances;
 
 XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 			   string mname, uint64_t nonce)
   : SimplePolicyMessenger(cct, name, mname, nonce)
-{ 
-}
+{
+  /* package init */
+  if (! initialized.read()) {
+
+    mtx.Lock();
+    if (! initialized.read()) {
+
+      xio_init();
+      ev_loop = xio_ev_loop_init();
+
+      /* mark initialized */
+      initialized.set(1);
+    }
+    mtx.Unlock();
+  }
+
+  /* update class instance count */
+  nInstances.add(1);
+
+} /* ctor */
 
 
 

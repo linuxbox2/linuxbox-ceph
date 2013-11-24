@@ -21,11 +21,12 @@ extern "C" {
 #include "libxio.h"
 }
 #include "XioConnection.h"
-
+#include "include/atomic.h"
 
 class XioMessenger : public SimplePolicyMessenger
 {
 private:
+  static atomic_t nInstances;
   struct xio_context *ctx;
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
