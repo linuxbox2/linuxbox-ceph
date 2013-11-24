@@ -26,6 +26,15 @@ COMMAND ${CMAKE_SOURCE_DIR}/src/make_version ${CMAKE_SOURCE_DIR}/src/.git_versio
 DEPENDS ${CMAKE_SOURCE_DIR}/src/make_version ${CMAKE_SOURCE_DIR}/src/.git_version
 )
 
+if (HAVE_XIO)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -I${Xio_INCLUDE_DIR}")
+
+set(xio_messenger_cc ../msg/XioMessenger.cc)
+
+endif(HAVE_XIO)
+
+
 # this list ommits the ceph_ver.c file
 set (libcommon_files
 	${CMAKE_SOURCE_DIR}/src/ceph_ver.h
@@ -88,7 +97,7 @@ set (libcommon_files
 	../msg/Messenger.cc 
 	../msg/Pipe.cc 
 	../msg/SimpleMessenger.cc
-	../msg/XioMessenger.cc
+	${xio_messenger_cc}
 	../msg/msg_types.cc 
 	../os/hobject.cc 
 	../osd/OSDMap.cc 
