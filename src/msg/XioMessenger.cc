@@ -13,5 +13,57 @@
  *
  */
 
+#include "XioMessenger.h"
+
+
+extern "C" {
+
+  static int on_session_event(struct xio_session *session,
+			      struct xio_session_event_data *event_data,
+			      void *cb_user_context)
+  {
+    printf("session event: %s. reason: %s\n",
+	   xio_session_event_str(event_data->event),
+	   xio_strerror(event_data->reason));
+
+    xio_session_close(session);
+
+    return 0;
+}
+
+  static int on_new_session(struct xio_session *session,
+			    struct xio_new_session_req *req,
+			    void *cb_user_context)
+  {
+ 
+    printf("new session");
+
+    xio_accept(session, NULL, 0, NULL, 0);
+
+    return 0;
+  }
+  
+  static int on_request(struct xio_session *session,
+			struct xio_msg *req,
+			int more_in_batch,
+			void *cb_user_context)
+  {
+
+    printf("new request");
+
+    return 0;
+  }  
+
+} /* extern "C" */
+
+atomic_t initialized;
+
+XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
+			   string mname, uint64_t nonce)
+  : SimplePolicyMessenger(cct, name, mname, nonce)
+{ 
+}
+
+
 
 
