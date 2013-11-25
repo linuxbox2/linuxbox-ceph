@@ -1,0 +1,34 @@
+set(mds_srcs
+	Anchor.cc 
+	AnchorClient.cc
+	AnchorServer.cc 
+	Capability.cc 
+	CDentry.cc 
+	CDir.cc 
+	CInode.cc 
+	Dumper.cc 
+	flock.cc
+	InoTable.cc 
+	journal.cc 
+	Locker.cc 
+	locks.c 
+	LogEvent.cc 
+	MDBalancer.cc 
+	MDCache.cc 
+	MDLog.cc
+	MDS.cc 
+	MDSTable.cc
+	MDSTableClient.cc 
+	MDSTableServer.cc 
+	Migrator.cc
+	Mutation.cc 
+	Resetter.cc 
+	Server.cc 
+	SessionMap.cc 
+	SnapRealm.cc 
+	SnapServer.cc 
+	snap.cc 
+	${CMAKE_SOURCE_DIR}/src/osdc/Journaler.cc
+)
+
+add_library(mds ${mds_srcs})

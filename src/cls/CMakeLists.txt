@@ -1,0 +1,7 @@
+add_subdirectory(lock)
+add_subdirectory(log)
+add_subdirectory(refcount)
+add_subdirectory(replica_log)
+add_subdirectory(rgw)
+add_subdirectory(statelog)
+add_subdirectory(version)
