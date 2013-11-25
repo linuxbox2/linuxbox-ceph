@@ -100,7 +100,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
   }
 
   /* update class instance count */
-  nInstances.add(1);
+  nInstances.inc();
 
 } /* ctor */
 
@@ -149,6 +149,13 @@ void XioMessenger::wait()
   }
 } /* wait */
 
+XioMessenger::~XioMessenger()
+{
+  if (nInstances.dec() == 0) {
+    xio_ctx_close(ctx);
+    xio_ev_loop_destroy(&ev_loop);
+  }
+} /* dtor */
 
 
 

@@ -37,8 +37,7 @@ public:
   XioMessenger(CephContext *cct, entity_name_t name,
 	       string mname, uint64_t nonce);
 
-  virtual ~XioMessenger()
-    { }
+  virtual ~XioMessenger();
 
   virtual void set_addr_unknowns(entity_addr_t &addr) 
     { } /* XXX applicable? */
