@@ -15,6 +15,7 @@
 
 #include <arpa/inet.h>
 #include <boost/lexical_cast.hpp>
+#include <set>
 
 #include "XioMessenger.h"
 #include "common/Mutex.h"
@@ -72,6 +73,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
   : SimplePolicyMessenger(cct, name, mname, nonce),
     ctx(0),
     server(0),
+    conns_lock("XioMessenger::conns_lock"),
     bound(false)
 {
   /* package init */
@@ -148,6 +150,15 @@ void XioMessenger::wait()
     xio_unbind(server); /* XXX move? */
   }
 } /* wait */
+
+ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
+{
+  XioConnection::EntitySet::iterator conn_iter = conns_entity_map.find(dest, XioEntityComp());
+  if (conn_iter != conns_entity_map.end())
+    return static_cast<Connection*>(&(*conn_iter));
+  else
+    return NULL;
+}
 
 XioMessenger::~XioMessenger()
 {

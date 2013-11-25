@@ -20,16 +20,40 @@ extern "C" {
 #include "libxio.h"
 }
 #include "Connection.h"
+#include <boost/intrusive/avl_set.hpp>
 
 
 class XioConnection : public Connection
 {
 private:
+  entity_inst_t peer;
   struct xio_session *session;
+  boost::intrusive::avl_set_member_hook<> conns_entity_map_hook;
+
+  typedef boost::intrusive::member_hook<XioConnection,
+					boost::intrusive::avl_set_member_hook<>,
+					&XioConnection::conns_entity_map_hook> EntityOrder;
+  typedef boost::intrusive::avl_set< XioConnection, EntityOrder> EntitySet;
+
+  friend class XioMessenger;
+  friend class boost::intrusive_ptr<XioConnection>;
+
 public:
   bool is_connected() { return false; }
+  const entity_inst_t& get_peer() const { return peer; }
 
 };
 
+// conns_entity_map comparison functor
+struct XioEntityComp
+{
+  bool operator()(const entity_inst_t &peer, const XioConnection &c) const
+    {  return peer < c.get_peer(); }
+
+  bool operator()(const XioConnection &c, const entity_inst_t &peer) const
+    {  return c.get_peer() < peer;  }
+};
+
+typedef boost::intrusive_ptr<XioConnection> XioConnectionRef;
 
 #endif /* XIO_CONNECTION_H */

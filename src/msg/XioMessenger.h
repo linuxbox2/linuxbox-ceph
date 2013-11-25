@@ -31,6 +31,8 @@ private:
 
   struct xio_context *ctx;
   struct xio_server *server;
+  Mutex conns_lock;
+  XioConnection::EntitySet conns_entity_map;
   bool bound;
 
 public:
@@ -71,8 +73,7 @@ public:
   virtual int lazy_send_message(Message *m, Connection *con)
     { return EINVAL; }
 
-  virtual ConnectionRef get_connection(const entity_inst_t& dest)
-    { return NULL; }
+  virtual ConnectionRef get_connection(const entity_inst_t& dest);
 
   virtual ConnectionRef get_loopback_connection()
     { return NULL; }
