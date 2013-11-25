@@ -56,8 +56,7 @@ public:
 
   virtual int start() { started = true; return 0; }
 
-  virtual void wait()
-    { }
+  virtual void wait();
 
   virtual int shutdown() { started = false; return 0; }
 

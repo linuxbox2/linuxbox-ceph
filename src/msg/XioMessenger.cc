@@ -134,6 +134,14 @@ int XioMessenger::bind(const entity_addr_t& addr)
   return 0;
 } /* bind */
 
+void XioMessenger::wait()
+{
+  if (bound) {
+    xio_ev_loop_run(ev_loop);
+    xio_unbind(server); /* XXX move? */
+  }
+} /* wait */
+
 
 
 
