@@ -14,6 +14,7 @@
  */
 
 #include <arpa/inet.h>
+#include <boost/lexical_cast.hpp>
 
 #include "XioMessenger.h"
 #include "common/Mutex.h"
@@ -113,7 +114,8 @@ int XioMessenger::bind(const entity_addr_t& addr)
   
   switch(addr.addr.ss_family) {
   case AF_INET:
-    host = inet_ntop(AF_INET, &addr.addr4.sin_addr, addr_buf, INET_ADDRSTRLEN);
+    host = inet_ntop(AF_INET, &addr.addr4.sin_addr, addr_buf,
+		     INET_ADDRSTRLEN);
     break;
   case AF_INET6:
     host = inet_ntop(AF_INET6, &addr.addr6.sin6_addr, addr_buf,
@@ -123,13 +125,18 @@ int XioMessenger::bind(const entity_addr_t& addr)
     abort();
     break;
   };
-  
+
+  /* The following can only succeed if the host is rdma-capable */
   string xio_url = "rdma://";
   xio_url += host;
   xio_url += ":";
-  xio_url += addr.get_port();
+  xio_url += boost::lexical_cast<std::string>(addr.get_port());
 
   server = xio_bind(ctx, &xio_msgr_ops, xio_url.c_str(), NULL, 0, this);
+  if (!server)
+    return EINVAL;
+  else
+    bound = true;
 
   return 0;
 } /* bind */
