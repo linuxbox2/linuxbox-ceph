@@ -13,6 +13,8 @@
  *
  */
 
+#include <arpa/inet.h>
+
 #include "XioMessenger.h"
 #include "common/Mutex.h"
 
@@ -56,15 +58,20 @@ extern "C" {
 
 } /* extern "C" */
 
-atomic_t initialized;
 Mutex mtx("XioMessenger Package Lock");
-void *ev_loop;
+atomic_t initialized;
 
 atomic_t XioMessenger::nInstances;
+void* XioMessenger::ev_loop;
+
+static struct xio_session_ops xio_msgr_ops;
 
 XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 			   string mname, uint64_t nonce)
-  : SimplePolicyMessenger(cct, name, mname, nonce)
+  : SimplePolicyMessenger(cct, name, mname, nonce),
+    ctx(0),
+    server(0),
+    bound(false)
 {
   /* package init */
   if (! initialized.read()) {
@@ -73,7 +80,17 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     if (! initialized.read()) {
 
       xio_init();
+
+      /* initialize ops singleton */
+      xio_msgr_ops.on_session_event = on_session_event;
+      xio_msgr_ops.on_new_session = on_new_session;
+      xio_msgr_ops.on_msg_send_complete	= NULL;
+      xio_msgr_ops.on_msg = on_request;
+      xio_msgr_ops.on_msg_error = NULL;
+
       ev_loop = xio_ev_loop_init();
+
+      ctx = xio_ctx_open(NULL, ev_loop, 0);
 
       /* mark initialized */
       initialized.set(1);
@@ -85,6 +102,37 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
   nInstances.add(1);
 
 } /* ctor */
+
+int XioMessenger::bind(const entity_addr_t& addr)
+{
+  const char *host = NULL;
+  char addr_buf[129];
+
+  if (bound)
+    return (EINVAL);
+  
+  switch(addr.addr.ss_family) {
+  case AF_INET:
+    host = inet_ntop(AF_INET, &addr.addr4.sin_addr, addr_buf, INET_ADDRSTRLEN);
+    break;
+  case AF_INET6:
+    host = inet_ntop(AF_INET6, &addr.addr6.sin6_addr, addr_buf,
+		     INET6_ADDRSTRLEN);
+    break;
+  default:
+    abort();
+    break;
+  };
+  
+  string xio_url = "rdma://";
+  xio_url += host;
+  xio_url += ":";
+  xio_url += addr.get_port();
+
+  server = xio_bind(ctx, &xio_msgr_ops, xio_url.c_str(), NULL, 0, this);
+
+  return 0;
+} /* bind */
 
 
 

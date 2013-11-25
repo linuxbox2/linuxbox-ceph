@@ -27,7 +27,12 @@ class XioMessenger : public SimplePolicyMessenger
 {
 private:
   static atomic_t nInstances;
+  static void *ev_loop;
+
   struct xio_context *ctx;
+  struct xio_server *server;
+  bool bound;
+
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
 	       string mname, uint64_t nonce);
@@ -47,8 +52,7 @@ public:
   virtual void set_cluster_protocol(int p)
     { }
 
-  virtual int bind(const entity_addr_t& bind_addr)
-    { return EINVAL; }
+  virtual int bind(const entity_addr_t& bind_addr);
 
   virtual int start() { started = true; return 0; }
 
