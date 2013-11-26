@@ -160,7 +160,7 @@ void XioMessenger::wait()
 ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
 {
   XioConnection::EntitySet::iterator conn_iter =
-    conns_entity_map.find(dest, XioEntityComp());
+    conns_entity_map.find(dest, XioConnection::EntityComp());
   if (conn_iter != conns_entity_map.end())
     return static_cast<Connection*>(&(*conn_iter));
   else {

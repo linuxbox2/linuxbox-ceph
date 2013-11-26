@@ -23,6 +23,8 @@ extern "C" {
 #include "Messenger.h"
 #include <boost/intrusive/avl_set.hpp>
 
+namespace bi = boost::intrusive;
+
 class XioConnection : public Connection
 {
 public:
@@ -32,12 +34,27 @@ private:
   entity_inst_t peer;
   struct xio_session *session;
   struct xio_connection	*conn; /* XXX may need more of these */
-  boost::intrusive::avl_set_member_hook<> conns_entity_map_hook;
 
-  typedef boost::intrusive::member_hook<XioConnection,
-					boost::intrusive::avl_set_member_hook<>,
-					&XioConnection::conns_entity_map_hook> EntityOrder;
-  typedef boost::intrusive::avl_set< XioConnection, EntityOrder> EntitySet;
+  // conns_entity_map comparison functor
+  struct EntityComp
+  {
+    // for internal ordering
+    bool operator()(const XioConnection &lhs,  const XioConnection &rhs) const
+      {  return lhs.get_peer() < rhs.get_peer(); }
+
+    // for external search by entity_inst_t(peer)
+    bool operator()(const entity_inst_t &peer, const XioConnection &c) const
+      {  return peer < c.get_peer(); }
+
+    bool operator()(const XioConnection &c, const entity_inst_t &peer) const
+      {  return c.get_peer() < peer;  }
+  };
+
+  bi::avl_set_member_hook<> conns_entity_map_hook;
+
+  typedef bi::member_hook<XioConnection, bi::avl_set_member_hook<>,
+			  &XioConnection::conns_entity_map_hook> EntityHook;
+  typedef bi::avl_set< XioConnection, EntityHook, bi::compare<EntityComp> > EntitySet;
 
   friend class XioMessenger;
   friend class boost::intrusive_ptr<XioConnection>;
@@ -53,16 +70,6 @@ public:
   bool is_connected() { return false; }
   const entity_inst_t& get_peer() const { return peer; }
 
-};
-
-// conns_entity_map comparison functor
-struct XioEntityComp
-{
-  bool operator()(const entity_inst_t &peer, const XioConnection &c) const
-    {  return peer < c.get_peer(); }
-
-  bool operator()(const XioConnection &c, const entity_inst_t &peer) const
-    {  return c.get_peer() < peer;  }
 };
 
 typedef boost::intrusive_ptr<XioConnection> XioConnectionRef;
