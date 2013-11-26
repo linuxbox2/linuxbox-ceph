@@ -43,9 +43,11 @@ private:
   friend class boost::intrusive_ptr<XioConnection>;
 
 public:
-  XioConnection(Messenger *m, XioConnection::type _type) :
+  XioConnection(Messenger *m, XioConnection::type _type,
+		const entity_inst_t& peer) :
     Connection(m),
-    xio_conn_type(_type)
+    xio_conn_type(_type),
+    peer(peer)
     { }
 
   bool is_connected() { return false; }

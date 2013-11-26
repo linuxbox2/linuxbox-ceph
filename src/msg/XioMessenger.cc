@@ -173,7 +173,7 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
       0     /* XXX? */
     };
 
-    XioConnection *conn = new XioConnection(this, XioConnection::ACTIVE);
+    XioConnection *conn = new XioConnection(this, XioConnection::ACTIVE, dest);
 
     /* XXX I think this is required only if we don't already have
      * one--and we should be getting this from xio_bind. */
@@ -185,8 +185,6 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
       delete conn;
       return NULL;
     }
-
-    conn->peer = dest;
 
     return conn;
   }
