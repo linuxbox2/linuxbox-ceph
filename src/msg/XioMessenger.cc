@@ -186,6 +186,10 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
       return NULL;
     }
 
+    //const XioConnection &ref_conn = *conn;
+    boost::intrusive::avl_set_impl<boost::intrusive::avl_setopt<boost::intrusive::detail::member_hook_traits<XioConnection, boost::intrusive::avl_set_member_hook<>, &XioConnection::conns_entity_map_hook>, std::less<XioConnection>, long unsigned int, true> >::reference ref_conn = *conn;
+    (void) conns_entity_map.insert(ref_conn);
+
     return conn;
   }
 } /* get_connection */
