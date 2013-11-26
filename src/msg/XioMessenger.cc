@@ -106,13 +106,10 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
 } /* ctor */
 
-int XioMessenger::bind(const entity_addr_t& addr)
+static string xio_uri_from_entity(const entity_addr_t& addr)
 {
   const char *host = NULL;
   char addr_buf[129];
-
-  if (bound)
-    return (EINVAL);
   
   switch(addr.addr.ss_family) {
   case AF_INET:
@@ -129,16 +126,25 @@ int XioMessenger::bind(const entity_addr_t& addr)
   };
 
   /* The following can only succeed if the host is rdma-capable */
-  string xio_url = "rdma://";
-  xio_url += host;
-  xio_url += ":";
-  xio_url += boost::lexical_cast<std::string>(addr.get_port());
+  string xio_uri = "rdma://";
+  xio_uri += host;
+  xio_uri += ":";
+  xio_uri += boost::lexical_cast<std::string>(addr.get_port());
 
-  server = xio_bind(ctx, &xio_msgr_ops, xio_url.c_str(), NULL, 0, this);
+  return xio_uri;
+}
+
+int XioMessenger::bind(const entity_addr_t& addr)
+{
+  if (bound)
+    return (EINVAL);
+
+  string xio_uri = xio_uri_from_entity(addr);
+  server = xio_bind(ctx, &xio_msgr_ops, xio_uri.c_str(), NULL, 0, this);
   if (!server)
     return EINVAL;
   else
-    bound = true;
+    bound = true;  
 
   return 0;
 } /* bind */
@@ -157,9 +163,40 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
     conns_entity_map.find(dest, XioEntityComp());
   if (conn_iter != conns_entity_map.end())
     return static_cast<Connection*>(&(*conn_iter));
-  else
-    return NULL;
-}
+  else {
+    string xio_uri = xio_uri_from_entity(dest.addr);
+
+    /* XXX client session attributes */
+    struct xio_session_attr attr = {
+      &xio_msgr_ops,
+      NULL, /* XXX server private data? */
+      0     /* XXX? */
+    };
+
+    XioConnection *conn = new XioConnection(this, XioConnection::ACTIVE);
+
+    /* XXX I think this is required only if we don't already have
+     * one--and we should be getting this from xio_bind. */
+    conn->session = xio_session_open(XIO_SESSION_REQ, &attr, xio_uri.c_str(),
+				     0, 0, this);
+    if (conn->session) {
+      conn->conn = xio_connect(conn->session, ctx, 0, NULL, this);
+    } else {
+      delete conn;
+      return NULL;
+    }
+
+    conn->peer = dest;
+
+    return conn;
+  }
+} /* get_connection */
+
+ConnectionRef XioMessenger::get_loopback_connection()
+{
+  abort();
+  return NULL;
+} /* get_loopback_connection */
 
 XioMessenger::~XioMessenger()
 {

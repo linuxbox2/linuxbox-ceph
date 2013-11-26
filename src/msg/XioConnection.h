@@ -20,14 +20,18 @@ extern "C" {
 #include "libxio.h"
 }
 #include "Connection.h"
+#include "Messenger.h"
 #include <boost/intrusive/avl_set.hpp>
-
 
 class XioConnection : public Connection
 {
+public:
+  enum type { ACTIVE, PASSIVE };
 private:
+  XioConnection::type xio_conn_type;
   entity_inst_t peer;
   struct xio_session *session;
+  struct xio_connection	*conn; /* XXX may need more of these */
   boost::intrusive::avl_set_member_hook<> conns_entity_map_hook;
 
   typedef boost::intrusive::member_hook<XioConnection,
@@ -39,6 +43,11 @@ private:
   friend class boost::intrusive_ptr<XioConnection>;
 
 public:
+  XioConnection(Messenger *m, XioConnection::type _type) :
+    Connection(m),
+    xio_conn_type(_type)
+    { }
+
   bool is_connected() { return false; }
   const entity_inst_t& get_peer() const { return peer; }
 

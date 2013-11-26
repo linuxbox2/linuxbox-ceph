@@ -75,8 +75,7 @@ public:
 
   virtual ConnectionRef get_connection(const entity_inst_t& dest);
 
-  virtual ConnectionRef get_loopback_connection()
-    { return NULL; }
+  virtual ConnectionRef get_loopback_connection();
 
   virtual int send_keepalive(const entity_inst_t& dest)
     { return EINVAL; }
