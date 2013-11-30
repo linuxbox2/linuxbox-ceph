@@ -61,17 +61,17 @@ public:
 
   virtual int bind(const entity_addr_t& bind_addr);
 
+  /* XXXX need to deal with Thread here, and change wait() to
+   * an actual join or wait on condition */
   virtual int start() { started = true; return 0; }
 
   virtual void wait();
 
   virtual int shutdown() { started = false; return 0; }
 
-  virtual int send_message(Message *m, const entity_inst_t& dest)
-    { return EINVAL; }
+  virtual int send_message(Message *m, const entity_inst_t& dest);
 
-  virtual int send_message(Message *m, Connection *con)
-    { return EINVAL; }
+  virtual int send_message(Message *m, Connection *con);
 
   virtual int lazy_send_message(Message *m, const entity_inst_t& dest)
     { return EINVAL; }

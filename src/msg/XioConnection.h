@@ -21,6 +21,7 @@ extern "C" {
 }
 #include "Connection.h"
 #include "Messenger.h"
+#include "include/atomic.h"
 #include <boost/intrusive/avl_set.hpp>
 
 namespace bi = boost::intrusive;
@@ -34,6 +35,12 @@ private:
   entity_inst_t peer;
   struct xio_session *session;
   struct xio_connection	*conn; /* XXX may need more of these */
+  pthread_spinlock_t sp;
+#if 0
+  uint64_t out_seq;
+  uint64_t in_seq;
+  uint64_t in_seq_acked;
+#endif
 
   // conns_entity_map comparison functor
   struct EntityComp
@@ -64,8 +71,12 @@ public:
 		const entity_inst_t& peer) :
     Connection(m),
     xio_conn_type(_type),
-    peer(peer)
-    { }
+    peer(peer),
+    session(NULL),
+    conn(NULL)
+    {
+      pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
+    }
 
   bool is_connected() { return false; }
   const entity_inst_t& get_peer() const { return peer; }
