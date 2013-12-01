@@ -272,22 +272,44 @@ void XioMessenger::xio_new_session(struct xio_session *session,
 
 extern "C" {
 
+  int xio_conn_get_src_addr(struct xio_conn *conn,
+			    struct sockaddr_storage *sa, socklen_t len);
+
   static int on_session_event(struct xio_session *session,
 			      struct xio_session_event_data *event_data,
 			      void *cb_user_context)
   {
+    XioMessenger *m = static_cast<XioMessenger*>(cb_user_context);
+    XioConnection *xcon;
+
     printf("session event: %s. reason: %s\n",
 	   xio_session_event_str(event_data->event),
 	   xio_strerror(event_data->reason));
 
     switch (event_data->event) {
     case XIO_SESSION_NEW_CONNECTION_EVENT:
+    {
+      struct xio_connection_params params;
+#if 0
+      struct sockaddr_storage src_addr;
+      xio_get_connection_src_addr(event_data->conn, &src_addr,
+				  sizeof(struct sockaddr_storage));
+      entity_inst_t peer(entity_name_t::GENERIC(), entity_addr_t(src_addr));
+#endif
+      xcon = new XioConnection(m, XioConnection::PASSIVE, entity_inst_t());
+      /* XXX the only member at present */
+      params.user_context = xcon;
+      xio_set_connection_params(event_data->conn, &params);
+    }
       break;
     case XIO_SESSION_CONNECTION_CLOSED_EVENT:
-      break;
-    case XIO_SESSION_TEARDOWN_EVENT:
       /* XXXX need to convert session to connection, remove from
 	 conn_map, and release */
+      xcon = static_cast<XioConnection*>(event_data->conn_user_context);
+      /* XXX remove from ephemeral_conns list? */
+      xcon->put();
+      break;
+    case XIO_SESSION_TEARDOWN_EVENT:
       xio_session_close(session);
       break;
     default:
@@ -295,7 +317,7 @@ extern "C" {
     };
 
     return 0;
-}
+  }
 
   static int on_new_session(struct xio_session *session,
 			    struct xio_new_session_req *req,
