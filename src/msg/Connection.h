@@ -21,7 +21,7 @@
 
 class Messenger;
 
-struct Connection : protected RefCountedObject {
+struct Connection : public RefCountedObject {
   Mutex lock;
   Messenger *msgr;
   RefCountedObject *priv;
