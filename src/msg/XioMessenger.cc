@@ -45,6 +45,14 @@ extern "C" {
 
 } /* extern "C" */
 
+void* XioMessenger::EventThread::entry(void)
+{
+  if (msgr->bound) {
+    xio_ev_loop_run(msgr->ev_loop);
+    xio_unbind(msgr->server);
+  }
+  return NULL;
+}
 
 XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 			   string mname, uint64_t nonce)
@@ -52,7 +60,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     ctx(0),
     server(0),
     conns_lock("XioMessenger::conns_lock"),
-    bound(false)
+    bound(false),
+    event_thread(this)
 {
   /* package init */
   if (! initialized.read()) {
@@ -132,12 +141,16 @@ int XioMessenger::bind(const entity_addr_t& addr)
   return 0;
 } /* bind */
 
+int XioMessenger::start()
+{
+  started = true;
+  event_thread.create();
+  return 0;
+}
+
 void XioMessenger::wait()
 {
-  if (bound) {
-    xio_ev_loop_run(ev_loop);
-    xio_unbind(server); /* XXX move? */
-  }
+  event_thread.join();
 } /* wait */
 
 int XioMessenger::send_message(Message *m, const entity_inst_t& dest)

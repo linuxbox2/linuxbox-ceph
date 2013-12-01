@@ -22,6 +22,7 @@ extern "C" {
 }
 #include "XioConnection.h"
 #include "include/atomic.h"
+#include "common/Thread.h"
 
 class XioMessenger : public SimplePolicyMessenger
 {
@@ -34,6 +35,13 @@ private:
   Mutex conns_lock;
   XioConnection::EntitySet conns_entity_map;
   bool bound;
+
+  class EventThread : public Thread {
+    XioMessenger *msgr;
+  public:
+    EventThread(XioMessenger *m) : msgr(m) {}
+    void *entry();
+  } event_thread;
 
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
@@ -61,9 +69,7 @@ public:
 
   virtual int bind(const entity_addr_t& bind_addr);
 
-  /* XXXX need to deal with Thread here, and change wait() to
-   * an actual join or wait on condition */
-  virtual int start() { started = true; return 0; }
+  virtual int start();
 
   virtual void wait();
 
