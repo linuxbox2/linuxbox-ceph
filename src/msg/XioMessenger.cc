@@ -71,6 +71,10 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       xio_init();
 
+      unsigned log_level = XIO_LOG_LEVEL_TRACE;
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_LEVEL,
+		  &log_level, sizeof(unsigned));
+
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
       xio_msgr_ops.on_new_session = on_new_session;
