@@ -47,10 +47,14 @@ extern "C" {
 
 void* XioMessenger::EventThread::entry(void)
 {
+  /* we always need an event loop */
+  xio_ev_loop_run(msgr->ev_loop);
+
+  /* unbind only if we actually did a bind */
   if (msgr->bound) {
-    xio_ev_loop_run(msgr->ev_loop);
     xio_unbind(msgr->server);
   }
+
   return NULL;
 }
 
@@ -77,6 +81,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
+      xio_msgr_ops.on_session_established = NULL;
       xio_msgr_ops.on_new_session = on_new_session;
       xio_msgr_ops.on_msg_send_complete	= NULL;
       xio_msgr_ops.on_msg = on_request;
@@ -173,6 +178,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
 {
   /* XXX */
   XioConnection *xcon = static_cast<XioConnection*>(con);
+#if 0
   m->set_connection(con);
   m->set_seq(0); // placholder--avoid marshalling in a critical section
 
@@ -221,6 +227,13 @@ int XioMessenger::send_message(Message *m, Connection *con)
   // associate and inc seq data
   xio_send_request(xcon->conn, &req);
   //pthread_spin_unlock(&xcon->sp);
+#else
+    struct xio_msg req;
+    memset(&req, 0, sizeof(struct xio_msg));
+    req.out.header.iov_base = strdup("im your venus");
+    req.out.header.iov_len = strlen((char*)req.out.header.iov_base)+1;
+    xio_send_request(xcon->conn, &req);
+#endif
 
   /* XXX */
   m->put();
@@ -247,16 +260,16 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
     XioConnection *conn = new XioConnection(this, XioConnection::ACTIVE,
 					    dest);
 
-    /* XXX I think this is required only if we don't already have
-     * one--and we should be getting this from xio_bind. */
     conn->session = xio_session_open(XIO_SESSION_REQ, &attr, xio_uri.c_str(),
 				     0, 0, this);
-    if (conn->session) {
-      conn->conn = xio_connect(conn->session, ctx, 0, NULL, conn);
-    } else {
+    if (! conn->session) {
       delete conn;
       return NULL;
     }
+
+    /* this should cause callbacks with user context of conn, but
+     * we can always set it explicitly */
+    conn->conn = xio_connect(conn->session, ctx, 0, NULL, conn);
 
     /* conn has nref == 1 */
     conns_entity_map.insert(*conn);
@@ -307,16 +320,11 @@ extern "C" {
     case XIO_SESSION_NEW_CONNECTION_EVENT:
     {
       struct xio_connection_params params;
-#if 0
-      struct sockaddr_storage src_addr;
-      xio_get_connection_src_addr(event_data->conn, &src_addr,
-				  sizeof(struct sockaddr_storage));
-      entity_inst_t peer(entity_name_t::GENERIC(), entity_addr_t(src_addr));
-#endif
       xcon = new XioConnection(m, XioConnection::PASSIVE, entity_inst_t());
       /* XXX the only member at present */
       params.user_context = xcon;
       xio_set_connection_params(event_data->conn, &params);
+      printf("new connection session %p xcon %p\n", session, xcon);
     }
       break;
     case XIO_SESSION_CONNECTION_CLOSED_EVENT:
@@ -341,20 +349,21 @@ extern "C" {
 			    void *cb_user_context)
   {
  
-    printf("new session (ctx %p)", cb_user_context);
+    printf("new session %p user_context %p\n", session, cb_user_context);
 
     xio_accept(session, NULL, 0, NULL, 0);
 
     return 0;
   }
-  
+
   static int on_request(struct xio_session *session,
 			struct xio_msg *req,
 			int more_in_batch,
 			void *cb_user_context)
   {
+    XioConnection *xcon = static_cast<XioConnection*>(cb_user_context);
 
-    printf("new request");
+    printf("new request session %p xcon %p\n", session, xcon);
 
     return 0;
   }  
