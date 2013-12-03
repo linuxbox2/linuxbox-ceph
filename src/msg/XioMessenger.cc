@@ -75,9 +75,15 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       xio_init();
 
-      unsigned log_level = XIO_LOG_LEVEL_TRACE;
+      unsigned xopt;
+
+      xopt = XIO_LOG_LEVEL_TRACE;
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_LEVEL,
-		  &log_level, sizeof(unsigned));
+		  &xopt, sizeof(unsigned));
+
+      xopt = 1;
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_DISABLE_HUGETBL,
+		  &xopt, sizeof(unsigned));
 
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
@@ -178,7 +184,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
 {
   /* XXX */
   XioConnection *xcon = static_cast<XioConnection*>(con);
-#if 0
+
   m->set_connection(con);
   m->set_seq(0); // placholder--avoid marshalling in a critical section
 
@@ -189,11 +195,10 @@ int XioMessenger::send_message(Message *m, Connection *con)
   blist.append(m->get_middle());
   blist.append(m->get_data());
 
-  struct xio_msg req;
-  struct xio_iovec_ex *msg_iov = req.out.data_iov, *iov;
+  struct xio_msg *req = (struct xio_msg *) calloc(1,sizeof(struct xio_msg));
+  struct xio_iovec_ex *msg_iov = req->out.data_iov, *iov;
   int msg_off;
 
-  memset(&req, 0, sizeof(struct xio_msg));
   msg_iov[0].iov_base = &msg_tag;
   msg_iov[0].iov_len = 1;
 
@@ -219,21 +224,14 @@ int XioMessenger::send_message(Message *m, Connection *con)
   msg_iov[msg_off].iov_len = sizeof(ceph_msg_footer);
   msg_off++;
 
-  req.out.data_iovlen = msg_off;
+  req->out.data_iovlen = msg_off;
 
   /* XXX ideally, don't serialize and increment a sequence number,
    * but instead rely on xio ordering */
   //pthread_spin_lock(&xcon->sp);
   // associate and inc seq data
-  xio_send_request(xcon->conn, &req);
+  xio_send_request(xcon->conn, req);
   //pthread_spin_unlock(&xcon->sp);
-#else
-    struct xio_msg req;
-    memset(&req, 0, sizeof(struct xio_msg));
-    req.out.header.iov_base = strdup("im your venus");
-    req.out.header.iov_len = strlen((char*)req.out.header.iov_base)+1;
-    xio_send_request(xcon->conn, &req);
-#endif
 
   /* XXX */
   m->put();

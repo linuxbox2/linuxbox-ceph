@@ -41,6 +41,11 @@ int main(int argc, const char **argv)
 	ConnectionRef conn;
 	int r = 0;
 
+	struct timespec ts = {
+		.tv_sec = 1,
+		.tv_nsec = 0
+	};
+
 	argv_to_vec(argc, argv, args);
 	env_to_vec(args);
 
@@ -71,7 +76,7 @@ int main(int argc, const char **argv)
 	// do stuff
 	while (1) {
 	  messenger->send_message(new MPing(), conn);
-	  sleep(1);
+	  nanosleep(&ts, NULL);
 	}
 
 out:
