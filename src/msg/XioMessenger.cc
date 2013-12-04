@@ -17,6 +17,7 @@
 #include <boost/lexical_cast.hpp>
 #include <set>
 
+#include "XioMsg.h"
 #include "XioMessenger.h"
 #include "common/Mutex.h"
 
@@ -177,39 +178,6 @@ int XioMessenger::send_message(Message *m, const entity_inst_t& dest)
     return EINVAL;
 } /* send_message(Message *, const entity_inst_t&) */
 
-static char msg_tag = CEPH_MSGR_TAG_MSG;
-
-struct XioMsg
-{
-public:
-  Message* m;
-  ceph_msg_header *header;
-  ceph_msg_footer *footer;
-  struct xio_msg req_0;
-  struct xio_msg *req_arr;
-  int nbuffers;
-  int cnt;
-
-public:
-  XioMsg(Message *_m) : m(_m),
-			header(&m->get_header()),
-			footer(&m->get_footer()),
-			req_arr(NULL),
-			cnt(1)
-    {
-      memset(&req_0, 0, sizeof(struct xio_msg));
-      req_0.user_context = this;
-    }
-
-  void put() { if (--cnt == 0) delete(this); }
-
-  ~XioMsg()
-    {
-      free(req_arr);
-      m->put();
-    }
-};
-
 int XioMessenger::send_message(Message *m, Connection *con)
 {
   XioConnection *xcon = static_cast<XioConnection*>(con);
@@ -223,15 +191,13 @@ int XioMessenger::send_message(Message *m, Connection *con)
   struct xio_msg *req = &xmsg->req_0;
   struct xio_iovec_ex *msg_iov = req->out.data_iov, *iov;
 
-  msg_iov[0].iov_base = &msg_tag;
-  msg_iov[0].iov_len = 1;
+  bufferlist &payload = m->get_payload();
+  bufferlist &middle = m->get_middle();
+  bufferlist &data = m->get_data();
 
-  msg_iov[1].iov_base = (char*) &xmsg->header;
-  msg_iov[1].iov_len = sizeof(ceph_msg_header);
-
-  blist.append(m->get_payload());
-  blist.append(m->get_middle());
-  blist.append(m->get_data());
+  blist.append(payload);
+  blist.append(middle);
+  blist.append(data);
 
   const std::list<buffer::ptr>& buffers = blist.buffers();
   xmsg->nbuffers = buffers.size();
@@ -243,10 +209,11 @@ int XioMessenger::send_message(Message *m, Connection *con)
   }
 
   /* do the invariant part */
-  list<bufferptr>::const_iterator pb;
-  int msg_off = 2;
+  
+  int msg_off = 1;
   int req_off = -1; /* most often, not used */
 
+  list<bufferptr>::const_iterator pb; 
   for (pb = buffers.begin(); pb != buffers.end(); ++pb) {
 
     /* assign buffer */
@@ -258,7 +225,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
     if (++msg_off >= XIO_MAX_IOV) {
       req->out.data_iovlen = msg_off;
       if (++req_off < xmsg->cnt) {
-	/* more coming */
+	/* next record */
+	req->out.data_iovlen = XIO_MAX_IOV;
 	req->more_in_batch++;
 	req = &xmsg->req_arr[req_off];
 	req->user_context = xmsg;
@@ -269,10 +237,25 @@ int XioMessenger::send_message(Message *m, Connection *con)
   }
 
   /* fixup last msg */
-  msg_iov[msg_off].iov_base = (void*) &xmsg->footer;
-  msg_iov[msg_off].iov_len = sizeof(ceph_msg_footer);
+  const std::list<buffer::ptr>& footer = xmsg->ftr.get_bl().buffers();
+  assert(footer.size() == 1); /* XXX */
+  pb = footer.begin();
+  msg_iov[msg_off].iov_base = (char*) pb->c_str();
+  msg_iov[msg_off].iov_len = pb->length();
   msg_off++;
   req->out.data_iovlen = msg_off;
+
+  /* fixup first msg */
+  req = &xmsg->req_0;
+
+  /* overload header "length" members */
+  xmsg->hdr.update_lengths(payload, middle, data);
+
+  const std::list<buffer::ptr>& header = xmsg->hdr.get_bl().buffers();
+  assert(header.size() == 1); /* XXX */
+  pb = header.begin();
+  msg_iov[0].iov_base = (char*) pb->c_str();;
+  msg_iov[0].iov_len = pb->length();
 
   /* deliver via xio, preserve ordering */
   if (xmsg->cnt < 0)
@@ -409,10 +392,6 @@ extern "C" {
     printf("new request session %p xcon %p\n", session, xcon);
 
     struct xio_iovec_ex *msg_iov = req->in.data_iov, *iov;
-
-    char msg_tag = *((char *) msg_iov[0].iov_base);
-
-    assert(msg_tag == CEPH_MSGR_TAG_MSG);
 
     /* XXX yes, header endianness is not defined.  we should do
      * this differently */
