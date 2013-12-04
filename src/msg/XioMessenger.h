@@ -24,6 +24,7 @@ extern "C" {
 #include "include/atomic.h"
 #include "common/Thread.h"
 
+
 class XioMessenger : public SimplePolicyMessenger
 {
 private:
@@ -50,9 +51,6 @@ public:
   virtual ~XioMessenger();
 
   // xio hooks
-  void xio_new_session(struct xio_session *session,
-		       struct xio_new_session_req *req,
-		       void *cb_user_context);
 
   // Messenger interface
   virtual void set_addr_unknowns(entity_addr_t &addr) 
