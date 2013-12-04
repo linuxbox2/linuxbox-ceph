@@ -209,7 +209,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
   }
 
   /* do the invariant part */
-  
   int msg_off = 1;
   int req_off = -1; /* most often, not used */
 
@@ -259,7 +258,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   msg_iov[0].iov_len = pb->length();
 
   /* deliver via xio, preserve ordering */
-  if (xmsg->cnt < 0)
+  if (! xmsg->cnt)
     xio_send_request(xcon->conn, req);
   else {
     pthread_spin_lock(&xcon->sp);
