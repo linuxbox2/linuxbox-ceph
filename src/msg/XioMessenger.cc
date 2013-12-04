@@ -247,6 +247,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   /* fixup first msg */
   req = &xmsg->req_0;
+  msg_iov = req->out.data_iov;
 
   /* overload header "length" members */
   xmsg->hdr.update_lengths(payload, middle, data);
