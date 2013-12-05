@@ -36,11 +36,16 @@ private:
   struct xio_session *session;
   struct xio_connection	*conn; /* XXX may need more of these */
   pthread_spinlock_t sp;
-#if 0
-  uint64_t out_seq;
-  uint64_t in_seq;
-  uint64_t in_seq_acked;
-#endif
+
+  /* batching */
+  struct in_batch {
+    bool p;
+    pthread_spinlock_t sp;
+    list<struct xio_msg *> batch;
+    in_batch() : p(false) { 
+      pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
+    }
+  } in_batch;
 
   // conns_entity_map comparison functor
   struct EntityComp
@@ -73,13 +78,17 @@ public:
     xio_conn_type(_type),
     peer(peer),
     session(NULL),
-    conn(NULL)
+    conn(NULL),
+    in_batch()
     {
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
     }
 
   bool is_connected() { return false; }
   const entity_inst_t& get_peer() const { return peer; }
+
+  int on_request(struct xio_session *session, struct xio_msg *req,
+		 int more_in_batch, void *cb_user_context);
 
 };
 

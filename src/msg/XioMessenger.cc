@@ -183,7 +183,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
   XioConnection *xcon = static_cast<XioConnection*>(con);
 
   m->set_connection(con);
-  m->set_seq(0); // placholder--avoid marshalling in a critical section
+  m->set_seq(0); /* XIO handles seq */
+  m->encode(xcon->get_features(), !this->cct->_conf->ms_nocrc);
 
   XioMsg *xmsg = new XioMsg(m);
 
@@ -194,6 +195,11 @@ int XioMessenger::send_message(Message *m, Connection *con)
   bufferlist &payload = m->get_payload();
   bufferlist &middle = m->get_middle();
   bufferlist &data = m->get_data();
+
+  cout << "payload: " << payload.buffers().size() <<
+    " middle: " << middle.buffers().size() <<
+    " data: " << data.buffers().size() <<
+    std::endl;
 
   blist.append(payload);
   blist.append(middle);
@@ -209,7 +215,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   }
 
   /* do the invariant part */
-  int msg_off = 1;
+  int msg_off = 0;
   int req_off = -1; /* most often, not used */
 
   list<bufferptr>::const_iterator pb; 
@@ -244,18 +250,23 @@ int XioMessenger::send_message(Message *m, Connection *con)
   msg_off++;
   req->out.data_iovlen = msg_off;
 
+  void print_xio_msg_ftr(xio_msg_ftr &ftr);
+  print_xio_msg_ftr(xmsg->ftr);
+
   /* fixup first msg */
   req = &xmsg->req_0;
-  msg_iov = req->out.data_iov;
 
   /* overload header "length" members */
   xmsg->hdr.update_lengths(payload, middle, data);
 
+  void print_xio_msg_hdr(xio_msg_hdr &hdr);
+  print_xio_msg_hdr(xmsg->hdr);
+
   const std::list<buffer::ptr>& header = xmsg->hdr.get_bl().buffers();
   assert(header.size() == 1); /* XXX */
   pb = header.begin();
-  msg_iov[0].iov_base = (char*) pb->c_str();;
-  msg_iov[0].iov_len = pb->length();
+  req->out.header.iov_base = (char*) pb->c_str();
+  req->out.header.iov_len = pb->length();
 
   /* deliver via xio, preserve ordering */
   if (! xmsg->cnt)
@@ -386,34 +397,13 @@ extern "C" {
 			int more_in_batch,
 			void *cb_user_context)
   {
-    XioConnection *xcon = static_cast<XioConnection*>(cb_user_context);
-    XioMessenger *msgr = static_cast<XioMessenger*>(xcon->get_messenger());
+    XioConnection *xcon =
+      static_cast<XioConnection*>(cb_user_context);
 
     printf("new request session %p xcon %p\n", session, xcon);
 
-    struct xio_iovec_ex *msg_iov = req->in.data_iov, *iov;
-
-    /* XXX yes, header endianness is not defined.  we should do
-     * this differently */
-    ceph_msg_header *header =
-      static_cast<ceph_msg_header*>(msg_iov[1].iov_base);
-
-    bufferlist front, middle, data;
-
-    int msg_off, iov_len = req->in.data_iovlen - 1;
-    for (msg_off = 2; msg_off < iov_len; ++msg_off) {
-      iov = &msg_iov[msg_off];
-      
-    }
-
-    ceph_msg_footer *footer =
-      static_cast<ceph_msg_footer*>(msg_iov[msg_off].iov_base);
-
-#if 0
-    Message *m = decode_message(msgr->cct, header, footer, front, middle, data);
-#endif
-
-    return 0;
+    return xcon->on_request(session, req, more_in_batch,
+			    cb_user_context);
   }  
 
 } /* extern "C" */

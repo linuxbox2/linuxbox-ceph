@@ -28,8 +28,15 @@ public:
   ceph_msg_header &hdr;
   bufferlist bl;
 public:
-  xio_msg_hdr(ceph_msg_header &_hdr) : hdr(_hdr)
+  xio_msg_hdr(ceph_msg_header& _hdr) : hdr(_hdr)
     { }
+
+  xio_msg_hdr(ceph_msg_header& _hdr, buffer::ptr p) : hdr(_hdr)
+    {
+      bl.append(p);
+      bufferlist::iterator bl_iter = bl.begin();
+      decode(bl_iter);
+    }
 
   const bufferlist& get_bl() { encode(bl); return bl; };
 
@@ -76,6 +83,14 @@ public:
 public:
   xio_msg_ftr(ceph_msg_footer &_ftr) : ftr(_ftr)
     { }
+
+  xio_msg_ftr(ceph_msg_footer& _ftr, buffer::ptr p)
+    {
+      bl.append(p);
+      bufferlist::iterator bl_iter = bl.begin();
+      decode(bl_iter);
+      _ftr = ftr;
+    }
 
   const bufferlist& get_bl() { encode(bl); return bl; };
 
