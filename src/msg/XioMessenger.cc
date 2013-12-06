@@ -25,7 +25,6 @@ Mutex mtx("XioMessenger Package Lock");
 atomic_t initialized;
 
 atomic_t XioMessenger::nInstances;
-void* XioMessenger::ev_loop;
 
 static struct xio_session_ops xio_msgr_ops;
 

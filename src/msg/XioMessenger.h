@@ -29,7 +29,7 @@ class XioMessenger : public SimplePolicyMessenger
 {
 private:
   static atomic_t nInstances;
-  static void *ev_loop;
+  void *ev_loop;
 
   struct xio_context *ctx;
   struct xio_server *server;
