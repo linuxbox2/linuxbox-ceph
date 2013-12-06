@@ -111,6 +111,11 @@ void Thread::create(size_t stacksize)
   }
 }
 
+void Thread::set_affinity(cpu_set_t &cpuset)
+{
+  pthread_setaffinity_np(thread_id, sizeof(cpu_set_t), &cpuset);
+}
+
 int Thread::join(void **prval)
 {
   if (thread_id == 0) {

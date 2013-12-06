@@ -42,6 +42,7 @@ class Thread {
   int kill(int signal);
   int try_create(size_t stacksize);
   void create(size_t stacksize = 0);
+  void set_affinity(cpu_set_t &cpuset);
   int join(void **prval = 0);
   int detach();
 };
