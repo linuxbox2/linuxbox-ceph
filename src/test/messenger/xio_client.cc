@@ -55,7 +55,8 @@ int main(int argc, const char **argv)
 	messenger = new XioMessenger(g_ceph_context,
 				     entity_name_t::GENERIC(),
 				     "xio_client",
-				     0 /* nonce */);
+				     0 /* nonce */,
+				     0 /* portals */);
 
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 

@@ -21,6 +21,7 @@ extern "C" {
 #include "libxio.h"
 }
 #include "XioConnection.h"
+#include "XioPortal.h"
 #include "include/atomic.h"
 #include "common/Thread.h"
 
@@ -29,30 +30,22 @@ class XioMessenger : public SimplePolicyMessenger
 {
 private:
   static atomic_t nInstances;
-  void *ev_loop;
-
-  struct xio_context *ctx;
-  struct xio_server *server;
   Mutex conns_lock;
   XioConnection::EntitySet conns_entity_map;
-  bool bound;
-
-  class EventThread : public Thread {
-    XioMessenger *msgr;
-  public:
-    EventThread(XioMessenger *m) : msgr(m) {}
-    void *entry();
-  } event_thread;
+  XioPortals portals;
 
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
-	       string mname, uint64_t nonce);
+	       string mname, uint64_t nonce, int nportals);
 
   virtual ~XioMessenger();
 
-  // xio hooks
+  /* xio hooks */
+  int new_session(struct xio_session *session,
+		  struct xio_new_session_req *req,
+		  void *cb_user_context);
 
-  // Messenger interface
+  /* Messenger interface */
   virtual void set_addr_unknowns(entity_addr_t &addr) 
     { } /* XXX applicable? */
 

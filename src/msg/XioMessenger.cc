@@ -45,27 +45,41 @@ extern "C" {
 
 } /* extern "C" */
 
-void* XioMessenger::EventThread::entry(void)
+static string xio_uri_from_entity(const entity_addr_t& addr, bool want_port)
 {
-  /* we always need an event loop */
-  xio_ev_loop_run(msgr->ev_loop);
+  const char *host = NULL;
+  char addr_buf[129];
+  
+  switch(addr.addr.ss_family) {
+  case AF_INET:
+    host = inet_ntop(AF_INET, &addr.addr4.sin_addr, addr_buf,
+		     INET_ADDRSTRLEN);
+    break;
+  case AF_INET6:
+    host = inet_ntop(AF_INET6, &addr.addr6.sin6_addr, addr_buf,
+		     INET6_ADDRSTRLEN);
+    break;
+  default:
+    abort();
+    break;
+  };
 
-  /* unbind only if we actually did a bind */
-  if (msgr->bound) {
-    xio_unbind(msgr->server);
+  /* The following can only succeed if the host is rdma-capable */
+  string xio_uri = "rdma://";
+  xio_uri += host;
+  if (want_port) {
+    xio_uri += ":";
+    xio_uri += boost::lexical_cast<std::string>(addr.get_port());
   }
 
-  return NULL;
-}
+  return xio_uri;
+} /* xio_uri_from_entity */
 
 XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
-			   string mname, uint64_t nonce)
+			   string mname, uint64_t nonce, int nportals)
   : SimplePolicyMessenger(cct, name, mname, nonce),
-    ctx(0),
-    server(0),
     conns_lock("XioMessenger::conns_lock"),
-    bound(false),
-    event_thread(this)
+    portals(this, nportals)
 {
   /* package init */
   if (! initialized.read()) {
@@ -93,10 +107,6 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_msgr_ops.on_msg = on_request;
       xio_msgr_ops.on_msg_error = NULL;
 
-      ev_loop = xio_ev_loop_init();
-
-      ctx = xio_ctx_open(NULL, ev_loop, 0);
-
       /* mark initialized */
       initialized.set(1);
     }
@@ -105,67 +115,49 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
   /* update class instance count */
   nInstances.inc();
-
+  
 } /* ctor */
 
-static string xio_uri_from_entity(const entity_addr_t& addr)
+int XioMessenger::new_session(struct xio_session *session,
+			      struct xio_new_session_req *req,
+			      void *cb_user_context)
 {
-  const char *host = NULL;
-  char addr_buf[129];
-  
-  switch(addr.addr.ss_family) {
-  case AF_INET:
-    host = inet_ntop(AF_INET, &addr.addr4.sin_addr, addr_buf,
-		     INET_ADDRSTRLEN);
-    break;
-  case AF_INET6:
-    host = inet_ntop(AF_INET6, &addr.addr6.sin6_addr, addr_buf,
-		     INET6_ADDRSTRLEN);
-    break;
-  default:
-    abort();
-    break;
-  };
-
-  /* The following can only succeed if the host is rdma-capable */
-  string xio_uri = "rdma://";
-  xio_uri += host;
-  xio_uri += ":";
-  xio_uri += boost::lexical_cast<std::string>(addr.get_port());
-
-  return xio_uri;
-}
+  return xio_accept(session,
+		    this->portals.get_vec(),
+		    this->portals.get_portals_len(),
+		    NULL, 0);
+} /* new_session */
 
 int XioMessenger::bind(const entity_addr_t& addr)
 {
-  if (bound)
-    return (EINVAL);
+  XioPortal *portal;
+  vector<XioPortal*>& vportals = portals.get();
+  string base_uri = xio_uri_from_entity(addr, false /* want_port */);  
+  int bind_size = vportals.size();
 
-  string xio_uri = xio_uri_from_entity(addr);
-
-  printf("XioMessenger::bind %s %p\n",
-	 xio_uri.c_str(),
-	 this);
-
-  server = xio_bind(ctx, &xio_msgr_ops, xio_uri.c_str(), NULL, 0, this);
-  if (!server)
-    return EINVAL;
-  else
-    bound = true;  
+  /* bind a consecutive range of ports */
+  for (int bind_ix = 1, bind_port = addr.get_port();
+       bind_ix < bind_size; ++bind_ix, ++bind_port) {
+    string xio_uri = base_uri;
+    xio_uri += ":";
+    xio_uri += boost::lexical_cast<std::string>(bind_port);
+    portal = vportals[bind_ix];
+    (void) portal->bind(&xio_msgr_ops, xio_uri);
+  }
 
   return 0;
 } /* bind */
 
 int XioMessenger::start()
 {
+  portals.start();
   started = true;
-  event_thread.create();
   return 0;
 }
 
 void XioMessenger::wait()
 {
-  event_thread.join();
+  portals.join();
 } /* wait */
 
 int XioMessenger::send_message(Message *m, const entity_inst_t& dest)
@@ -290,7 +282,7 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
   if (conn_iter != conns_entity_map.end())
     return static_cast<Connection*>(&(*conn_iter));
   else {
-    string xio_uri = xio_uri_from_entity(dest.addr);
+    string xio_uri = xio_uri_from_entity(dest.addr, true /* want_port */);
 
     /* XXX client session attributes */
     struct xio_session_attr attr = {
@@ -311,7 +303,8 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
 
     /* this should cause callbacks with user context of conn, but
      * we can always set it explicitly */
-    conn->conn = xio_connect(conn->session, ctx, 0, NULL, conn);
+    conn->conn = xio_connect(conn->session, this->portals.get_portal0()->ctx,
+			     0, NULL, conn);
 
     /* conn has nref == 1 */
     conns_entity_map.insert(*conn);
@@ -328,10 +321,7 @@ ConnectionRef XioMessenger::get_loopback_connection()
 
 XioMessenger::~XioMessenger()
 {
-  if (nInstances.dec() == 0) {
-    xio_ctx_close(ctx);
-    xio_ev_loop_destroy(&ev_loop);
-  }
+  nInstances.dec();
 } /* dtor */
 
 // xio hooks
@@ -344,8 +334,8 @@ extern "C" {
 			      struct xio_session_event_data *event_data,
 			      void *cb_user_context)
   {
-    XioMessenger *m = static_cast<XioMessenger*>(cb_user_context);
     XioConnection *xcon;
+    XioMessenger *msgr = static_cast<XioMessenger*>(cb_user_context);
 
     printf("session event: %s. reason: %s\n",
 	   xio_session_event_str(event_data->event),
@@ -355,7 +345,7 @@ extern "C" {
     case XIO_SESSION_NEW_CONNECTION_EVENT:
     {
       struct xio_connection_params params;
-      xcon = new XioConnection(m, XioConnection::PASSIVE, entity_inst_t());
+      xcon = new XioConnection(msgr, XioConnection::PASSIVE, entity_inst_t());
       /* XXX the only member at present */
       params.user_context = xcon;
       xio_set_connection_params(event_data->conn, &params);
@@ -382,11 +372,12 @@ extern "C" {
   static int on_new_session(struct xio_session *session,
 			    struct xio_new_session_req *req,
 			    void *cb_user_context)
-  {
- 
+  { 
+    XioMessenger *msgr = static_cast<XioMessenger*>(cb_user_context);
+
     printf("new session %p user_context %p\n", session, cb_user_context);
 
-    xio_accept(session, NULL, 0, NULL, 0);
+    return (msgr->new_session(session, req, cb_user_context));
 
     return 0;
   }
