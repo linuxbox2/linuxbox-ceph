@@ -182,6 +182,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   bufferlist blist;
   struct xio_msg *req = &xmsg->req_0;
   struct xio_iovec_ex *msg_iov = req->out.data_iov, *iov;
+  int ex_cnt;
 
   bufferlist &payload = m->get_payload();
   bufferlist &middle = m->get_middle();
@@ -198,11 +199,12 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   const std::list<buffer::ptr>& buffers = blist.buffers();
   xmsg->nbuffers = buffers.size();
-  xmsg->cnt = (3 + xmsg->nbuffers) / XIO_MAX_IOV;
+  ex_cnt = ((3 + xmsg->nbuffers) / XIO_MAX_IOV);
+  xmsg->cnt = 1 + ex_cnt;
 
-  if (xmsg->cnt) {
+  if (ex_cnt > 0) {
     xmsg->req_arr =
-      (struct xio_msg *) calloc(xmsg->cnt, sizeof(struct xio_msg));
+      (struct xio_msg *) calloc(ex_cnt, sizeof(struct xio_msg));
   }
 
   /* do the invariant part */
@@ -220,7 +222,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
     /* advance iov(s) */
     if (++msg_off >= XIO_MAX_IOV) {
       req->out.data_iovlen = msg_off;
-      if (++req_off < xmsg->cnt) {
+      if (++req_off < ex_cnt) {
 	/* next record */
 	req->out.data_iovlen = XIO_MAX_IOV;
 	req->more_in_batch++;
@@ -260,17 +262,20 @@ int XioMessenger::send_message(Message *m, Connection *con)
   req->out.header.iov_len = pb->length();
 
   /* deliver via xio, preserve ordering */
-  if (! xmsg->cnt)
+  if (xmsg->cnt == 1)
     xio_send_request(xcon->conn, req);
   else {
     pthread_spin_lock(&xcon->sp);
     xio_send_request(xcon->conn, &xmsg->req_0);
-    for (req_off = 0; req_off < xmsg->cnt; ++req_off) {
+    for (req_off = 0; req_off < ex_cnt; ++req_off) {
       req = &xmsg->req_arr[req_off];
       xio_send_request(xcon->conn, req);
     }
     pthread_spin_unlock(&xcon->sp);
   }
+
+  /* it's now possible to use sn and timestamp */
+  xcon->send.set(req->timestamp);
 
   return 0;
 } /* send_message(Message *, Connection *) */

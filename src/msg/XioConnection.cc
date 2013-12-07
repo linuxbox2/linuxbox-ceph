@@ -154,6 +154,9 @@ int XioConnection::on_request(struct xio_session *session,
     seq = treq->sn;
     uint_to_timeval(t2, treq->timestamp);
 
+    /* update connection timestamp */
+    recv.set(treq->timestamp);
+
     Message *m =
       decode_message(msgr->cct, header, footer, front, middle, data);
 

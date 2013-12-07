@@ -34,8 +34,10 @@ private:
   XioConnection::type xio_conn_type;
   entity_inst_t peer;
   struct xio_session *session;
-  struct xio_connection	*conn; /* XXX may need more of these */
+  struct xio_connection	*conn;
   pthread_spinlock_t sp;
+  atomic_t send;
+  atomic_t recv;
 
   /* batching */
   struct in_batch {
