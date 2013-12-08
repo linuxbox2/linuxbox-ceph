@@ -37,11 +37,25 @@ extern "C" {
   static int on_new_session(struct xio_session *session,
 			    struct xio_new_session_req *req,
 			    void *cb_user_context);
+
+  static int on_msg_send_complete(struct xio_session *session,
+				  struct xio_msg *rsp,
+				  void *conn_user_context);
   
-  static int on_request(struct xio_session *session,
-			struct xio_msg *req,
-			int more_in_batch,
-			void *cb_user_context);
+  static int on_msg(struct xio_session *session,
+		    struct xio_msg *req,
+		    int more_in_batch,
+		    void *cb_user_context);
+
+  static int on_msg_delivered(struct xio_session *session,
+			      struct xio_msg *msg,
+			      int more_in_batch,
+			      void *conn_user_context);
+
+  static int on_msg_error(struct xio_session *session,
+			  enum xio_status error,
+			  struct xio_msg  *msg,
+			  void *conn_user_context);
 
 } /* extern "C" */
 
@@ -101,11 +115,15 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
-      xio_msgr_ops.on_session_established = NULL;
       xio_msgr_ops.on_new_session = on_new_session;
-      xio_msgr_ops.on_msg_send_complete	= NULL;
-      xio_msgr_ops.on_msg = on_request;
-      xio_msgr_ops.on_msg_error = NULL;
+      xio_msgr_ops.on_session_established = NULL;
+      xio_msgr_ops.on_msg_send_complete	= on_msg_send_complete;
+      xio_msgr_ops.on_msg = on_msg;
+      xio_msgr_ops.on_msg_delivered = on_msg_delivered;
+      xio_msgr_ops.on_msg_error = on_msg_error;
+      xio_msgr_ops.on_cancel = NULL;
+      xio_msgr_ops.on_cancel_request = NULL;
+      xio_msgr_ops.assign_data_in_buf = NULL;
 
       /* mark initialized */
       initialized.set(1);
@@ -200,7 +218,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   const std::list<buffer::ptr>& buffers = blist.buffers();
   xmsg->nbuffers = buffers.size();
   ex_cnt = ((3 + xmsg->nbuffers) / XIO_MAX_IOV);
-  xmsg->cnt = 1 + ex_cnt;
+  xmsg->hdr.msg_cnt = 1 + ex_cnt;
 
   if (ex_cnt > 0) {
     xmsg->req_arr =
@@ -262,7 +280,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   req->out.header.iov_len = pb->length();
 
   /* deliver via xio, preserve ordering */
-  if (xmsg->cnt == 1)
+  if (xmsg->hdr.msg_cnt == 1)
     xio_send_request(xcon->conn, req);
   else {
     pthread_spin_lock(&xcon->sp);
@@ -383,23 +401,54 @@ extern "C" {
     printf("new session %p user_context %p\n", session, cb_user_context);
 
     return (msgr->new_session(session, req, cb_user_context));
+  }
+
+  static int on_msg_send_complete(struct xio_session *session,
+				  struct xio_msg *rsp,
+				  void *conn_user_context)
+  {
+
+    printf("msg send complete: session: %p rsp: %p user_context %p\n",
+	   session, rsp, conn_user_context);
 
     return 0;
   }
 
-  static int on_request(struct xio_session *session,
-			struct xio_msg *req,
-			int more_in_batch,
-			void *cb_user_context)
+  static int on_msg(struct xio_session *session,
+		    struct xio_msg *req,
+		    int more_in_batch,
+		    void *cb_user_context)
   {
     XioConnection *xcon =
       static_cast<XioConnection*>(cb_user_context);
 
     printf("new request session %p xcon %p\n", session, xcon);
 
-    return xcon->on_request(session, req, more_in_batch,
-			    cb_user_context);
-  }  
+    return xcon->on_msg(session, req, more_in_batch,
+			cb_user_context);
+  }
+
+  static int on_msg_delivered(struct xio_session *session,
+			      struct xio_msg *msg,
+			      int more_in_batch,
+			      void *conn_user_context)
+  {
+    printf("msg delivered session: %p msg: %p more: %d conn_user_context %p\n",
+	   session, msg, more_in_batch, conn_user_context);
+
+    return 0;
+  }
+
+  static int on_msg_error(struct xio_session *session,
+			  enum xio_status error,
+			  struct xio_msg  *msg,
+			  void *conn_user_context)
+  {
+    printf("msg error session: %p error: %s msg: %p conn_user_context %p\n",
+	   session, xio_strerror(error), msg, conn_user_context);
+
+    return 0;
+  }
 
 } /* extern "C" */
 

@@ -20,7 +20,7 @@
 void print_xio_msg_hdr(xio_msg_hdr &hdr)
 {
 
-  cout << "ceph header: " << 
+  cout << "ceph header: " <<
     " front_len: " << hdr.hdr.front_len <<
     " seq: " << hdr.hdr.seq <<
     " tid: " << hdr.hdr.tid <<
@@ -30,6 +30,8 @@ void print_xio_msg_hdr(xio_msg_hdr &hdr)
     " front_len: " << hdr.hdr.front_len <<
     " middle_len: " << hdr.hdr.middle_len <<
     " data_len: " << hdr.hdr.data_len <<
+    " xio header: " <<
+    " msg_cnt: " << hdr.msg_cnt <<
     std::endl;
 }
 
@@ -47,35 +49,27 @@ void print_xio_msg_ftr(xio_msg_ftr &ftr)
 
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
 
-int XioConnection::on_request(struct xio_session *session,
-			      struct xio_msg *req,
-			      int more_in_batch,
-			      void *cb_user_context)
+int XioConnection::on_msg(struct xio_session *session,
+			  struct xio_msg *req,
+			  int more_in_batch,
+			  void *cb_user_context)
 {
-    list<struct xio_msg *> batch;
+    /* XXX Accelio guarantees message ordering at
+     * xio_session */
+    if (! in_seq.p) {
+      xio_msg_cnt msg_cnt(
+	buffer::create_static(req->in.header.iov_len,
+			      (char*) req->in.header.iov_base));
+      in_seq.cnt = msg_cnt.msg_cnt;
+      in_seq.p = true;
+    }
+    in_seq.append(req);
+    if (in_seq.cnt > 0)
+      return 0;
+    else
+      in_seq.p = false;
 
-    /* XXX in future XIO will provide an accumulator */
-    pthread_spin_lock(&in_batch.sp);
-    if (in_batch.p) {
-      if (more_in_batch) {
-	in_batch.batch.push_back(req);
-	pthread_spin_unlock(&in_batch.sp);
-	return 0;
-      }
-      batch = in_batch.batch;
-      in_batch.batch.clear();
-      in_batch.p = false;
-    }
-    else {
-      if (more_in_batch) {
-	in_batch.batch.push_back(req);
-	in_batch.p = true;
-	pthread_spin_unlock(&in_batch.sp);
-	return 0;
-      }
-      batch.push_back(req);
-    }
-    pthread_spin_unlock(&in_batch.sp);
+    list<struct xio_msg *>& msg_seq = in_seq.seq;
 
     XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
 
@@ -86,8 +80,8 @@ int XioConnection::on_request(struct xio_session *session,
     struct timeval t1, t2;
     uint64_t seq;
 
-    list<struct xio_msg *>::iterator msg_iter = batch.begin();
-    struct xio_msg *treq = *(batch.begin());
+    list<struct xio_msg *>::iterator msg_iter = msg_seq.begin();
+    struct xio_msg *treq = *(msg_seq.begin());
     xio_msg_hdr hdr(header,
 		    buffer::create_static(treq->in.header.iov_len,
 					  (char*) treq->in.header.iov_base));
@@ -101,7 +95,7 @@ int XioConnection::on_request(struct xio_session *session,
     bufferlist &blist = front;
     blen = header.front_len;
 
-    while (blen && (msg_iter != batch.end())) {
+    while (blen && (msg_iter != msg_seq.end())) {
       treq = *msg_iter;
       iov_len = treq->in.data_iovlen;
       for (ix = 0; blen && (ix < iov_len); ++ix, --blen) {
@@ -116,7 +110,7 @@ int XioConnection::on_request(struct xio_session *session,
     blist = middle;
     blen = header.middle_len;
 
-    while (blen && (msg_iter != batch.end())) {
+    while (blen && (msg_iter != msg_seq.end())) {
       treq = *msg_iter;
       iov_len = treq->in.data_iovlen;
       for (ix = 0; blen && (ix < iov_len); ++ix, --blen) {
@@ -131,7 +125,7 @@ int XioConnection::on_request(struct xio_session *session,
     blist = data;
     blen = header.data_len;
 
-    while (blen && (msg_iter != batch.end())) {
+    while (blen && (msg_iter != msg_seq.end())) {
       treq = *msg_iter;
       iov_len = treq->in.data_iovlen;
       for (ix = 0; blen && (ix < iov_len); ++ix, --blen) {

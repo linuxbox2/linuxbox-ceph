@@ -22,13 +22,28 @@ extern "C" {
 }
 #include "XioConnection.h"
 
+class xio_msg_cnt
+{
+public:
+  __le32 msg_cnt;
+  bufferlist bl;
+public:
+  xio_msg_cnt(buffer::ptr p)
+    {
+      bl.append(p);
+      bufferlist::iterator bl_iter = bl.begin();
+      ::decode(msg_cnt, bl_iter);
+    }
+};
+
 class xio_msg_hdr
 {
 public:
+  __le32 msg_cnt;
   ceph_msg_header &hdr;
   bufferlist bl;
 public:
-  xio_msg_hdr(ceph_msg_header& _hdr) : hdr(_hdr)
+  xio_msg_hdr(ceph_msg_header& _hdr) :msg_cnt(0), hdr(_hdr)
     { }
 
   xio_msg_hdr(ceph_msg_header& _hdr, buffer::ptr p) : hdr(_hdr)
@@ -48,6 +63,7 @@ public:
   }
 
   void encode(bufferlist& bl) const {
+    ::encode(msg_cnt, bl);
     ::encode(hdr.seq, bl);
     ::encode(hdr.tid, bl);
     ::encode(hdr.type, bl);
@@ -60,6 +76,7 @@ public:
   }
 
   void decode(bufferlist::iterator& bl) {
+    ::decode(msg_cnt, bl);
     ::decode(hdr.seq, bl);
     ::decode(hdr.tid, bl);
     ::decode(hdr.type, bl);
@@ -123,20 +140,16 @@ public:
   struct xio_msg req_0;
   struct xio_msg *req_arr;
   int nbuffers;
-  int cnt;
 
 public:
   XioMsg(Message *_m) : m(_m),
 			hdr(m->get_header()),
 			ftr(m->get_footer()),
-			req_arr(NULL),
-			cnt(1)
+			req_arr(NULL)
     {
       memset(&req_0, 0, sizeof(struct xio_msg));
       req_0.user_context = this;
     }
-
-  void put() { if (--cnt == 0) delete(this); }
 
   ~XioMsg()
     {

@@ -40,14 +40,16 @@ private:
   atomic_t recv;
 
   /* batching */
-  struct in_batch {
+  struct msg_seq {
     bool p;
+    int cnt;
     pthread_spinlock_t sp;
-    list<struct xio_msg *> batch;
-    in_batch() : p(false) { 
+    list<struct xio_msg *> seq;
+    msg_seq() : p(false) { 
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
     }
-  } in_batch;
+    void append(struct xio_msg* req) { seq.push_back(req); --cnt; }
+  } in_seq;
 
   // conns_entity_map comparison functor
   struct EntityComp
@@ -81,7 +83,7 @@ public:
     peer(peer),
     session(NULL),
     conn(NULL),
-    in_batch()
+    in_seq()
     {
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
     }
@@ -89,8 +91,8 @@ public:
   bool is_connected() { return false; }
   const entity_inst_t& get_peer() const { return peer; }
 
-  int on_request(struct xio_session *session, struct xio_msg *req,
-		 int more_in_batch, void *cb_user_context);
+  int on_msg(struct xio_session *session, struct xio_msg *req,
+	     int more_in_batch, void *cb_user_context);
 
 };
 
