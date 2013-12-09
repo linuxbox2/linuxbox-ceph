@@ -75,7 +75,7 @@ int XioConnection::on_msg(struct xio_session *session,
 
     ceph_msg_header header;
     ceph_msg_footer footer;
-    bufferlist front, middle, data;
+    buffer::list front, middle, data;
 
     struct timeval t1, t2;
     uint64_t seq;
@@ -92,7 +92,7 @@ int XioConnection::on_msg(struct xio_session *session,
     int ix, blen, iov_len;
     struct xio_iovec_ex *msg_iov;
 
-    bufferlist &blist = front;
+    buffer::list &blist = front;
     blen = header.front_len;
 
     while (blen && (msg_iter != msg_seq.end())) {

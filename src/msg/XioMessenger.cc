@@ -19,6 +19,7 @@
 
 #include "XioMsg.h"
 #include "XioMessenger.h"
+#include "XioMessage.h"
 #include "common/Mutex.h"
 
 Mutex mtx("XioMessenger Package Lock");
@@ -197,14 +198,14 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   XioMsg *xmsg = new XioMsg(m);
 
-  bufferlist blist;
+  buffer::list blist;
   struct xio_msg *req = &xmsg->req_0;
   struct xio_iovec_ex *msg_iov = req->out.data_iov, *iov;
   int ex_cnt;
 
-  bufferlist &payload = m->get_payload();
-  bufferlist &middle = m->get_middle();
-  bufferlist &data = m->get_data();
+  buffer::list &payload = m->get_payload();
+  buffer::list &middle = m->get_middle();
+  buffer::list &data = m->get_data();
 
   cout << "payload: " << payload.buffers().size() <<
     " middle: " << middle.buffers().size() <<

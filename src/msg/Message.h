@@ -19,6 +19,7 @@
 #include <ostream>
 
 #include <boost/intrusive_ptr.hpp>
+#include <boost/intrusive/list.hpp>
 // Because intusive_ptr clobbers our assert...
 #include "include/assert.h"
 
@@ -177,6 +178,29 @@ protected:
 
   ConnectionRef connection;
 
+public:
+  class Completion {
+  private:
+    Message *m;
+    boost::intrusive::list_member_hook<> hook;
+
+    typedef boost::intrusive::list< Completion,
+				    boost::intrusive::member_hook<
+				      Completion,
+				      boost::intrusive::list_member_hook<>,
+				      &Completion::hook >
+				    > CompletionList;
+    friend class Message;
+  public:
+    Completion(Message *_m) : m(_m) {}
+    virtual void func() = 0;
+    virtual ~Completion() {}
+  };
+
+protected:
+  Completion::CompletionList completion_hooks;
+  Completion* msgr_reply_hook;
+
   // release our size in bytes back to this throttler when our payload
   // is adjusted or when we are destroyed.
   Throttle *byte_throttler;
@@ -227,6 +251,11 @@ protected:
       byte_throttler->put(payload.length() + middle.length() + data.length());
     if (msg_throttler)
       msg_throttler->put();
+    /* call completion hooks (if any) */
+    for (Completion::CompletionList::iterator ci = completion_hooks.begin();
+	 ci != completion_hooks.end(); ++ci) {
+      ci->func();
+    }
   }
 public:
   const ConnectionRef& get_connection() { return connection; }

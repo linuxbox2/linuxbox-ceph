@@ -31,8 +31,9 @@ if (HAVE_XIO)
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -I${Xio_INCLUDE_DIR}")
 
 set(xio_messenger_cc
-  ../msg/XioMessenger.cc
   ../msg/XioConnection.cc
+  ../msg/XioMessage.cc
+  ../msg/XioMessenger.cc
   )
 
 endif(HAVE_XIO)
