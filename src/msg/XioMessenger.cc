@@ -192,7 +192,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
 {
   XioConnection *xcon = static_cast<XioConnection*>(con);
 
-  m->set_connection(con);
   m->set_seq(0); /* XIO handles seq */
   m->encode(xcon->get_features(), !this->cct->_conf->ms_nocrc);
 
@@ -298,6 +297,17 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   return 0;
 } /* send_message(Message *, Connection *) */
+
+int XioMessenger::send_reply(Message *m, Message *reply) {
+
+  XioConnection *xcon =
+    static_cast<XioConnection*>(m->get_connection().get());
+
+  /* XXXX finish */
+
+  return 0;
+
+} /*  send_reply(Message *, Message *) */
 
 ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
 {

@@ -412,6 +412,17 @@ public:
     return send_message(m, con.get());
   }
   /**
+   * Reply to Message m in Message reply.  Message m is required to
+   * hold a (provisionally) valid Connection association.
+   *
+   * @param m The Message being replied to.
+   * @param reply The Message to send. The Messenger consumes a single
+   * reference when you pass it in.
+   *
+   * @return 0 on success, or -errno on failure.
+   */
+  virtual int send_reply(Message *m, Message *reply) = 0;
+  /**
    * Lazily queue the given Message for the given entity. Unlike with
    * send_message(), lazy_send_message() will not establish a
    * Connection if none exists, re-establish the connection if it

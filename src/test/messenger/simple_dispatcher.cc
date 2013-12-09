@@ -30,7 +30,7 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 		} else {
 			cout << "ping!" << std::endl;
 			conn = m->get_connection();
-			messenger->send_message(new MPing(), conn);
+			messenger->send_reply(m, new MPing());
 		}
 		m->put();
 		break;

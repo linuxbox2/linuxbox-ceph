@@ -70,6 +70,8 @@ public:
 
   virtual int send_message(Message *m, Connection *con);
 
+  virtual int send_reply(Message *m, Message *reply);
+
   virtual int lazy_send_message(Message *m, const entity_inst_t& dest)
     { return EINVAL; }
 
@@ -105,10 +107,7 @@ protected:
   virtual void ready()
     { }
 
-public:
-  
-  
-  
+public:  
 };
 
 #endif /* XIO_MESSENGER_H */

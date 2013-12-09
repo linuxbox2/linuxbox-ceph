@@ -157,13 +157,16 @@ int XioConnection::on_msg(struct xio_session *session,
     cout << "m is " << m << std::endl;
 
     if (m) {
+      /* XXX update for completions */
+      m->set_connection(this);
+
       /* update timestamps */
       m->set_recv_stamp(t1);
       m->set_recv_complete_stamp(t2);
       m->set_seq(seq);
 
       /* dispatch it */
-      // XXXX finish
+      msgr->ms_deliver_dispatch(m);
     }
 
     return 0;
