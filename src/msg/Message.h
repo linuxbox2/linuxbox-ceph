@@ -179,27 +179,19 @@ protected:
   ConnectionRef connection;
 
 public:
-  class Completion {
+  class Completion : public Context {
   private:
     Message *m;
-    boost::intrusive::list_member_hook<> hook;
-
-    typedef boost::intrusive::list< Completion,
-				    boost::intrusive::member_hook<
-				      Completion,
-				      boost::intrusive::list_member_hook<>,
-				      &Completion::hook >
-				    > CompletionList;
     friend class Message;
   public:
     Completion(Message *_m) : m(_m) {}
-    virtual void func() = 0;
+    virtual void set_message(Message *_m) { m = _m; }
+    virtual void finish(int r) = 0;
     virtual ~Completion() {}
   };
 
 protected:
-  Completion::CompletionList completion_hooks;
-  Completion* msgr_reply_hook;
+  Completion* reply_hook; // owned by Messenger
 
   // release our size in bytes back to this throttler when our payload
   // is adjusted or when we are destroyed.
@@ -220,6 +212,7 @@ protected:
 public:
   Message()
     : connection(NULL),
+      reply_hook(NULL),
       byte_throttler(NULL),
       msg_throttler(NULL),
       dispatch_throttle_size(0) {
@@ -228,6 +221,7 @@ public:
   };
   Message(int t, int version=1, int compat_version=0)
     : connection(NULL),
+      reply_hook(NULL),
       byte_throttler(NULL),
       msg_throttler(NULL),
       dispatch_throttle_size(0) {
@@ -252,16 +246,15 @@ protected:
     if (msg_throttler)
       msg_throttler->put();
     /* call completion hooks (if any) */
-    for (Completion::CompletionList::iterator ci = completion_hooks.begin();
-	 ci != completion_hooks.end(); ++ci) {
-      ci->func();
-    }
+    if (reply_hook)
+      reply_hook->complete(0);
   }
 public:
   const ConnectionRef& get_connection() { return connection; }
   void set_connection(const ConnectionRef& c) {
     connection = c;
   }
+  void set_reply_hook(Completion *hook) { reply_hook = hook; }
   void set_byte_throttler(Throttle *t) { byte_throttler = t; }
   Throttle *get_byte_throttler() { return byte_throttler; }
   void set_message_throttler(Throttle *t) { msg_throttler = t; }

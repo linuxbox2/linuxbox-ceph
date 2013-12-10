@@ -32,7 +32,9 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 			conn = m->get_connection();
 			messenger->send_reply(m, new MPing());
 		}
-		m->put();
+		/* XXXX the below put() works correctly with SimpleMessenger
+		 * but crashes with XioMessenger */
+		//m->put();
 		break;
 	default:
 		abort();

@@ -16,10 +16,31 @@
 #include "XioMessage.h"
 #include "XioConnection.h"
 #include "XioMessenger.h"
+#include "XioMsg.h"
 
-void XioCompletion::func()
+
+void XioCompletion::finish(int r)
 {
-  printf("XioCompletion::func() called %p\n", this);
-
-  /* XXX do it */
+  printf("XioCompletion::finish called %p (%d)\n", this, r);
+ 
+  list <struct xio_msg *>::iterator iter;
+  for (iter = msg_seq.begin(); iter != msg_seq.end(); ++iter) {
+    struct xio_msg *msg = *iter;
+    switch (msg->type) {
+    case XIO_MSG_TYPE_REQ:
+      /* XXX do we have to send a response?  Maybe just
+       * ack? */
+      break;
+    case XIO_MSG_TYPE_RSP:
+      xio_release_response(msg);
+      release_xio_req(msg);
+      break;
+    case XIO_MSG_TYPE_ONE_WAY:
+      /* XXX */
+      break;
+    default:
+      abort();
+      break;
+    }
+  }
 }

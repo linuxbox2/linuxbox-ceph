@@ -25,11 +25,14 @@ extern "C" {
 class XioCompletion : public Message::Completion
 {
 private:
-  void* data; /* XXX replace with...something */
+  list <struct xio_msg *> msg_seq;
+  friend class XioConnection;
+  friend class XioMessenger;
 public:
-  XioCompletion(Message *_m, void* _data) : Completion(_m), data(_data)
+  XioCompletion(Message *_m, list <struct xio_msg *>& _msg_seq) :
+    Completion(_m), msg_seq(_msg_seq)
     {}
-  virtual void func();
+  virtual void finish(int r);
   virtual ~XioCompletion() { }
 };
 

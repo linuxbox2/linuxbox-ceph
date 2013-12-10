@@ -195,7 +195,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   m->set_seq(0); /* XIO handles seq */
   m->encode(xcon->get_features(), !this->cct->_conf->ms_nocrc);
 
-  XioMsg *xmsg = new XioMsg(m);
+  Xio_OMsg *xmsg = new Xio_OMsg(m);
 
   buffer::list blist;
   struct xio_msg *req = &xmsg->req_0;
@@ -244,8 +244,9 @@ int XioMessenger::send_message(Message *m, Connection *con)
 	/* next record */
 	req->out.data_iovlen = XIO_MAX_IOV;
 	req->more_in_batch++;
+	/* XXX chain it */
 	req = &xmsg->req_arr[req_off];
-	req->user_context = xmsg;
+	req->user_context = xmsg->get();
 	msg_iov = req->out.data_iov;
 	msg_off = 0;
       }
@@ -433,10 +434,10 @@ extern "C" {
     XioConnection *xcon =
       static_cast<XioConnection*>(cb_user_context);
 
-    printf("new request session %p xcon %p\n", session, xcon);
+    printf("on_msg session %p xcon %p\n", session, xcon);
 
-    return xcon->on_msg(session, req, more_in_batch,
-			cb_user_context);
+    return xcon->on_msg_req(session, req, more_in_batch,
+			    cb_user_context);
   }
 
   static int on_msg_delivered(struct xio_session *session,

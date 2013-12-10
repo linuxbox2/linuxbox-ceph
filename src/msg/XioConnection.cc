@@ -16,6 +16,7 @@
 #include "XioMsg.h"
 #include "XioConnection.h"
 #include "XioMessenger.h"
+#include "XioMessage.h"
 
 void print_xio_msg_hdr(xio_msg_hdr &hdr)
 {
@@ -49,10 +50,10 @@ void print_xio_msg_ftr(xio_msg_ftr &ftr)
 
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
 
-int XioConnection::on_msg(struct xio_session *session,
-			  struct xio_msg *req,
-			  int more_in_batch,
-			  void *cb_user_context)
+int XioConnection::on_msg_req(struct xio_session *session,
+			      struct xio_msg *req,
+			      int more_in_batch,
+			      void *cb_user_context)
 {
     /* XXX Accelio guarantees message ordering at
      * xio_session */
@@ -69,9 +70,10 @@ int XioConnection::on_msg(struct xio_session *session,
     else
       in_seq.p = false;
 
-    list<struct xio_msg *>& msg_seq = in_seq.seq;
-
     XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
+    XioCompletion *xio_cmpl = new XioCompletion(NULL, in_seq.seq);
+    list<struct xio_msg *>& msg_seq = xio_cmpl->msg_seq;
+    in_seq.seq.clear();
 
     ceph_msg_header header;
     ceph_msg_footer footer;
@@ -80,11 +82,20 @@ int XioConnection::on_msg(struct xio_session *session,
     struct timeval t1, t2;
     uint64_t seq;
 
+    bool rsp_p;
     list<struct xio_msg *>::iterator msg_iter = msg_seq.begin();
-    struct xio_msg *treq = *(msg_seq.begin());
+    struct xio_msg *rreq, *treq = *(msg_seq.begin());
     xio_msg_hdr hdr(header,
 		    buffer::create_static(treq->in.header.iov_len,
 					  (char*) treq->in.header.iov_base));
+
+    if (treq->type == XIO_MSG_TYPE_RSP) {
+      rsp_p = true;
+      rreq = (struct xio_msg *) treq->user_context;
+      release_xio_req(rreq);
+    } else
+      rsp_p = false;
+
     uint_to_timeval(t1, treq->timestamp);
 
     print_xio_msg_hdr(hdr);
@@ -157,8 +168,9 @@ int XioConnection::on_msg(struct xio_session *session,
     cout << "m is " << m << std::endl;
 
     if (m) {
-      /* XXX update for completions */
+      /* completion */
       m->set_connection(this);
+      m->set_reply_hook(xio_cmpl);
 
       /* update timestamps */
       m->set_recv_stamp(t1);
@@ -167,7 +179,8 @@ int XioConnection::on_msg(struct xio_session *session,
 
       /* dispatch it */
       msgr->ms_deliver_dispatch(m);
-    }
+    } else
+      delete xio_cmpl;
 
     return 0;
 }

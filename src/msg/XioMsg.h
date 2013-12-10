@@ -131,7 +131,7 @@ public:
 
 WRITE_CLASS_ENCODER(xio_msg_ftr);
 
-struct XioMsg
+struct Xio_OMsg : public RefCountedObject
 {
 public:
   Message* m;
@@ -142,20 +142,42 @@ public:
   int nbuffers;
 
 public:
-  XioMsg(Message *_m) : m(_m),
+  Xio_OMsg(Message *_m) : m(_m),
 			hdr(m->get_header()),
 			ftr(m->get_footer()),
 			req_arr(NULL)
     {
+      m->get();
       memset(&req_0, 0, sizeof(struct xio_msg));
       req_0.user_context = this;
     }
 
-  ~XioMsg()
+  ~Xio_OMsg()
     {
       free(req_arr);
       m->put();
     }
 };
+
+static inline void release_xio_req(struct xio_msg *rreq)
+{
+  int code;
+  struct xio_iovec_ex *msg_iov;
+  Xio_OMsg *xmsg = static_cast<Xio_OMsg*>(rreq->user_context);
+
+  for (unsigned int ix = 0; ix < rreq->out.data_iovlen; ++ix) {
+    msg_iov = &rreq->out.data_iov[ix];
+    if (msg_iov->mr) {
+      code = xio_dereg_mr(&msg_iov->mr);
+      if (code != 0) {
+	  printf("%s xio_dereg_mr failed (%s)\n",
+		 __func__, xio_strerror(code));
+      }
+    }
+  }
+
+  /* eventually frees xmsg */
+  xmsg->put();
+}
 
 #endif /* XIO_MSG_H */

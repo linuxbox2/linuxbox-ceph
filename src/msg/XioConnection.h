@@ -89,11 +89,14 @@ public:
     }
 
   bool is_connected() { return false; }
+
   const entity_inst_t& get_peer() const { return peer; }
 
-  int on_msg(struct xio_session *session, struct xio_msg *req,
-	     int more_in_batch, void *cb_user_context);
+  int on_msg_req(struct xio_session *session, struct xio_msg *req,
+		 int more_in_batch, void *cb_user_context);
 
+  int on_msg_rsp(struct xio_session *session, struct xio_msg *req,
+		 int more_in_batch, void *cb_user_context);
 };
 
 typedef boost::intrusive_ptr<XioConnection> XioConnectionRef;
