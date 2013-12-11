@@ -19,8 +19,6 @@
 
 #include "XioMsg.h"
 #include "XioMessenger.h"
-#include "XioMessage.h"
-#include "common/Mutex.h"
 
 Mutex mtx("XioMessenger Package Lock");
 atomic_t initialized;
@@ -284,6 +282,9 @@ int XioMessenger::send_message(Message *m, Connection *con)
   if (xmsg->hdr.msg_cnt == 1)
     xio_send_request(xcon->conn, req);
   else {
+    /* XXX xio was enhanced to permit chaining new xio_msg
+     * structures (at our suggestion)--we can use this to
+     * remove the spinlock */
     pthread_spin_lock(&xcon->sp);
     xio_send_request(xcon->conn, &xmsg->req_0);
     for (req_off = 0; req_off < ex_cnt; ++req_off) {
@@ -300,14 +301,12 @@ int XioMessenger::send_message(Message *m, Connection *con)
 } /* send_message(Message *, Connection *) */
 
 int XioMessenger::send_reply(Message *m, Message *reply) {
-
-  XioConnection *xcon =
-    static_cast<XioConnection*>(m->get_connection().get());
-
-  /* XXXX finish */
-
-  return 0;
-
+  /* try to dispatch using reply hook */
+  Message::ReplyHook *reply_hook = m->get_reply_hook();
+  if (reply_hook) {
+    return reply_hook->reply(reply);
+  }
+  return EINVAL;
 } /*  send_reply(Message *, Message *) */
 
 ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)

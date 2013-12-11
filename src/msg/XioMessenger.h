@@ -24,6 +24,7 @@ extern "C" {
 #include "XioPortal.h"
 #include "include/atomic.h"
 #include "common/Thread.h"
+#include "common/Mutex.h"
 
 
 class XioMessenger : public SimplePolicyMessenger

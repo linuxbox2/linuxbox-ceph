@@ -16,7 +16,6 @@
 #include "XioMsg.h"
 #include "XioConnection.h"
 #include "XioMessenger.h"
-#include "XioMessage.h"
 
 void print_xio_msg_hdr(xio_msg_hdr &hdr)
 {
@@ -55,24 +54,41 @@ int XioConnection::on_msg_req(struct xio_session *session,
 			      int more_in_batch,
 			      void *cb_user_context)
 {
-    /* XXX Accelio guarantees message ordering at
-     * xio_session */
-    if (! in_seq.p) {
-      xio_msg_cnt msg_cnt(
-	buffer::create_static(req->in.header.iov_len,
-			      (char*) req->in.header.iov_base));
-      in_seq.cnt = msg_cnt.msg_cnt;
-      in_seq.p = true;
-    }
-    in_seq.append(req);
+  struct xio_msg *treq;
+  bool rsp_p;
+
+  /* XXX this is an asymmetry Eyal plans to fix, at some point */
+  switch (req->type) {
+  case XIO_MSG_TYPE_RSP:
+    treq = req->request;
+    xio_release_response(req);
+    release_xio_req(req);
+    rsp_p = true;
+    break;
+  default:
+    treq = req;
+    rsp_p = false;
+    break;
+  }
+
+  /* XXX Accelio guarantees message ordering at
+   * xio_session */
+  if (! in_seq.p) {
+    xio_msg_cnt msg_cnt(
+      buffer::create_static(treq->in.header.iov_len,
+			    (char*) treq->in.header.iov_base));
+    in_seq.cnt = msg_cnt.msg_cnt;
+    in_seq.p = true;
+  }
+  in_seq.append(req);
     if (in_seq.cnt > 0)
       return 0;
     else
       in_seq.p = false;
 
     XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
-    XioCompletion *xio_cmpl = new XioCompletion(NULL, in_seq.seq);
-    list<struct xio_msg *>& msg_seq = xio_cmpl->msg_seq;
+    XioReplyHook *reply_hook = new XioReplyHook(NULL, in_seq.seq);
+    list<struct xio_msg *>& msg_seq = reply_hook->msg_seq;
     in_seq.seq.clear();
 
     ceph_msg_header header;
@@ -82,19 +98,13 @@ int XioConnection::on_msg_req(struct xio_session *session,
     struct timeval t1, t2;
     uint64_t seq;
 
-    bool rsp_p;
+    struct xio_msg *rreq;
     list<struct xio_msg *>::iterator msg_iter = msg_seq.begin();
-    struct xio_msg *rreq, *treq = *(msg_seq.begin());
+
+    treq = *msg_iter;
     xio_msg_hdr hdr(header,
 		    buffer::create_static(treq->in.header.iov_len,
 					  (char*) treq->in.header.iov_base));
-
-    if (treq->type == XIO_MSG_TYPE_RSP) {
-      rsp_p = true;
-      rreq = (struct xio_msg *) treq->user_context;
-      release_xio_req(rreq);
-    } else
-      rsp_p = false;
 
     uint_to_timeval(t1, treq->timestamp);
 
@@ -170,7 +180,10 @@ int XioConnection::on_msg_req(struct xio_session *session,
     if (m) {
       /* completion */
       m->set_connection(this);
-      m->set_reply_hook(xio_cmpl);
+
+      /* reply hook */
+      reply_hook->set_message(m);
+      m->set_reply_hook(reply_hook);
 
       /* update timestamps */
       m->set_recv_stamp(t1);
@@ -180,7 +193,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
       /* dispatch it */
       msgr->ms_deliver_dispatch(m);
     } else
-      delete xio_cmpl;
+      delete reply_hook;
 
     return 0;
 }

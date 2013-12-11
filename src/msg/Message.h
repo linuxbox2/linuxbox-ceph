@@ -179,19 +179,20 @@ protected:
   ConnectionRef connection;
 
 public:
-  class Completion : public Context {
-  private:
+  class ReplyHook : public Context {
+  protected:
     Message *m;
     friend class Message;
   public:
-    Completion(Message *_m) : m(_m) {}
+    ReplyHook(Message *_m) : m(_m) {}
     virtual void set_message(Message *_m) { m = _m; }
+    virtual int reply(Message *reply) = 0;
     virtual void finish(int r) = 0;
-    virtual ~Completion() {}
+    virtual ~ReplyHook() {}
   };
 
 protected:
-  Completion* reply_hook; // owned by Messenger
+  ReplyHook* reply_hook; // owned by Messenger
 
   // release our size in bytes back to this throttler when our payload
   // is adjusted or when we are destroyed.
@@ -250,11 +251,12 @@ protected:
       reply_hook->complete(0);
   }
 public:
-  const ConnectionRef& get_connection() { return connection; }
+  inline const ConnectionRef& get_connection() { return connection; }
   void set_connection(const ConnectionRef& c) {
     connection = c;
   }
-  void set_reply_hook(Completion *hook) { reply_hook = hook; }
+  ReplyHook* get_reply_hook() { return reply_hook; }
+  void set_reply_hook(ReplyHook *hook) { reply_hook = hook; }
   void set_byte_throttler(Throttle *t) { byte_throttler = t; }
   Throttle *get_byte_throttler() { return byte_throttler; }
   void set_message_throttler(Throttle *t) { msg_throttler = t; }

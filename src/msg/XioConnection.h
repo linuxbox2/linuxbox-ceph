@@ -73,6 +73,7 @@ private:
   typedef bi::avl_set< XioConnection, EntityHook, bi::compare<EntityComp> > EntitySet;
 
   friend class XioMessenger;
+  friend class XioReplyHook;
   friend class boost::intrusive_ptr<XioConnection>;
 
 public:
