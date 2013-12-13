@@ -27,37 +27,105 @@ atomic_t XioMessenger::nInstances;
 
 static struct xio_session_ops xio_msgr_ops;
 
-extern "C" {
-
-  static int on_session_event(struct xio_session *session,
-			      struct xio_session_event_data *event_data,
-			      void *cb_user_context);
-
-  static int on_new_session(struct xio_session *session,
-			    struct xio_new_session_req *req,
-			    void *cb_user_context);
-
-  static int on_msg_send_complete(struct xio_session *session,
-				  struct xio_msg *rsp,
-				  void *conn_user_context);
+/* Accelio API callouts */
+static int on_session_event(struct xio_session *session,
+			    struct xio_session_event_data *event_data,
+			    void *cb_user_context)
+{
+  XioConnection *xcon;
+  XioMessenger *msgr = static_cast<XioMessenger*>(cb_user_context);
   
-  static int on_msg(struct xio_session *session,
-		    struct xio_msg *req,
-		    int more_in_batch,
-		    void *cb_user_context);
+  printf("session event: %s. reason: %s\n",
+	 xio_session_event_str(event_data->event),
+	 xio_strerror(event_data->reason));
 
-  static int on_msg_delivered(struct xio_session *session,
-			      struct xio_msg *msg,
-			      int more_in_batch,
-			      void *conn_user_context);
+  switch (event_data->event) {
+  case XIO_SESSION_NEW_CONNECTION_EVENT:
+  {
+    struct xio_connection_params params;
+    xcon = new XioConnection(msgr, XioConnection::PASSIVE, entity_inst_t());
+    /* XXX the only member at present */
+    params.user_context = xcon;
+    xio_set_connection_params(event_data->conn, &params);
+    printf("new connection session %p xcon %p\n", session, xcon);
+  }
+  break;
+  case XIO_SESSION_CONNECTION_CLOSED_EVENT:
+    /* XXXX need to convert session to connection, remove from
+       conn_map, and release */
+    xcon = static_cast<XioConnection*>(event_data->conn_user_context);
+    /* XXX remove from ephemeral_conns list? */
+    xcon->put();
+    break;
+  case XIO_SESSION_TEARDOWN_EVENT:
+    xio_session_close(session);
+    break;
+  default:
+    break;
+  };
 
-  static int on_msg_error(struct xio_session *session,
-			  enum xio_status error,
-			  struct xio_msg  *msg,
-			  void *conn_user_context);
+  return 0;
+}
 
-} /* extern "C" */
+static int on_new_session(struct xio_session *session,
+			  struct xio_new_session_req *req,
+			  void *cb_user_context)
+{ 
+  XioMessenger *msgr = static_cast<XioMessenger*>(cb_user_context);
 
+  printf("new session %p user_context %p\n", session, cb_user_context);
+
+  return (msgr->new_session(session, req, cb_user_context));
+}
+
+static int on_msg_send_complete(struct xio_session *session,
+				struct xio_msg *rsp,
+				void *conn_user_context)
+{
+
+  printf("msg send complete: session: %p rsp: %p user_context %p\n",
+	 session, rsp, conn_user_context);
+
+  return 0;
+}
+
+static int on_msg(struct xio_session *session,
+		  struct xio_msg *req,
+		  int more_in_batch,
+		  void *cb_user_context)
+{
+  XioConnection *xcon =
+    static_cast<XioConnection*>(cb_user_context);
+
+  printf("on_msg session %p xcon %p\n", session, xcon);
+
+  return xcon->on_msg_req(session, req, more_in_batch,
+			  cb_user_context);
+}
+
+static int on_msg_delivered(struct xio_session *session,
+			    struct xio_msg *msg,
+			    int more_in_batch,
+			    void *conn_user_context)
+{
+  printf("msg delivered session: %p msg: %p more: %d conn_user_context %p\n",
+	   session, msg, more_in_batch, conn_user_context);
+
+    return 0;
+}
+
+static int on_msg_error(struct xio_session *session,
+			enum xio_status error,
+			struct xio_msg  *msg,
+			void *conn_user_context)
+{
+  printf("msg error session: %p error: %s msg: %p conn_user_context %p\n",
+	 session, xio_strerror(error), msg, conn_user_context);
+
+  return 0;
+}
+
+/* free functions */
 static string xio_uri_from_entity(const entity_addr_t& addr, bool want_port)
 {
   const char *host = NULL;
@@ -88,6 +156,7 @@ static string xio_uri_from_entity(const entity_addr_t& addr, bool want_port)
   return xio_uri;
 } /* xio_uri_from_entity */
 
+/* XioMessenger */
 XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 			   string mname, uint64_t nonce, int nportals)
   : SimplePolicyMessenger(cct, name, mname, nonce),
@@ -357,109 +426,3 @@ XioMessenger::~XioMessenger()
 {
   nInstances.dec();
 } /* dtor */
-
-// xio hooks
-extern "C" {
-
-  int xio_conn_get_src_addr(struct xio_conn *conn,
-			    struct sockaddr_storage *sa, socklen_t len);
-
-  static int on_session_event(struct xio_session *session,
-			      struct xio_session_event_data *event_data,
-			      void *cb_user_context)
-  {
-    XioConnection *xcon;
-    XioMessenger *msgr = static_cast<XioMessenger*>(cb_user_context);
-
-    printf("session event: %s. reason: %s\n",
-	   xio_session_event_str(event_data->event),
-	   xio_strerror(event_data->reason));
-
-    switch (event_data->event) {
-    case XIO_SESSION_NEW_CONNECTION_EVENT:
-    {
-      struct xio_connection_params params;
-      xcon = new XioConnection(msgr, XioConnection::PASSIVE, entity_inst_t());
-      /* XXX the only member at present */
-      params.user_context = xcon;
-      xio_set_connection_params(event_data->conn, &params);
-      printf("new connection session %p xcon %p\n", session, xcon);
-    }
-      break;
-    case XIO_SESSION_CONNECTION_CLOSED_EVENT:
-      /* XXXX need to convert session to connection, remove from
-	 conn_map, and release */
-      xcon = static_cast<XioConnection*>(event_data->conn_user_context);
-      /* XXX remove from ephemeral_conns list? */
-      xcon->put();
-      break;
-    case XIO_SESSION_TEARDOWN_EVENT:
-      xio_session_close(session);
-      break;
-    default:
-      break;
-    };
-
-    return 0;
-  }
-
-  static int on_new_session(struct xio_session *session,
-			    struct xio_new_session_req *req,
-			    void *cb_user_context)
-  { 
-    XioMessenger *msgr = static_cast<XioMessenger*>(cb_user_context);
-
-    printf("new session %p user_context %p\n", session, cb_user_context);
-
-    return (msgr->new_session(session, req, cb_user_context));
-  }
-
-  static int on_msg_send_complete(struct xio_session *session,
-				  struct xio_msg *rsp,
-				  void *conn_user_context)
-  {
-
-    printf("msg send complete: session: %p rsp: %p user_context %p\n",
-	   session, rsp, conn_user_context);
-
-    return 0;
-  }
-
-  static int on_msg(struct xio_session *session,
-		    struct xio_msg *req,
-		    int more_in_batch,
-		    void *cb_user_context)
-  {
-    XioConnection *xcon =
-      static_cast<XioConnection*>(cb_user_context);
-
-    printf("on_msg session %p xcon %p\n", session, xcon);
-
-    return xcon->on_msg_req(session, req, more_in_batch,
-			    cb_user_context);
-  }
-
-  static int on_msg_delivered(struct xio_session *session,
-			      struct xio_msg *msg,
-			      int more_in_batch,
-			      void *conn_user_context)
-  {
-    printf("msg delivered session: %p msg: %p more: %d conn_user_context %p\n",
-	   session, msg, more_in_batch, conn_user_context);
-
-    return 0;
-  }
-
-  static int on_msg_error(struct xio_session *session,
-			  enum xio_status error,
-			  struct xio_msg  *msg,
-			  void *conn_user_context)
-  {
-    printf("msg error session: %p error: %s msg: %p conn_user_context %p\n",
-	   session, xio_strerror(error), msg, conn_user_context);
-
-    return 0;
-  }
-
-} /* extern "C" */
-
