@@ -208,30 +208,13 @@ int XioMessenger::new_session(struct xio_session *session,
 			      struct xio_new_session_req *req,
 			      void *cb_user_context)
 {
-  return xio_accept(session,
-		    this->portals.get_vec(),
-		    this->portals.get_portals_len(),
-		    NULL, 0);
+  return portals.accept(session, req, cb_user_context);
 } /* new_session */
 
 int XioMessenger::bind(const entity_addr_t& addr)
 {
-  XioPortal *portal;
-  vector<XioPortal*>& vportals = portals.get();
-  string base_uri = xio_uri_from_entity(addr, false /* want_port */);  
-  int bind_size = vportals.size();
-
-  /* bind a consecutive range of ports */
-  for (int bind_ix = 1, bind_port = addr.get_port();
-       bind_ix < bind_size; ++bind_ix, ++bind_port) {
-    string xio_uri = base_uri;
-    xio_uri += ":";
-    xio_uri += boost::lexical_cast<std::string>(bind_port);
-    portal = vportals[bind_ix];
-    (void) portal->bind(&xio_msgr_ops, xio_uri);
-  }
-
-  return 0;
+  string base_uri = xio_uri_from_entity(addr, false /* want_port */);
+  return portals.bind(&xio_msgr_ops, base_uri, addr.get_port());
 } /* bind */
 
 int XioMessenger::start()

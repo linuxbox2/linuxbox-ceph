@@ -21,6 +21,7 @@ extern "C" {
 #include "libxio.h"
 }
 #include "XioConnection.h"
+#include <boost/lexical_cast.hpp>
 
 class XioMessenger;
 
@@ -32,22 +33,28 @@ private:
   struct xio_server *server;
   void *ev_loop;
   string xio_uri;
+  char *portal_id;
 
   friend class XioPortals;
   friend class XioMessenger;
 
 public:
   XioPortal(XioMessenger *_msgr) : msgr(_msgr), ctx(NULL), server(NULL),
-				   xio_uri("")
+				   xio_uri(""), portal_id(NULL)
     {
       ev_loop = xio_ev_loop_init();
       ctx = xio_ctx_open(NULL, ev_loop, 0);
+      printf("XioPortal %p created ev_loop %p ctx %p\n",
+	     this, ev_loop, ctx);
     }
 
   int bind(struct xio_session_ops *ops, const string &_uri)
     {
       xio_uri = _uri;
-      server = xio_bind(ctx, ops, xio_uri.c_str(), NULL, 0, msgr);
+      portal_id = strdup(xio_uri.c_str());
+      server = xio_bind(ctx, ops, portal_id, NULL, 0, msgr);
+      printf("xio_bind: portal %p %s returned server %p\n",
+	     this, xio_uri.c_str(), server);
       return (!!server);
     }
 
@@ -63,7 +70,9 @@ public:
     }
 
   ~XioPortal()
-    {}
+    { 
+      free(portal_id);
+    }
 };
 
 class XioPortals
@@ -100,6 +109,43 @@ public:
       return portals[0];
     }
 
+  int bind(struct xio_session_ops *ops, const string& base_uri,
+	   const int base_port)
+    {
+      /* a server needs at least 1 portal */
+      if (n < 1)
+	return EINVAL;
+
+      XioPortal *portal;
+      int bind_size = portals.size();
+
+      /* bind a consecutive range of ports */
+      for (int bind_ix = 1, bind_port = base_port;
+	   bind_ix < bind_size; ++bind_ix, ++bind_port) {
+	string xio_uri = base_uri;
+	xio_uri += ":";
+	xio_uri += boost::lexical_cast<std::string>(bind_port);
+	portal = portals[bind_ix];
+	(void) portal->bind(ops, xio_uri);
+      }
+
+      return 0;
+    }
+
+    int accept(struct xio_session *session,
+		 struct xio_new_session_req *req,
+		 void *cb_user_context)
+    {
+      const char **portals_vec = get_vec()+1;
+      int portals_len = get_portals_len()-1;
+      printf("portals_vec %p len %d\n", portals_vec, portals_len);
+
+      return xio_accept(session,
+			portals_vec,
+			portals_len,
+			NULL, 0);
+    }
+
   void start()
     {
       XioPortal *portal;
@@ -112,7 +158,8 @@ public:
       for (p_ix = 1; p_ix < nportals; ++p_ix) {
 	portal = portals[p_ix];
 	/* shift left */
-	p_vec[(p_ix-1)] = (char*) portal->xio_uri.c_str();
+	p_vec[(p_ix-1)] = (char*) /* portal->xio_uri.c_str() */
+	  portal->portal_id;
       }
 
       for (p_ix = 0; p_ix < nportals; ++p_ix) {
