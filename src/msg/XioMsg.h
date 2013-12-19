@@ -155,6 +155,7 @@ public:
     {
       m->get();
       memset(&req_0, 0, sizeof(struct xio_msg));
+      req_0.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
       req_0.user_context = this;
     }
 
