@@ -215,7 +215,7 @@
 #cmakedefine USE_NSS
 
 /* Version number of package */
-#cmakedefine VERSION
+#cmakedefine VERSION "@VERSION@"
 
 /* define if radosgw enabled */
 #cmakedefine WITH_RADOSGW

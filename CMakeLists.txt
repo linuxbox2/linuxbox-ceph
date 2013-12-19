@@ -1,12 +1,9 @@
 cmake_minimum_required(VERSION 2.8.7)
 
 project(Ceph)
+set(VERSION "0.71")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
-
-include_directories(  
-  ${PROJECT_BINARY_DIR}/src/include
-)
 
 #Check Includes
 
@@ -132,8 +129,9 @@ option(WITH_RADOSGW "Rados Gateway is enabled" ON)
 # Now create a useable config.h
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/include/config-h.in.cmake
-  ${PROJECT_BINARY_DIR}/src/include/acconfig.h
+  ${PROJECT_BINARY_DIR}/include/acconfig.h
 )
+include_directories(${PROJECT_BINARY_DIR}/include)
 
 add_definitions(-D__linux__)
 
