@@ -79,6 +79,8 @@ set(HAVE_LIBFUSE ${FUSE_FOUND})
 CHECK_FUNCTION_EXISTS(fuse_getgroups HAVE_FUSE_GETGROUPS)
 endif(${WITH_FUSE})
 
+option(WITH_LIBCEPHFS "libcephfs client library" ON)
+
 option(WITH_LEVELDB "LevelDB is here" ON)
 if(${WITH_LEVELDB})
 find_package(leveldb)
@@ -135,7 +137,6 @@ include_directories(${PROJECT_BINARY_DIR}/include)
 
 add_definitions(-D__linux__)
 
-set(Boost_USE_STATIC_LIBS   ON)
 set(Boost_USE_MULTITHREADED ON)
 find_package(Boost COMPONENTS thread system REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})

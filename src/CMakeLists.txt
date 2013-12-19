@@ -107,14 +107,13 @@ target_link_libraries(ceph-mds mds osdc ${CMAKE_DL_LIBS} global ${TCMALLOC_LIBS}
 
 # admin tools
 
-#cephfs
-set(cephfs_srcs 
-	cephfs.cc
-)
-
-add_executable(cephfs ${cephfs_srcs})
-
-target_link_libraries(cephfs common)
+if(FALSE) # removed due to conflict with libcephfs target
+	# cephfs
+	set(cephfs_srcs cephfs.cc)
+	add_executable(cephfs ${cephfs_srcs})
+	target_link_libraries(cephfs common)
+	install(TARGETS cephfs DESTINATION bin)
+endif(FALSE)
 
 # synthetic client
 set(ceph_syn_srcs
@@ -157,7 +156,6 @@ install(TARGETS
   ceph-mon
   ceph-osd
   ceph-mds
-  cephfs
   ${ceph_fuse_bin}
   ceph-syn
   librados-config
