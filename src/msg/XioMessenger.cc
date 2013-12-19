@@ -88,7 +88,10 @@ static int on_msg_send_complete(struct xio_session *session,
   printf("msg send complete: session: %p rsp: %p user_context %p\n",
 	 session, rsp, conn_user_context);
 
-  return 0;
+  XioConnection *xcon =
+    static_cast<XioConnection*>(conn_user_context);
+
+  return xcon->on_msg_send_complete(session, rsp, conn_user_context);
 }
 
 static int on_msg(struct xio_session *session,

@@ -209,3 +209,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
     return 0;
 }
+
+int XioConnection::on_msg_send_complete(struct xio_session *session,
+					struct xio_msg *rsp,
+					void *conn_user_context)
+{
+  release_xio_req(rsp);
+  return 0;
+} /* on_msg_send_complete */
