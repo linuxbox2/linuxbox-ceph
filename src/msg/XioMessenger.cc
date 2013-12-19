@@ -130,6 +130,25 @@ static int on_msg_error(struct xio_session *session,
   return 0;
 }
 
+static int on_cancel(struct xio_session *session,
+		     struct xio_msg  *msg,
+		     enum xio_status result,
+		     void *conn_user_context)
+{
+  printf("on cancel: session: %p msg: %p conn_user_context %p\n",
+	 session, msg, conn_user_context);
+  return 0;
+}
+
+static int on_cancel_request(struct xio_session *session,
+			     struct xio_msg  *msg,
+			     void *conn_user_context)
+{
+  printf("on cancel request: session: %p msg: %p conn_user_context %p\n",
+	 session, msg, conn_user_context);
+  return 0;
+}
+
 /* free functions */
 static string xio_uri_from_entity(const entity_addr_t& addr, bool want_port)
 {
@@ -195,8 +214,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_msgr_ops.on_msg = on_msg;
       xio_msgr_ops.on_msg_delivered = on_msg_delivered;
       xio_msgr_ops.on_msg_error = on_msg_error;
-      xio_msgr_ops.on_cancel = NULL;
-      xio_msgr_ops.on_cancel_request = NULL;
+      xio_msgr_ops.on_cancel = on_cancel;
+      xio_msgr_ops.on_cancel_request = on_cancel_request;
       xio_msgr_ops.assign_data_in_buf = NULL;
 
       /* mark initialized */
