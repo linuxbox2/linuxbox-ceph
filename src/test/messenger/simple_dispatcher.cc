@@ -22,6 +22,7 @@ SimpleDispatcher::~SimpleDispatcher() {
 bool SimpleDispatcher::ms_dispatch(Message *m)
 {
 	ConnectionRef conn;
+	int code;
 
 	switch (m->get_type()) {
 	case CEPH_MSG_PING:
@@ -30,7 +31,11 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 		} else {
 			cout << "ping!" << std::endl;
 			conn = m->get_connection();
-			messenger->send_reply(m, new MPing());
+			code = messenger->send_reply(m, new MPing());
+			if (code != 0) {
+			    cout << "send_reply returned " << code << std::endl;
+			    return false;
+			}
 		}
 		/* XXXX the below put() works correctly with SimpleMessenger
 		 * but crashes with XioMessenger */

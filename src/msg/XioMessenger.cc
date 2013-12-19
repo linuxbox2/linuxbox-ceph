@@ -266,6 +266,7 @@ int XioMessenger::send_message(Message *m, const entity_inst_t& dest)
 int XioMessenger::send_message(Message *m, Connection *con)
 {
   XioConnection *xcon = static_cast<XioConnection*>(con);
+  int code = 0;
 
   m->set_seq(0); /* XIO handles seq */
   m->encode(xcon->get_features(), !this->cct->_conf->ms_nocrc);
@@ -361,7 +362,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   /* deliver via xio, preserve ordering */
   pthread_spin_lock(&xcon->sp);
   if (xmsg->hdr.msg_cnt == 1)
-    xio_send_request(xcon->conn, req);
+    code = xio_send_request(xcon->conn, req);
   else {
     /* XXX xio was enhanced to permit chaining new xio_msg
      * structures (at our suggestion)--we can use this to
@@ -369,7 +370,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
     xio_send_request(xcon->conn, &xmsg->req_0);
     for (req_off = 0; req_off < ex_cnt; ++req_off) {
       req = &xmsg->req_arr[req_off];
-      xio_send_request(xcon->conn, req);
+      code = xio_send_request(xcon->conn, req);
     }
   }
   pthread_spin_unlock(&xcon->sp);
@@ -377,7 +378,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   /* it's now possible to use sn and timestamp */
   xcon->send.set(req->timestamp);
 
-  return 0;
+  return code;
 } /* send_message(Message *, Connection *) */
 
 int XioMessenger::send_reply(Message *m, Message *reply) {
