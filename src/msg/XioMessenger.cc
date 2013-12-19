@@ -53,11 +53,13 @@ static int on_session_event(struct xio_session *session,
   case XIO_SESSION_CONNECTION_CLOSED_EVENT:
     /* XXXX need to convert session to connection, remove from
        conn_map, and release */
+    printf("xio_session_connection_closed %p\n", session);
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
     /* XXX remove from ephemeral_conns list? */
     xcon->put();
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
+    printf("xio_session_teardown %p\n", session);
     xio_session_close(session);
     break;
   default:
@@ -173,10 +175,11 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       unsigned xopt;
 
+#if 0
       xopt = XIO_LOG_LEVEL_TRACE;
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_LEVEL,
 		  &xopt, sizeof(unsigned));
-
+#endif
       xopt = 1;
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_DISABLE_HUGETBL,
 		  &xopt, sizeof(unsigned));
@@ -324,6 +327,9 @@ int XioMessenger::send_message(Message *m, Connection *con)
   void print_xio_msg_hdr(xio_msg_hdr &hdr);
   print_xio_msg_hdr(xmsg->hdr);
 
+  void print_ceph_msg(Message *m);
+  print_ceph_msg(m);
+
   const std::list<buffer::ptr>& header = xmsg->hdr.get_bl().buffers();
   assert(header.size() == 1); /* XXX */
   pb = header.begin();
@@ -331,20 +337,20 @@ int XioMessenger::send_message(Message *m, Connection *con)
   req->out.header.iov_len = pb->length();
 
   /* deliver via xio, preserve ordering */
+  pthread_spin_lock(&xcon->sp);
   if (xmsg->hdr.msg_cnt == 1)
     xio_send_request(xcon->conn, req);
   else {
     /* XXX xio was enhanced to permit chaining new xio_msg
      * structures (at our suggestion)--we can use this to
      * remove the spinlock */
-    pthread_spin_lock(&xcon->sp);
     xio_send_request(xcon->conn, &xmsg->req_0);
     for (req_off = 0; req_off < ex_cnt; ++req_off) {
       req = &xmsg->req_arr[req_off];
       xio_send_request(xcon->conn, req);
     }
-    pthread_spin_unlock(&xcon->sp);
   }
+  pthread_spin_unlock(&xcon->sp);
 
   /* it's now possible to use sn and timestamp */
   xcon->send.set(req->timestamp);

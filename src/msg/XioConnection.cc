@@ -26,7 +26,8 @@ void print_xio_msg_hdr(xio_msg_hdr &hdr)
     " tid: " << hdr.hdr.tid <<
     " type: " << hdr.hdr.type <<
     " prio: " << hdr.hdr.priority <<
-    " ver: " << hdr.hdr.version <<
+    " version: " << hdr.hdr.version <<
+    " compat_version: " << hdr.hdr.compat_version <<
     " front_len: " << hdr.hdr.front_len <<
     " middle_len: " << hdr.hdr.middle_len <<
     " data_len: " << hdr.hdr.data_len <<
@@ -47,6 +48,14 @@ void print_xio_msg_ftr(xio_msg_ftr &ftr)
     std::endl;
 }
 
+void print_ceph_msg(Message *m)
+{
+  ceph_msg_header& header = m->get_header();
+  cout << "header version " << header.version << 
+    " compat version " << header.compat_version <<
+    std::endl;
+}
+
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
 
 int XioConnection::on_msg_req(struct xio_session *session,
@@ -61,8 +70,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
   switch (req->type) {
   case XIO_MSG_TYPE_RSP:
     treq = req->request;
-    xio_release_response(req);
-    release_xio_req(req);
     rsp_p = true;
     break;
   default:
@@ -194,6 +201,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
       msgr->ms_deliver_dispatch(m);
     } else
       delete reply_hook;
+
+    if (rsp_p) {
+      xio_release_response(req);
+      release_xio_req(req);
+    }
 
     return 0;
 }

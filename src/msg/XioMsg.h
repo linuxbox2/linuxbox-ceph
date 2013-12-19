@@ -73,6 +73,9 @@ public:
     ::encode(hdr.middle_len, bl);
     ::encode(hdr.data_len, bl);
     ::encode(hdr.data_off, bl);
+    //::encode(hdr.src, bl);
+    ::encode(hdr.compat_version, bl);
+    ::encode(hdr.crc, bl);
   }
 
   void decode(buffer::list::iterator& bl) {
@@ -86,6 +89,9 @@ public:
     ::decode(hdr.middle_len, bl);
     ::decode(hdr.data_len, bl);
     ::decode(hdr.data_off, bl);
+    //::decode(hdr.src, bl);
+    ::decode(hdr.compat_version, bl);
+    ::decode(hdr.crc, bl);
   }
 
 };
