@@ -240,7 +240,8 @@ public:
   }
 
 protected:
-  virtual ~Message() { 
+  virtual ~Message() {
+    cout << __func__ << " called" << std::endl;
     assert(nref.read() == 0);
     if (byte_throttler)
       byte_throttler->put(payload.length() + middle.length() + data.length());

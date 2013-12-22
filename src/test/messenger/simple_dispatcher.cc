@@ -24,6 +24,8 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 	ConnectionRef conn;
 	int code;
 
+	cout << __func__ << " " << m << std::endl;
+
 	switch (m->get_type()) {
 	case CEPH_MSG_PING:
 		if (active) {
@@ -39,7 +41,7 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 		}
 		/* XXXX the below put() works correctly with SimpleMessenger
 		 * but crashes with XioMessenger */
-		//m->put();
+		m->put();
 		break;
 	default:
 		abort();

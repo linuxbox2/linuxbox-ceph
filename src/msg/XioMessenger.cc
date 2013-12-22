@@ -361,12 +361,15 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   /* deliver via xio, preserve ordering */
   pthread_spin_lock(&xcon->sp);
-  if (xmsg->hdr.msg_cnt == 1)
+  if (xmsg->hdr.msg_cnt == 1) {
+    printf("send req %p iov_base %p iov_len %d\n",
+	   req, req->out.header.iov_base, req->out.header.iov_len);
     code = xio_send_request(xcon->conn, req);
+  }
   else {
     /* XXX xio was enhanced to permit chaining new xio_msg
      * structures (at our suggestion)--we can use this to
-     * remove the spinlock */
+     * remove the spinlockt */
     xio_send_request(xcon->conn, &xmsg->req_0);
     for (req_off = 0; req_off < ex_cnt; ++req_off) {
       req = &xmsg->req_arr[req_off];

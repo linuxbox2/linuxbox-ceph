@@ -81,6 +81,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
   /* XXX Accelio guarantees message ordering at
    * xio_session */
   if (! in_seq.p) {
+    printf("rsp_p %d req %p treq %p iov_base %p iov_len %d\n",
+	   (int) rsp_p, req, treq, treq->in.header.iov_base,
+	   treq->in.header.iov_len);
     xio_msg_cnt msg_cnt(
       buffer::create_static(treq->in.header.iov_len,
 			    (char*) treq->in.header.iov_base));
