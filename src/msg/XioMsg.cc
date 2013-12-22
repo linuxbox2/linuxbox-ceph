@@ -26,7 +26,7 @@ int XioReplyHook::reply(Message *reply)
   reply->set_seq(0); /* XIO handles seq */
   reply->encode(xcon->get_features(), !xcon->msgr->cct->_conf->ms_nocrc);
 
-  Xio_OMsg *xmsg = new Xio_OMsg(reply);
+  XioMsg *xmsg = new XioMsg(reply);
 
   buffer::list blist;
   struct xio_msg *req = &xmsg->req_0;

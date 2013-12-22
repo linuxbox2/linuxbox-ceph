@@ -271,7 +271,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   m->set_seq(0); /* XIO handles seq */
   m->encode(xcon->get_features(), !this->cct->_conf->ms_nocrc);
 
-  Xio_OMsg *xmsg = new Xio_OMsg(m);
+  XioMsg *xmsg = new XioMsg(m);
 
   buffer::list blist;
   struct xio_msg *req = &xmsg->req_0;
@@ -384,6 +384,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   return code;
 } /* send_message(Message *, Connection *) */
 
+#if 0 /* XXX going away */
 int XioMessenger::send_reply(Message *m, Message *reply) {
   /* try to dispatch using reply hook */
   Message::ReplyHook *reply_hook = m->get_reply_hook();
@@ -392,6 +393,7 @@ int XioMessenger::send_reply(Message *m, Message *reply) {
   }
   return EINVAL;
 } /*  send_reply(Message *, Message *) */
+#endif
 
 ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
 {

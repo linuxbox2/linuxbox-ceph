@@ -137,7 +137,7 @@ public:
 
 WRITE_CLASS_ENCODER(xio_msg_ftr);
 
-struct Xio_OMsg : public RefCountedObject
+struct XioMsg : public RefCountedObject
 {
 public:
   Message* m;
@@ -148,7 +148,7 @@ public:
   int nbuffers;
 
 public:
-  Xio_OMsg(Message *_m) : m(_m),
+  XioMsg(Message *_m) : m(_m),
 			hdr(m->get_header()),
 			ftr(m->get_footer()),
 			req_arr(NULL)
@@ -159,7 +159,7 @@ public:
       req_0.user_context = this;
     }
 
-  ~Xio_OMsg()
+  ~XioMsg()
     {
       free(req_arr);
       m->put();
@@ -170,7 +170,7 @@ static inline void release_xio_req(struct xio_msg *rreq)
 {
   int code;
   struct xio_iovec_ex *msg_iov;
-  Xio_OMsg *xmsg = static_cast<Xio_OMsg*>(rreq->user_context);
+  XioMsg *xmsg = static_cast<XioMsg*>(rreq->user_context);
 
   for (unsigned int ix = 0; ix < rreq->out.data_iovlen; ++ix) {
     msg_iov = &rreq->out.data_iov[ix];
