@@ -28,6 +28,12 @@ There is an option to build the Rados Gateway that is defaulted to ON
 To build without the Rados Gateway:
 $ cmake [path to top level ceph-local directory] -DWITH_RADOSGW=OFF
 
+To build with debugging and alternate locations for (a couple of)
+external dependencies:
+$ cmake -DLEVELDB_PREFIX="/opt/hyperleveldb" -DOFED_PREFIX="/opt/ofed" \
+    -DCMAKE_INSTALL_PREFIX=/opt/accelio -DCMAKE_C_FLAGS="-O0 -g3 -gdwarf-4" \
+    ..
+
 With future development efforts more options will be implemented
 
 Targets Built
