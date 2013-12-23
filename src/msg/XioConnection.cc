@@ -189,6 +189,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
     if (m) {
       /* completion */
+      this->get(); /* XXX getting underrun */
       m->set_connection(this);
 
       /* reply hook */

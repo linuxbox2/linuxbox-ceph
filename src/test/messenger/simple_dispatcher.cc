@@ -49,7 +49,7 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
     }
     /* XXXX the below put() works correctly with SimpleMessenger
      * but crashes with XioMessenger */
-    //m->put();
+    m->put();
     break;
   default:
     abort();
