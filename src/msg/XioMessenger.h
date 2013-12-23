@@ -46,6 +46,10 @@ public:
 		  struct xio_new_session_req *req,
 		  void *cb_user_context);
 
+  int session_event(struct xio_session *session,
+		    struct xio_session_event_data *event_data,
+		    void *cb_user_context);
+
   /* Messenger interface */
   virtual void set_addr_unknowns(entity_addr_t &addr) 
     { } /* XXX applicable? */

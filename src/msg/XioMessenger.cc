@@ -32,41 +32,13 @@ static int on_session_event(struct xio_session *session,
 			    struct xio_session_event_data *event_data,
 			    void *cb_user_context)
 {
-  XioConnection *xcon;
   XioMessenger *msgr = static_cast<XioMessenger*>(cb_user_context);
-  
+
   printf("session event: %s. reason: %s\n",
 	 xio_session_event_str(event_data->event),
 	 xio_strerror(event_data->reason));
 
-  switch (event_data->event) {
-  case XIO_SESSION_NEW_CONNECTION_EVENT:
-  {
-    struct xio_connection_params params;
-    xcon = new XioConnection(msgr, XioConnection::PASSIVE, entity_inst_t());
-    /* XXX the only member at present */
-    params.user_context = xcon;
-    xio_set_connection_params(event_data->conn, &params);
-    printf("new connection session %p xcon %p\n", session, xcon);
-  }
-  break;
-  case XIO_SESSION_CONNECTION_CLOSED_EVENT:
-    /* XXXX need to convert session to connection, remove from
-       conn_map, and release */
-    printf("xio_session_connection_closed %p\n", session);
-    xcon = static_cast<XioConnection*>(event_data->conn_user_context);
-    /* XXX remove from ephemeral_conns list? */
-    xcon->put();
-    break;
-  case XIO_SESSION_TEARDOWN_EVENT:
-    printf("xio_session_teardown %p\n", session);
-    xio_session_close(session);
-    break;
-  default:
-    break;
-  };
-
-  return 0;
+  return msgr->session_event(session, event_data, cb_user_context);
 }
 
 static int on_new_session(struct xio_session *session,
@@ -236,6 +208,42 @@ int XioMessenger::new_session(struct xio_session *session,
   return portals.accept(session, req, cb_user_context);
 } /* new_session */
 
+int XioMessenger::session_event(struct xio_session *session,
+				struct xio_session_event_data *event_data,
+				void *cb_user_context)
+{
+  XioConnection *xcon;
+
+  switch (event_data->event) {
+  case XIO_SESSION_NEW_CONNECTION_EVENT:
+  {
+    struct xio_connection_params params;
+    xcon = new XioConnection(this, XioConnection::PASSIVE, entity_inst_t());
+    xcon->conn = event_data->conn;
+    params.user_context = xcon;
+    xio_set_connection_params(event_data->conn, &params);
+    printf("new connection session %p xcon %p\n", session, xcon);
+  }
+  break;
+  case XIO_SESSION_CONNECTION_CLOSED_EVENT:
+    /* XXXX need to convert session to connection, remove from
+       conn_map, and release */
+    printf("xio_session_connection_closed %p\n", session);
+    xcon = static_cast<XioConnection*>(event_data->conn_user_context);
+    /* XXX remove from ephemeral_conns list? */
+    xcon->put();
+    break;
+  case XIO_SESSION_TEARDOWN_EVENT:
+    printf("xio_session_teardown %p\n", session);
+    xio_session_close(session);
+    break;
+  default:
+    break;
+  };
+
+  return 0;
+}
+
 int XioMessenger::bind(const entity_addr_t& addr)
 {
   string base_uri = xio_uri_from_entity(addr, false /* want_port */);
@@ -363,7 +371,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   pthread_spin_lock(&xcon->sp);
   if (xmsg->hdr.msg_cnt == 1) {
     printf("send req %p iov_base %p iov_len %d\n",
-	   req, req->out.header.iov_base, req->out.header.iov_len);
+	   req, req->out.header.iov_base, (int) req->out.header.iov_len);
     code = xio_send_request(xcon->conn, req);
   }
   else {

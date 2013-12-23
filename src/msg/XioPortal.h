@@ -31,6 +31,7 @@ private:
   XioMessenger *msgr;
   struct xio_context *ctx;
   struct xio_server *server;
+  struct xio_connection	*conn;
   void *ev_loop;
   string xio_uri;
   char *portal_id;
@@ -40,7 +41,7 @@ private:
 
 public:
   XioPortal(XioMessenger *_msgr) : msgr(_msgr), ctx(NULL), server(NULL),
-				   xio_uri(""), portal_id(NULL)
+				   conn(NULL), xio_uri(""), portal_id(NULL)
     {
       ev_loop = xio_ev_loop_init();
       ctx = xio_ctx_open(NULL, ev_loop, 0);
@@ -138,6 +139,7 @@ public:
     {
       const char **portals_vec = get_vec()+1;
       int portals_len = get_portals_len()-1;
+
       printf("portals_vec %p len %d\n", portals_vec, portals_len);
 
       return xio_accept(session,
