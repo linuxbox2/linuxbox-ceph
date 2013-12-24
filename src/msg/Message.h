@@ -186,7 +186,6 @@ public:
   public:
     CompletionHook(Message *_m) : m(_m) {}
     virtual void set_message(Message *_m) { m = _m; }
-    virtual int reply(Message *reply) = 0;
     virtual void finish(int r) = 0;
     virtual ~CompletionHook() {}
   };

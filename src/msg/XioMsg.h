@@ -199,7 +199,6 @@ public:
   XioCompletionHook(Message *_m, list <struct xio_msg *>& _msg_seq) :
     CompletionHook(_m), msg_seq(_msg_seq)
     {}
-  virtual int reply(Message *reply);
   virtual void finish(int r);
   virtual ~XioCompletionHook() { }
 };
