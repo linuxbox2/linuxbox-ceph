@@ -89,7 +89,7 @@ public:
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
     }
 
-  bool is_connected() { return false; }
+  bool is_connected() { return !!conn; }
 
   const entity_inst_t& get_peer() const { return peer; }
 
