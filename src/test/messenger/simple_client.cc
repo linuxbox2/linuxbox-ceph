@@ -37,7 +37,7 @@ int main(int argc, const char **argv)
 	vector<const char*> args;
 	Messenger* messenger;
 	SimpleDispatcher *dispatcher;
-	entity_addr_t dest_addr;	
+	entity_addr_t dest_addr;
 	ConnectionRef conn;
 	int r = 0;
 
@@ -69,7 +69,7 @@ int main(int argc, const char **argv)
 	conn = messenger->get_connection(dest_server);
 
 	// do stuff
-	while (1) {
+	while (conn->is_connected()) {
 	  messenger->send_message(new MPing(), conn);
 	  sleep(1);
 	}
