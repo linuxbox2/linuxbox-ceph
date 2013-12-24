@@ -44,7 +44,7 @@ static int on_session_event(struct xio_session *session,
 static int on_new_session(struct xio_session *session,
 			  struct xio_new_session_req *req,
 			  void *cb_user_context)
-{ 
+{
   XioMessenger *msgr = static_cast<XioMessenger*>(cb_user_context);
 
   printf("new session %p user_context %p\n", session, cb_user_context);
@@ -98,6 +98,8 @@ static int on_msg_error(struct xio_session *session,
 {
   printf("msg error session: %p error: %s msg: %p conn_user_context %p\n",
 	 session, xio_strerror(error), msg, conn_user_context);
+  /* XIO promises to flush back undelivered messags */
+  release_xio_req(msg);
 
   return 0;
 }
@@ -230,8 +232,13 @@ int XioMessenger::session_event(struct xio_session *session,
        conn_map, and release */
     printf("xio_session_connection_closed %p\n", session);
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
+    xcon->conn = NULL;
     /* XXX remove from ephemeral_conns list? */
-    xcon->put();
+    //xcon->put();
+    break;
+  case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
+    xcon = static_cast<XioConnection*>(event_data->conn_user_context);
+    xio_disconnect(event_data->conn);
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
     printf("xio_session_teardown %p\n", session);
