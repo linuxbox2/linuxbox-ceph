@@ -47,8 +47,6 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 	return false;
       }
     }
-    /* XXXX the below put() works correctly with SimpleMessenger
-     * but crashes with XioMessenger */
     m->put();
     break;
   default:
