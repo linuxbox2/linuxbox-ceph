@@ -228,13 +228,25 @@ int XioMessenger::session_event(struct xio_session *session,
   }
   break;
   case XIO_SESSION_CONNECTION_CLOSED_EVENT:
-    /* XXXX need to convert session to connection, remove from
-       conn_map, and release */
+    /* clean up mapped connections */
     printf("xio_session_connection_closed %p\n", session);
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
+    {
+      XioConnection::EntitySet::iterator conn_iter =
+	conns_entity_map.find(xcon->peer, XioConnection::EntityComp());
+      if (conn_iter != conns_entity_map.end()) {
+	XioConnection *xcon2 = &(*conn_iter);
+	if (xcon == xcon2) {
+	  conns_entity_map.erase(conn_iter);
+	}
+      }
+      /* XXX it could make sense to track ephemeral connections, but
+       * we don't currently, so if conn_iter points to nothing or to
+       * an address other than xcon, there's nothing to clean up */
+    }
     xcon->conn = NULL;
     /* XXX remove from ephemeral_conns list? */
-    //xcon->put();
+    xcon->put();
     break;
   case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
@@ -320,7 +332,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   int msg_off = 0;
   int req_off = -1; /* most often, not used */
 
-  list<bufferptr>::const_iterator pb; 
+  list<bufferptr>::const_iterator pb;
   for (pb = buffers.begin(); pb != buffers.end(); ++pb) {
 
     /* assign buffer */
@@ -398,17 +410,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   return code;
 } /* send_message(Message *, Connection *) */
-
-#if 0 /* XXX going away */
-int XioMessenger::send_reply(Message *m, Message *reply) {
-  /* try to dispatch using reply hook */
-  Message::ReplyHook *reply_hook = m->get_reply_hook();
-  if (reply_hook) {
-    return reply_hook->reply(reply);
-  }
-  return EINVAL;
-} /*  send_reply(Message *, Message *) */
-#endif
 
 ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
 {

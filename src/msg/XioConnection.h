@@ -45,7 +45,7 @@ private:
     int cnt;
     pthread_spinlock_t sp;
     list<struct xio_msg *> seq;
-    msg_seq() : p(false) { 
+    msg_seq() : p(false) {
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
     }
     void append(struct xio_msg* req) { seq.push_back(req); --cnt; }
@@ -70,7 +70,8 @@ private:
 
   typedef bi::member_hook<XioConnection, bi::avl_set_member_hook<>,
 			  &XioConnection::conns_entity_map_hook> EntityHook;
-  typedef bi::avl_set< XioConnection, EntityHook, bi::compare<EntityComp> > EntitySet;
+  typedef bi::avl_set< XioConnection, EntityHook,
+		       bi::compare<EntityComp> > EntitySet;
 
   friend class XioMessenger;
   friend class XioCompletionHook;

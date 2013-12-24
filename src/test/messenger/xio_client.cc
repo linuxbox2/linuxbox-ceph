@@ -77,7 +77,7 @@ int main(int argc, const char **argv)
 	// do stuff
 	while (conn->is_connected()) {
 	  messenger->send_message(new MPing(), conn);
-	  nanosleep(&ts, NULL);
+	  //nanosleep(&ts, NULL);
 	}
 
 out:
