@@ -96,8 +96,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
       in_seq.p = false;
 
     XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
-    XioReplyHook *reply_hook = new XioReplyHook(NULL, in_seq.seq);
-    list<struct xio_msg *>& msg_seq = reply_hook->msg_seq;
+    XioCompletionHook *completion_hook =
+      new XioCompletionHook(NULL, in_seq.seq);
+    list<struct xio_msg *>& msg_seq = completion_hook->msg_seq;
     in_seq.seq.clear();
 
     ceph_msg_header header;
@@ -190,8 +191,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
       m->set_connection(this);
 
       /* reply hook */
-      reply_hook->set_message(m);
-      m->set_reply_hook(reply_hook);
+      completion_hook->set_message(m);
+      m->set_completion_hook(completion_hook);
 
       /* update timestamps */
       m->set_recv_stamp(t1);
@@ -201,7 +202,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
       /* dispatch it */
       msgr->ms_deliver_dispatch(m);
     } else
-      delete reply_hook;
+      delete completion_hook;
 
     return 0;
 }

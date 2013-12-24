@@ -18,15 +18,15 @@
 #include "XioMsg.h"
 
 
-int XioReplyHook::reply(Message *reply)
+int XioCompletionHook::reply(Message *reply)
 {
   abort();
   return 0;
 } /* reply */
 
-void XioReplyHook::finish(int r)
+void XioCompletionHook::finish(int r)
 {
-  printf("XioReplyHook::finish called %p (%d)\n", this, r);
+  printf("XioCompletionHook::finish called %p (%d)\n", this, r);
 
   struct xio_msg *msg, *rsp;
   list <struct xio_msg *>::iterator iter;

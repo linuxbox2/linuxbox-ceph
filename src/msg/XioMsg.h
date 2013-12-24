@@ -189,19 +189,19 @@ static inline void release_xio_req(struct xio_msg *rreq)
     xmsg->put();
 }
 
-class XioReplyHook : public Message::ReplyHook
+class XioCompletionHook : public Message::CompletionHook
 {
 private:
   list <struct xio_msg *> msg_seq;
   friend class XioConnection;
   friend class XioMessenger;
 public:
-  XioReplyHook(Message *_m, list <struct xio_msg *>& _msg_seq) :
-    ReplyHook(_m), msg_seq(_msg_seq)
+  XioCompletionHook(Message *_m, list <struct xio_msg *>& _msg_seq) :
+    CompletionHook(_m), msg_seq(_msg_seq)
     {}
   virtual int reply(Message *reply);
   virtual void finish(int r);
-  virtual ~XioReplyHook() { }
+  virtual ~XioCompletionHook() { }
 };
 
 #endif /* XIO_MSG_H */
