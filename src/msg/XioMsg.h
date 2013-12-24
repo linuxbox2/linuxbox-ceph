@@ -161,6 +161,7 @@ public:
 
   ~XioMsg()
     {
+      cout << "~XioMsg called" << std::endl;
       free(req_arr);
       m->put();
     }
@@ -183,13 +184,9 @@ static inline void release_xio_req(struct xio_msg *rreq)
     }
   }
 
-  /* XXX ack it (Eyal:  we'd like an xio_ack_response) */
-  struct xio_msg *rsp = (struct xio_msg *) calloc(1, sizeof(struct xio_msg));
-  rsp->request = rreq;
-  (void) xio_send_response(rreq);
-
   /* eventually frees xmsg */
-  xmsg->put();
+  if (xmsg)
+    xmsg->put();
 }
 
 class XioReplyHook : public Message::ReplyHook

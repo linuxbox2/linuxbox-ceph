@@ -27,22 +27,20 @@ int XioReplyHook::reply(Message *reply)
 void XioReplyHook::finish(int r)
 {
   printf("XioReplyHook::finish called %p (%d)\n", this, r);
- 
+
+  struct xio_msg *msg, *rsp;
   list <struct xio_msg *>::iterator iter;
   for (iter = msg_seq.begin(); iter != msg_seq.end(); ++iter) {
-    struct xio_msg *msg = *iter;
+    msg = *iter;
     switch (msg->type) {
     case XIO_MSG_TYPE_REQ:
-      /* XXX do we have to send a response?  Maybe just
-       * ack? */
+      /* XXX ack it (Eyal:  we'd like an xio_ack_response) */
+      rsp = (struct xio_msg *) calloc(1, sizeof(struct xio_msg));
+      rsp->request = msg;
+      (void) xio_send_response(rsp); /* XXX can now chain */
       break;
     case XIO_MSG_TYPE_RSP:
-      xio_release_response(msg);
-      release_xio_req(msg);
-      break;
     case XIO_MSG_TYPE_ONE_WAY:
-      /* XXX */
-      break;
     default:
       abort();
       break;
