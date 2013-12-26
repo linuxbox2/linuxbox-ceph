@@ -5,7 +5,9 @@ set(AM_COMMON_FLAGS "-DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTR
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wno-invalid-offsetof -Wnon-virtual-dtor -Wno-invalid-offsetof -Wstrict-null-sentinel")
 
 if (HAVE_XIO)
+
   set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -I${Xio_INCLUDE_DIR}")
+
 endif(HAVE_XIO)
 
 add_definitions("${AM_COMMON_FLAGS}")
@@ -25,6 +27,12 @@ set(sbindir ${CMAKE_INSTALL_PREFIX}/sbin)
 set(libdir ${CMAKE_INSTALL_PREFIX}/lib)
 set(sysconfdir ${CMAKE_INSTALL_PREFIX}/etc)
 set(prefix ${CMAKE_INSTALL_PREFIX})
+
+if (HAVE_XIO)
+  set(EXTRALIBS ${EXTRALIBS}
+    ${Xio_LIBRARY} ibverbs rdmacm pthread rt)
+endif (HAVE_XIO)
+
 set(GCOV_PREFIX_STRIP 4)
 
 configure_file(
