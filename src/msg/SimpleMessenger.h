@@ -250,7 +250,8 @@ private:
    * @return a pointer to the newly-created Pipe. Caller does not own a
    * reference; take one if you need it.
    */
-  Pipe *connect_rank(const entity_addr_t& addr, int type, Connection *con, Message *first);
+  Pipe *connect_rank(const entity_addr_t& addr, int type, PipeConnection *con,
+		     Message *first);
   /**
    * Send a message, lazily or not.
    * This just glues [lazy_]send_message together and passes
