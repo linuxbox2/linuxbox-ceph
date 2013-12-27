@@ -22,7 +22,7 @@ if [ `dirname $0` = "." ] && [ $PWD != "/etc/init.d" ]; then
 else
     BINDIR=@bindir@
     SBINDIR=@prefix@/sbin
-    LIBDIR=@libdir@/ceph
+    LIBDIR=@libdir@
     ETCDIR=@sysconfdir@/ceph
 fi
 
@@ -36,9 +36,9 @@ usage_exit() {
 
 # behave if we are not completely installed (e.g., Debian "removed,
 # config remains" state)
-test -f $LIBDIR/ceph_common.sh || exit 0
+test -f $BINDIR/ceph_common.sh || exit 0
 
-. $LIBDIR/ceph_common.sh
+. $BINDIR/ceph_common.sh
 
 EXIT_STATUS=0
 
