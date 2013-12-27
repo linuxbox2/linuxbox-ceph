@@ -12,10 +12,18 @@ endif(PROFILER_INCLUDE_DIR AND PROFILER_LIBRARIES)
 INCLUDE(CheckCXXSymbolExists)
  
 # include dir
-find_path(PROFILER_INCLUDE_DIR libPROFILER.h)
  
+find_path(PROFILER_INCLUDE_DIR profiler.h NO_DEFAULT_PATH PATHS
+  ${HT_DEPENDENCY_INCLUDE_DIR}
+  /usr/include
+  /usr/include/google 
+  /opt/local/include
+  /usr/local/include
+)
+
+
 # finally the library itself
-find_library(LIBPROFILER NAMES PROFILER)
+find_library(LIBPROFILER NAMES profiler)
 set(PROFILER_LIBRARIES ${LIBPROFILER})
  
 # handle the QUIETLY and REQUIRED arguments and set PROFILER_FOUND to TRUE if
