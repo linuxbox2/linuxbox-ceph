@@ -35,6 +35,7 @@ using namespace std;
 
 #include "common/ceph_argparse.h"
 #include "common/pick_address.h"
+#include "common/address_helper.h"
 #include "common/Timer.h"
 #include "common/errno.h"
 #include "common/Preforker.h"
@@ -294,7 +295,8 @@ int main(int argc, const char **argv)
     }
     assert(r == 0);
 
-    Monitor mon(g_ceph_context, g_conf->name.get_id(), &store, 0, &monmap);
+    Monitor mon(g_ceph_context, g_conf->name.get_id(), &store, NULL, NULL,
+		&monmap);
     r = mon.mkfs(osdmapbl);
     if (r < 0) {
       cerr << argv[0] << ": error creating monfs: " << cpp_strerror(r)
@@ -497,6 +499,8 @@ int main(int argc, const char **argv)
 
   // bind
   int rank = monmap.get_rank(g_conf->name.get_id());
+
+  /* SimpleMessenger */
   Messenger *messenger = Messenger::create(g_ceph_context,
 					   entity_name_t::MON(rank),
 					   "mon",
@@ -555,9 +559,60 @@ int main(int argc, const char **argv)
   if (err < 0)
     prefork.exit(1);
 
+  /* XioMessenger */
+  XioMessenger *xmsgr = new XioMessenger(g_ceph_context,
+					 entity_name_t::GENERIC(),
+					 "xio mon",
+					 0 /* nonce */,
+					 1 /* portals */);
+
+  xmsgr->set_cluster_protocol(CEPH_MON_PROTOCOL);
+  xmsgr->set_default_send_priority(CEPH_MSG_PRIO_HIGH);
+
+  xmsgr->set_default_policy(Messenger::Policy::stateless_server(
+				  supported, 0));
+  xmsgr->set_policy(entity_name_t::TYPE_MON,
+			Messenger::Policy::lossless_peer_reuse(
+			  supported,
+			  CEPH_FEATURE_UID |
+			  CEPH_FEATURE_PGID64 |
+			  CEPH_FEATURE_MON_SINGLE_PAXOS));
+  xmsgr->set_policy(entity_name_t::TYPE_OSD,
+			Messenger::Policy::stateless_server(
+			  supported,
+			  CEPH_FEATURE_PGID64 |
+			  CEPH_FEATURE_OSDENC));
+  xmsgr->set_policy(entity_name_t::TYPE_CLIENT,
+			Messenger::Policy::stateless_server(supported, 0));
+  xmsgr->set_policy(entity_name_t::TYPE_MDS,
+			Messenger::Policy::stateless_server(supported, 0));
+
+  xmsgr->set_policy_throttlers(entity_name_t::TYPE_CLIENT,
+				   client_throttler, NULL);
+
+  xmsgr->set_policy_throttlers(entity_name_t::TYPE_OSD, daemon_throttler,
+				   NULL);
+  xmsgr->set_policy_throttlers(entity_name_t::TYPE_MDS, daemon_throttler,
+				   NULL);
+
+  cout << "starting " << g_conf->name << " rank " << rank
+       << " at " << ipaddr
+       << " mon_data " << g_conf->mon_data
+       << " fsid " << monmap.get_fsid()
+       << std::endl;
+
+  entity_addr_t xaddr = ipaddr;
+  xaddr.set_port(ipaddr.get_port()+1);
+
+  entity_addr_from_url(&xaddr, "tcp://localhost:1234");
+
+  err = xmsgr->bind(xaddr);
+  if (err < 0)
+    prefork.exit(1);
+
   // start monitor
   mon = new Monitor(g_ceph_context, g_conf->name.get_id(), store,
-		    messenger, &monmap);
+		    messenger, xmsgr, &monmap);
 
   if (force_sync) {
     derr << "flagging a forced sync ..." << dendl;
@@ -578,6 +633,7 @@ int main(int argc, const char **argv)
     prefork.daemonize();
 
   messenger->start();
+  xmsgr->start();
 
   mon->init();
 

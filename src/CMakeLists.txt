@@ -96,7 +96,7 @@ set(ceph_mon_srcs
 
 add_executable(ceph-mon ${ceph_mon_srcs})
 
-target_link_libraries(ceph-mon mon boost_thread common os global ${TCMALLOC_LIBS})
+target_link_libraries(ceph-mon mon boost_regex boost_thread common os global ${TCMALLOC_LIBS})
 
 # osd
 set(ceph_osd_srcs

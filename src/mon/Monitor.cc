@@ -118,11 +118,12 @@ long parse_pos_long(const char *s, ostream *pss)
 }
 
 Monitor::Monitor(CephContext* cct_, string nm, MonitorDBStore *s,
-		 Messenger *m, MonMap *map) :
+		 Messenger *m, XioMessenger *xm, MonMap *map) :
   Dispatcher(cct_),
   name(nm),
   rank(-1), 
   messenger(m),
+  xmsgr(xm),
   con_self(m ? m->get_loopback_connection() : NULL),
   lock("Monitor::lock"),
   timer(cct_, lock),
