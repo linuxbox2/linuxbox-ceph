@@ -522,6 +522,7 @@ int Monitor::init()
 
   // i'm ready!
   messenger->add_dispatcher_tail(this);
+  xmsgr->add_dispatcher_tail(this);
 
   bootstrap();
 
@@ -629,6 +630,7 @@ void Monitor::shutdown()
   lock.Unlock();
 
   messenger->shutdown();  // last thing!  ceph_mon.cc will delete mon.
+  xmsgr->shutdown();
 }
 
 void Monitor::bootstrap()
@@ -2842,8 +2844,10 @@ void Monitor::handle_ping(MPing *m)
   f->flush(ss);
   ::encode(ss.str(), payload);
   reply->set_payload(payload);
-  dout(10) << __func__ << " reply payload len " << reply->get_payload().length() << dendl;
-  messenger->send_message(reply, inst);
+  dout(10) << __func__ << " reply payload len "
+	   << reply->get_payload().length() << dendl;
+  const ConnectionRef& conn = m->get_connection();
+  conn->get_messenger()->send_message(reply, conn);
   m->put();
 }
 
