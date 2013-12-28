@@ -26,7 +26,7 @@ using namespace std;
 #include "global/global_init.h"
 #include "global/signal_handler.h"
 #include "perfglue/heap_profiler.h"
-#include "address_helper.h"
+#include "common/address_helper.h"
 #include "simple_dispatcher.h"
 
 #define dout_subsys ceph_subsys_simple_server

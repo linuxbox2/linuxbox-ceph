@@ -17,7 +17,7 @@ using namespace std;
 #include "common/config.h"
 #include "boost/regex.hpp"
 
-#include "address_helper.h"
+#include "common/address_helper.h"
 
 #include <arpa/inet.h>
 

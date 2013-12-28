@@ -7,7 +7,6 @@ include_directories("."
 
 set(simple_server_srcs
 	simple_server.cc
-	address_helper.cc
 	simple_dispatcher.cc
 	${TCMALLOC_srcs}
 )
@@ -19,7 +18,6 @@ target_link_libraries(simple_server os global common boost_regex
 
 set(simple_client_srcs
 	simple_client.cc
-	address_helper.cc
 	simple_dispatcher.cc
 	${TCMALLOC_srcs}
 )
@@ -34,7 +32,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -I${Xio_INCLUDE_DIR}")
 
 set(xio_server_srcs
 	xio_server.cc
-	address_helper.cc
 	simple_dispatcher.cc
 	${TCMALLOC_srcs}
 )
@@ -44,7 +41,6 @@ target_link_libraries(xio_server os global common boost_regex ${TCMALLOC_LIBS}
 
 set(xio_client_srcs
 	xio_client.cc
-	address_helper.cc
 	simple_dispatcher.cc
 	${TCMALLOC_srcs}
 )

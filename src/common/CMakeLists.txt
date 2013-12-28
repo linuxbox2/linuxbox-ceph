@@ -152,6 +152,7 @@ set (libcommon_files
 	ceph_json.cc 
 	ipaddr.cc 
 	pick_address.cc
+	address_helper.cc
 	addr_parsing.c 
 	SloppyCRCMap.cc
 	TrackedOp.cc

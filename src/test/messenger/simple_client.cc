@@ -27,7 +27,7 @@ using namespace std;
 #include "common/ceph_argparse.h"
 #include "global/global_init.h"
 #include "perfglue/heap_profiler.h"
-#include "address_helper.h"
+#include "common/address_helper.h"
 #include "simple_dispatcher.h"
 
 #define dout_subsys ceph_subsys_simple_client
