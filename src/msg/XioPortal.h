@@ -32,17 +32,22 @@ private:
   struct xio_context *ctx;
   struct xio_server *server;
   struct xio_connection	*conn;
+  pthread_spinlock_t sp;
   void *ev_loop;
   string xio_uri;
   char *portal_id;
+  bool shutdown;
+  bool suspended;
 
   friend class XioPortals;
   friend class XioMessenger;
 
 public:
   XioPortal(XioMessenger *_msgr) : msgr(_msgr), ctx(NULL), server(NULL),
-				   conn(NULL), xio_uri(""), portal_id(NULL)
+				   conn(NULL), xio_uri(""), portal_id(NULL),
+				   shutdown(false), suspended(false)
     {
+      pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
       ev_loop = xio_ev_loop_init();
       ctx = xio_ctx_open(NULL, ev_loop, 0);
       printf("XioPortal %p created ev_loop %p ctx %p\n",
@@ -59,9 +64,34 @@ public:
       return (!!server);
     }
 
+  void suspend()
+    {
+      pthread_spin_lock(&sp);
+      xio_ev_loop_stop(ev_loop);
+      suspended = true;
+      pthread_spin_unlock(&sp);
+    }
+
+  void resume()
+    {
+      pthread_spin_lock(&sp);
+      suspended = false;
+      pthread_spin_unlock(&sp);
+    }
+
   void *entry()
     {
-      xio_ev_loop_run(ev_loop);
+      while (! shutdown) {
+	/* barrier */
+	pthread_spin_lock(&sp);
+	if (suspended) {
+	  pthread_spin_unlock(&sp);
+	  /* XXX udelay? */
+	  continue;
+	}
+	pthread_spin_unlock(&sp);
+	xio_ev_loop_run(ev_loop);
+      }
       if (server) {
 	xio_unbind(server);
       }
@@ -71,7 +101,7 @@ public:
     }
 
   ~XioPortal()
-    { 
+    {
       free(portal_id);
     }
 };
@@ -80,12 +110,14 @@ class XioPortals
 {
 private:
   vector<XioPortal*> portals;
+  pthread_spinlock_t sp;
   char **p_vec;
   int n;
 
 public:
   XioPortals(XioMessenger *msgr, int _n) : p_vec(NULL), n(_n)
     {
+      pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
       /* n session portals, plus 1 to accept new sessions */
       int ix, np = n+1;
       for (ix = 0; ix < np; ++ix) {
@@ -167,6 +199,32 @@ public:
       for (p_ix = 0; p_ix < nportals; ++p_ix) {
 	portal = portals[p_ix];
 	portal->create();
+      }
+    }
+
+  void suspend()
+    {
+      XioPortal *portal;
+      /* XXX it is not necessary to suspend contexts subordinate to
+       * one (suspended) receive context */
+
+      int nportals = portals.size();
+      for (int p_ix = 0; p_ix < nportals; ++p_ix) {
+	portal = portals[p_ix];
+	portal->suspend();
+      }
+    }
+
+  void resume()
+    {
+      XioPortal *portal;
+      /* XXX it is not necessary to suspend contexts subordinate to
+       * one (suspended) receive context */
+
+      int nportals = portals.size();
+      for (int p_ix = 0; p_ix < nportals; ++p_ix) {
+	portal = portals[p_ix];
+	portal->resume();
       }
     }
 

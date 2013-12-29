@@ -387,6 +387,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   req->out.header.iov_len = pb->length();
 
   /* deliver via xio, preserve ordering */
+  suspend_event_loop();
   pthread_spin_lock(&xcon->sp);
   if (xmsg->hdr.msg_cnt == 1) {
     printf("send req %p iov_base %p iov_len %d\n",
@@ -404,6 +405,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
     }
   }
   pthread_spin_unlock(&xcon->sp);
+  resume_event_loop();
 
   /* it's now possible to use sn and timestamp */
   xcon->send.set(req->timestamp);

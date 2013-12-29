@@ -50,8 +50,11 @@ public:
 		    struct xio_session_event_data *event_data,
 		    void *cb_user_context);
 
+  void suspend_event_loop() { portals.suspend(); }
+  void resume_event_loop() { portals.resume(); }
+
   /* Messenger interface */
-  virtual void set_addr_unknowns(entity_addr_t &addr) 
+  virtual void set_addr_unknowns(entity_addr_t &addr)
     { } /* XXX applicable? */
 
   virtual int get_dispatch_queue_len()
