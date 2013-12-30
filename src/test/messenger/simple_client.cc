@@ -28,6 +28,7 @@ using namespace std;
 #include "global/global_init.h"
 #include "perfglue/heap_profiler.h"
 #include "common/address_helper.h"
+#include "message_helper.h"
 #include "simple_dispatcher.h"
 
 #define dout_subsys ceph_subsys_simple_client
@@ -40,6 +41,11 @@ int main(int argc, const char **argv)
 	entity_addr_t dest_addr;
 	ConnectionRef conn;
 	int r = 0;
+
+	struct timespec ts = {
+		.tv_sec = 1,
+		.tv_nsec = 0
+	};
 
 	argv_to_vec(argc, argv, args);
 	env_to_vec(args);
@@ -71,7 +77,8 @@ int main(int argc, const char **argv)
 	// do stuff
 	while (conn->is_connected()) {
 	  messenger->send_message(new MPing(), conn);
-	  sleep(1);
+	  messenger->send_message(new_ping_monstyle("sping", 3), conn);
+	  nanosleep(&ts, NULL);
 	}
 
 out:
