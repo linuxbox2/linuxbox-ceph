@@ -78,6 +78,8 @@ public:
   void *entry()
     {
       int ix, size;
+      XioConnection *xcon;
+      struct xio_msg *req;
       XioMsg *xmsg;
 
       while (! shutdown) {
@@ -88,7 +90,11 @@ public:
 	  for (ix = 0; ix < size; ++ix) {
 	    xmsg = send_queue.front();
 	    send_queue.pop_front();
-	    (void) xio_send_request(xmsg->conn, &xmsg->req_0);
+	    xcon = xmsg->xcon;
+	    req = &xmsg->req_0;
+	    (void) xio_send_request(xcon->conn, req);
+	    /* it's now possible to use sn and timestamp */
+	    xcon->send.set(req->timestamp);
 	  }
 	}
 	pthread_spin_unlock(&sp);

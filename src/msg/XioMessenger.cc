@@ -399,9 +399,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   portals.enqueue_for_send(xmsg);
 
-  /* it's now possible to use sn and timestamp */
-  xcon->send.set(req->timestamp);
-
   return code;
 } /* send_message(Message *, Connection *) */
 
