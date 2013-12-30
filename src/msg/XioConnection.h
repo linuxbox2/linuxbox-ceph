@@ -26,6 +26,8 @@ extern "C" {
 
 namespace bi = boost::intrusive;
 
+class XioMsg;
+
 class XioConnection : public Connection
 {
 public:
@@ -73,6 +75,7 @@ private:
   typedef bi::avl_set< XioConnection, EntityHook,
 		       bi::compare<EntityComp> > EntitySet;
 
+  friend class XioMsg;
   friend class XioMessenger;
   friend class XioCompletionHook;
   friend class boost::intrusive_ptr<XioConnection>;

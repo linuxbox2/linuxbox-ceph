@@ -21,6 +21,7 @@ extern "C" {
 #include "libxio.h"
 }
 #include "XioConnection.h"
+#include "XioMsg.h"
 #include <boost/lexical_cast.hpp>
 
 class XioMessenger;
@@ -32,6 +33,7 @@ private:
   struct xio_context *ctx;
   struct xio_server *server;
   struct xio_connection	*conn;
+  list<XioMsg*> send_queue; /* XXX replace with boost::intrusive */
   pthread_spinlock_t sp;
   void *ev_loop;
   string xio_uri;
@@ -64,34 +66,36 @@ public:
       return (!!server);
     }
 
-  void suspend()
+  void enqueue_for_send(XioMsg *xmsg)
     {
+      /* XXX elevate refcnts? */
       pthread_spin_lock(&sp);
-      xio_ev_loop_stop(ev_loop);
-      suspended = true;
-      pthread_spin_unlock(&sp);
-    }
-
-  void resume()
-    {
-      pthread_spin_lock(&sp);
-      suspended = false;
+      send_queue.push_back(xmsg);
+      xio_ev_loop_stop(ev_loop); /* XXX can this move out of section? */
       pthread_spin_unlock(&sp);
     }
 
   void *entry()
     {
+      int ix, size;
+      XioMsg *xmsg;
+
       while (! shutdown) {
 	/* barrier */
 	pthread_spin_lock(&sp);
-	if (suspended) {
-	  pthread_spin_unlock(&sp);
-	  /* XXX udelay? */
-	  continue;
+	size = send_queue.size();
+	if (size > 0) {
+	  for (ix = 0; ix < size; ++ix) {
+	    xmsg = send_queue.front();
+	    send_queue.pop_front();
+	    (void) xio_send_request(xmsg->conn, &xmsg->req_0);
+	  }
 	}
 	pthread_spin_unlock(&sp);
-	xio_ev_loop_run(ev_loop);
+	xio_ev_loop_run_timeout(ev_loop, 300);
       }
+
+	/* shutting down */
       if (server) {
 	xio_unbind(server);
       }
@@ -202,30 +206,10 @@ public:
       }
     }
 
-  void suspend()
+  void enqueue_for_send(XioMsg *xmsg)
     {
-      XioPortal *portal;
-      /* XXX it is not necessary to suspend contexts subordinate to
-       * one (suspended) receive context */
-
-      int nportals = portals.size();
-      for (int p_ix = 0; p_ix < nportals; ++p_ix) {
-	portal = portals[p_ix];
-	portal->suspend();
-      }
-    }
-
-  void resume()
-    {
-      XioPortal *portal;
-      /* XXX it is not necessary to suspend contexts subordinate to
-       * one (suspended) receive context */
-
-      int nportals = portals.size();
-      for (int p_ix = 0; p_ix < nportals; ++p_ix) {
-	portal = portals[p_ix];
-	portal->resume();
-      }
+      /* XXX later, may be be more send flows */
+      (portals[0])->enqueue_for_send(xmsg);
     }
 
   void join()

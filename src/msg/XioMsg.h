@@ -145,13 +145,16 @@ public:
   xio_msg_ftr ftr;
   struct xio_msg req_0;
   struct xio_msg *req_arr;
+  struct xio_connection *conn;
   int nbuffers;
 
 public:
-  XioMsg(Message *_m) : m(_m),
-			hdr(m->get_header()),
-			ftr(m->get_footer()),
-			req_arr(NULL)
+  XioMsg(Message *_m, XioConnection *xcon) :
+    m(_m),
+    hdr(m->get_header()),
+    ftr(m->get_footer()),
+    req_arr(NULL),
+    conn(xcon->conn)
     {
       m->get();
       memset(&req_0, 0, sizeof(struct xio_msg));
