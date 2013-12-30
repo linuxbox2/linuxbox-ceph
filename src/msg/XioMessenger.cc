@@ -340,6 +340,11 @@ int XioMessenger::send_message(Message *m, Connection *con)
     iov->iov_base = (void *) pb->c_str(); // is this efficient?
     iov->iov_len = pb->length();
 
+    printf("send req %p data off %d iov_base %p iov_len %d\n",
+	   req, msg_off,
+	   iov->iov_base,
+	   (int) iov->iov_len);
+
     /* advance iov(s) */
     if (++msg_off >= XIO_MAX_IOV) {
       req->out.data_iovlen = msg_off;
@@ -362,6 +367,12 @@ int XioMessenger::send_message(Message *m, Connection *con)
   pb = footer.begin();
   msg_iov[msg_off].iov_base = (char*) pb->c_str();
   msg_iov[msg_off].iov_len = pb->length();
+
+  printf("send req %p data off %d iov_base %p iov_len %d\n",
+	 req, msg_off,
+	 msg_iov[msg_off].iov_base,
+	 (int) msg_iov[msg_off].iov_len);
+
   msg_off++;
   req->out.data_iovlen = msg_off;
 
@@ -389,8 +400,10 @@ int XioMessenger::send_message(Message *m, Connection *con)
   /* deliver via xio, preserve ordering */
   pthread_spin_lock(&xcon->sp);
   if (xmsg->hdr.msg_cnt == 1) {
-    printf("send req %p iov_base %p iov_len %d\n",
-	   req, req->out.header.iov_base, (int) req->out.header.iov_len);
+    printf("send req %p header iov_base %p iov_len %d data.iovlen %d\n",
+	   req, req->out.header.iov_base,
+	   (int) req->out.header.iov_len,
+	   (int) req->out.data_iovlen);
     code = xio_send_request(xcon->conn, req);
   }
   else {

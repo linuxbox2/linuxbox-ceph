@@ -83,9 +83,10 @@ int XioConnection::on_msg_req(struct xio_session *session,
    * xio_session */
   pthread_spin_lock(&sp);
   if (! in_seq.p) {
-    printf("req %p treq %p iov_base %p iov_len %d\n",
+    printf("receive req %p treq %p iov_base %p iov_len %d data_iovlen %d\n",
 	   req, treq, treq->in.header.iov_base,
-	   (int) treq->in.header.iov_len);
+	   (int) treq->in.header.iov_len,
+	   (int) treq->in.data_iovlen);
     xio_msg_cnt msg_cnt(
       buffer::create_static(treq->in.header.iov_len,
 			    (char*) treq->in.header.iov_base));
@@ -136,6 +137,12 @@ int XioConnection::on_msg_req(struct xio_session *session,
     iov_len = treq->in.data_iovlen;
     for (ix = 0; blen && (ix < iov_len); ++ix, --blen) {
       msg_iov = &treq->in.data_iov[ix];
+
+      printf("recv req %p data off %d iov_base %p iov_len %d\n",
+	     treq, ix,
+	     msg_iov->iov_base,
+	     (int) msg_iov->iov_len);
+
       blist.append(
 	buffer::create_static(
 	  msg_iov->iov_len, (char*) msg_iov->iov_base));
