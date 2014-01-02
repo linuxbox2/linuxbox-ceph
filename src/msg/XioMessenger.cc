@@ -88,7 +88,12 @@ static int on_msg_delivered(struct xio_session *session,
   printf("msg delivered session: %p msg: %p more: %d conn_user_context %p\n",
 	   session, msg, more_in_batch, conn_user_context);
 
-    return 0;
+  XioConnection *xcon =
+    static_cast<XioConnection*>(conn_user_context);
+
+  return xcon->on_msg_delivered(session, msg, more_in_batch, conn_user_context);
+
+  return 0;
 }
 
 static int on_msg_error(struct xio_session *session,
@@ -340,6 +345,11 @@ int XioMessenger::send_message(Message *m, Connection *con)
     iov->iov_base = (void *) pb->c_str(); // is this efficient?
     iov->iov_len = pb->length();
 
+    /* register it */
+    iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
+    if (! iov->mr)
+      abort();
+
     printf("send req %p data off %d iov_base %p iov_len %d\n",
 	   req, msg_off,
 	   iov->iov_base,
@@ -365,8 +375,15 @@ int XioMessenger::send_message(Message *m, Connection *con)
   const std::list<buffer::ptr>& footer = xmsg->ftr.get_bl().buffers();
   assert(footer.size() == 1); /* XXX */
   pb = footer.begin();
-  msg_iov[msg_off].iov_base = (char*) pb->c_str();
-  msg_iov[msg_off].iov_len = pb->length();
+
+  iov = &msg_iov[msg_off];
+  iov->iov_base = (char*) pb->c_str();
+  iov->iov_len = pb->length();
+
+  /* register it */
+  iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
+  if (! iov->mr)
+    abort();
 
   printf("send req %p data off %d iov_base %p iov_len %d\n",
 	 req, msg_off,

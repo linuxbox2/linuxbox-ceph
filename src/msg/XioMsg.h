@@ -133,6 +133,12 @@ public:
     ::decode(ftr.flags, bl);
   }
 
+  virtual ~xio_msg_ftr()
+    {
+      /* XXXX this masks a leak (I think) */
+      bl.clear();
+    }
+
 };
 
 WRITE_CLASS_ENCODER(xio_msg_ftr);
@@ -163,7 +169,7 @@ public:
     {
       cout << "~XioMsg called" << std::endl;
       free(req_arr);
-      m->put();
+      m->put(); 
     }
 };
 
@@ -200,6 +206,7 @@ public:
     CompletionHook(_m), msg_seq(_msg_seq)
     {}
   virtual void finish(int r);
+  void on_err_finalize(XioConnection *xcon);
   virtual ~XioCompletionHook() { }
 };
 

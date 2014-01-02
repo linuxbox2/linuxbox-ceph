@@ -97,6 +97,9 @@ public:
   int on_msg_req(struct xio_session *session, struct xio_msg *req,
 		 int more_in_batch, void *cb_user_context);
 
+  int on_msg_delivered(struct xio_session *session, struct xio_msg *msg,
+		       int more_in_batch, void *conn_user_context);
+
   int on_msg_send_complete(struct xio_session *session,
 			   struct xio_msg *rsp, void *conn_user_context);
 };

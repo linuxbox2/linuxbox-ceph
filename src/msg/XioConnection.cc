@@ -71,6 +71,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
     /* XXX piggy-backed data is in req->request */
     pthread_spin_lock(&sp);
     xio_release_response(req);
+    release_xio_req(req); /* frees req, which we allocated */
     pthread_spin_unlock(&sp);
     return 0;
     break;
@@ -215,8 +216,10 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
     /* dispatch it */
     msgr->ms_deliver_dispatch(m);
-  } else
-    delete completion_hook;
+  } else {
+    /* responds for undecoded messages and frees hook */
+    completion_hook->on_err_finalize(this);
+  }
 
   return 0;
 }
@@ -229,3 +232,12 @@ int XioConnection::on_msg_send_complete(struct xio_session *session,
   release_xio_req(rsp);
   return 0;
 } /* on_msg_send_complete */
+
+int XioConnection::on_msg_delivered(struct xio_session *session,
+				    struct xio_msg *req,
+				    int more_in_batch,
+				    void *conn_user_context)
+{
+  /* requester delivery receipt */
+  return 0;
+}  /* on_msg_delivered */
