@@ -69,10 +69,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
   switch (req->type) {
   case XIO_MSG_TYPE_RSP:
     /* XXX piggy-backed data is in req->request */
-    pthread_spin_lock(&sp);
     xio_release_response(req);
     release_xio_req(req); /* frees req, which we allocated */
-    pthread_spin_unlock(&sp);
     return 0;
     break;
   default:
