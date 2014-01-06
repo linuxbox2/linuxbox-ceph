@@ -17,41 +17,37 @@
 #include "XioConnection.h"
 #include "XioMessenger.h"
 
-void print_xio_msg_hdr(xio_msg_hdr &hdr)
+void print_xio_msg_hdr(XioMsgHdr &hdr)
 {
 
   cout << "ceph header: " <<
-    " front_len: " << hdr.hdr.front_len <<
-    " seq: " << hdr.hdr.seq <<
-    " tid: " << hdr.hdr.tid <<
-    " type: " << hdr.hdr.type <<
-    " prio: " << hdr.hdr.priority <<
-    " version: " << hdr.hdr.version <<
-    " compat_version: " << hdr.hdr.compat_version <<
-    " front_len: " << hdr.hdr.front_len <<
-    " middle_len: " << hdr.hdr.middle_len <<
-    " data_len: " << hdr.hdr.data_len <<
+    " front_len: " << hdr.hdr->front_len <<
+    " seq: " << hdr.hdr->seq <<
+    " tid: " << hdr.hdr->tid <<
+    " type: " << hdr.hdr->type <<
+    " prio: " << hdr.hdr->priority <<
+    " version: " << hdr.hdr->version <<
+    " compat_version: " << hdr.hdr->compat_version <<
+    " front_len: " << hdr.hdr->front_len <<
+    " middle_len: " << hdr.hdr->middle_len <<
+    " data_len: " << hdr.hdr->data_len <<
     " xio header: " <<
     " msg_cnt: " << hdr.msg_cnt <<
     std::endl;
-}
-
-void print_xio_msg_ftr(xio_msg_ftr &ftr)
-{
 
   cout << "ceph footer: " <<
-    " front_crc: " << ftr.ftr.front_crc <<
-    " middle_crc: " << ftr.ftr.middle_crc <<
-    " data_crc: " << ftr.ftr.data_crc <<
-    " sig: " << ftr.ftr.sig <<
-    " flags: " << (uint32_t) ftr.ftr.flags <<
+    " front_crc: " << hdr.ftr->front_crc <<
+    " middle_crc: " << hdr.ftr->middle_crc <<
+    " data_crc: " << hdr.ftr->data_crc <<
+    " sig: " << hdr.ftr->sig <<
+    " flags: " << (uint32_t) hdr.ftr->flags <<
     std::endl;
 }
 
 void print_ceph_msg(Message *m)
 {
   ceph_msg_header& header = m->get_header();
-  cout << "header version " << header.version << 
+  cout << "header version " << header.version <<
     " compat version " << header.compat_version <<
     std::endl;
 }
@@ -64,13 +60,17 @@ int XioConnection::on_msg_req(struct xio_session *session,
 			      void *cb_user_context)
 {
   struct xio_msg *treq;
+  XioMsg *xmsg;
 
   /* XXX this is an asymmetry Eyal plans to fix, at some point */
   switch (req->type) {
   case XIO_MSG_TYPE_RSP:
     /* XXX piggy-backed data is in req->request */
+    dereg_xio_req(req);
+    xmsg = static_cast<XioMsg*>(req->user_context);
     xio_release_response(req);
-    release_xio_req(req); /* frees req, which we allocated */
+    if (xmsg)
+      xmsg->put();
     return 0;
     break;
   default:
@@ -86,7 +86,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 	   req, treq, treq->in.header.iov_base,
 	   (int) treq->in.header.iov_len,
 	   (int) treq->in.data_iovlen);
-    xio_msg_cnt msg_cnt(
+    XioMsgCnt msg_cnt(
       buffer::create_static(treq->in.header.iov_len,
 			    (char*) treq->in.header.iov_base));
     in_seq.cnt = msg_cnt.msg_cnt;
@@ -117,9 +117,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   list<struct xio_msg *>::iterator msg_iter = msg_seq.begin();
   treq = *msg_iter;
-  xio_msg_hdr hdr(header,
-		  buffer::create_static(treq->in.header.iov_len,
-					(char*) treq->in.header.iov_base));
+  XioMsgHdr hdr(header, footer,
+		buffer::create_static(treq->in.header.iov_len,
+				      (char*) treq->in.header.iov_base));
 
   uint_to_timeval(t1, treq->timestamp);
 
@@ -128,64 +128,68 @@ int XioConnection::on_msg_req(struct xio_session *session,
   int ix, blen, iov_len;
   struct xio_iovec_ex *msg_iov;
 
-  buffer::list &blist = front;
   blen = header.front_len;
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
     iov_len = treq->in.data_iovlen;
-    for (ix = 0; blen && (ix < iov_len); ++ix, --blen) {
+    for (ix = 0; blen && (ix < iov_len); ++ix) {
       msg_iov = &treq->in.data_iov[ix];
+
+      /* XXX need to detect any buffer which needs to be
+       * split due to coalescing of a segment (front, middle,
+       * data) boundary */
 
       printf("recv req %p data off %d iov_base %p iov_len %d\n",
 	     treq, ix,
 	     msg_iov->iov_base,
 	     (int) msg_iov->iov_len);
 
-      blist.append(
+      /* XXX need to take only MIN(blen, iov_len) */
+      front.append(
 	buffer::create_static(
 	  msg_iov->iov_len, (char*) msg_iov->iov_base));
+
+      blen -= msg_iov->iov_len;
     }
+    /* XXX as above, if a buffer is split, then we needed to track
+     * the new start (carry) and not advance */
     msg_iter++;
   }
 
-  blist = middle;
   blen = header.middle_len;
+
+  cout << " front size: " << front.length() << std::endl;
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
     iov_len = treq->in.data_iovlen;
-    for (ix = 0; blen && (ix < iov_len); ++ix, --blen) {
+    for (ix = 0; blen && (ix < iov_len); ++ix) {
       msg_iov = &treq->in.data_iov[ix];
-      blist.append(
+
+      /* XXX need to take only MIN(blen, iov_len) */
+      middle.append(
 	buffer::create_static(
 	  msg_iov->iov_len, (char*) msg_iov->iov_base));
+      blen -= msg_iov->iov_len;
     }
     msg_iter++;
   }
 
-  blist = data;
   blen = header.data_len;
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
     iov_len = treq->in.data_iovlen;
-    for (ix = 0; blen && (ix < iov_len); ++ix, --blen) {
+    for (ix = 0; blen && (ix < iov_len); ++ix) {
       msg_iov = &treq->in.data_iov[ix];
-      blist.append(
+      data.append(
 	buffer::create_static(
 	  msg_iov->iov_len, (char*) msg_iov->iov_base));
+      blen -= msg_iov->iov_len;
     }
     msg_iter++;
   }
-
-  /* footer */
-  msg_iov = &treq->in.data_iov[(treq->in.data_iovlen - 1)];
-  xio_msg_ftr ftr(footer,
-		  buffer::create_static(msg_iov->iov_len,
-					(char*) msg_iov->iov_base));
-
-  print_xio_msg_ftr(ftr);
 
   seq = treq->sn;
   uint_to_timeval(t2, treq->timestamp);
@@ -227,7 +231,7 @@ int XioConnection::on_msg_send_complete(struct xio_session *session,
 					void *conn_user_context)
 {
   /* responder side cleanup */
-  release_xio_req(rsp);
+  finalize_response_msg(rsp);
   return 0;
 } /* on_msg_send_complete */
 

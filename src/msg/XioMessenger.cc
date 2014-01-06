@@ -104,7 +104,10 @@ static int on_msg_error(struct xio_session *session,
   printf("msg error session: %p error: %s msg: %p conn_user_context %p\n",
 	 session, xio_strerror(error), msg, conn_user_context);
   /* XIO promises to flush back undelivered messags */
-  release_xio_req(msg);
+    dereg_xio_req(msg);
+    XioMsg *xmsg = static_cast<XioMsg*>(msg->user_context);
+    if (xmsg)
+      xmsg->put();
 
   return 0;
 }
@@ -345,10 +348,15 @@ int XioMessenger::send_message(Message *m, Connection *con)
     iov->iov_base = (void *) pb->c_str(); // is this efficient?
     iov->iov_len = pb->length();
 
+    /* track iovlen */
+    req->out.data_iovlen = msg_off+1;
+
+#if 0
     /* register it */
     iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
     if (! iov->mr)
       abort();
+#endif
 
     printf("send req %p data off %d iov_base %p iov_len %d\n",
 	   req, msg_off,
@@ -357,7 +365,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
     /* advance iov(s) */
     if (++msg_off >= XIO_MAX_IOV) {
-      req->out.data_iovlen = msg_off;
       if (++req_off < ex_cnt) {
 	/* next record */
 	req->out.data_iovlen = XIO_MAX_IOV;
@@ -371,38 +378,10 @@ int XioMessenger::send_message(Message *m, Connection *con)
     }
   }
 
-  /* fixup last msg */
-  const std::list<buffer::ptr>& footer = xmsg->ftr.get_bl().buffers();
-  assert(footer.size() == 1); /* XXX */
-  pb = footer.begin();
-
-  iov = &msg_iov[msg_off];
-  iov->iov_base = (char*) pb->c_str();
-  iov->iov_len = pb->length();
-
-  /* register it */
-  iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
-  if (! iov->mr)
-    abort();
-
-  printf("send req %p data off %d iov_base %p iov_len %d\n",
-	 req, msg_off,
-	 msg_iov[msg_off].iov_base,
-	 (int) msg_iov[msg_off].iov_len);
-
-  msg_off++;
-  req->out.data_iovlen = msg_off;
-
-  void print_xio_msg_ftr(xio_msg_ftr &ftr);
-  print_xio_msg_ftr(xmsg->ftr);
-
   /* fixup first msg */
   req = &xmsg->req_0;
 
-  /* overload header "length" members */
-  xmsg->hdr.update_lengths(payload, middle, data);
-
-  void print_xio_msg_hdr(xio_msg_hdr &hdr);
+  void print_xio_msg_hdr(XioMsgHdr &hdr);
   print_xio_msg_hdr(xmsg->hdr);
 
   void print_ceph_msg(Message *m);

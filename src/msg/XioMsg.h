@@ -22,13 +22,13 @@ extern "C" {
 }
 #include "XioConnection.h"
 
-class xio_msg_cnt
+class XioMsgCnt
 {
 public:
   __le32 msg_cnt;
   buffer::list bl;
 public:
-  xio_msg_cnt(buffer::ptr p)
+  XioMsgCnt(buffer::ptr p)
     {
       bl.append(p);
       buffer::list::iterator bl_iter = bl.begin();
@@ -36,17 +36,20 @@ public:
     }
 };
 
-class xio_msg_hdr
+class XioMsgHdr
 {
 public:
   __le32 msg_cnt;
-  ceph_msg_header &hdr;
+  ceph_msg_header* hdr;
+  ceph_msg_footer* ftr;
   buffer::list bl;
 public:
-  xio_msg_hdr(ceph_msg_header& _hdr) :msg_cnt(0), hdr(_hdr)
+  XioMsgHdr(ceph_msg_header& _hdr, ceph_msg_footer& _ftr)
+    : msg_cnt(0), hdr(&_hdr), ftr(&_ftr)
     { }
 
-  xio_msg_hdr(ceph_msg_header& _hdr, buffer::ptr p) : hdr(_hdr)
+  XioMsgHdr(ceph_msg_header& _hdr, ceph_msg_footer &_ftr, buffer::ptr p)
+    : hdr(&_hdr), ftr(&_ftr)
     {
       bl.append(p);
       buffer::list::iterator bl_iter = bl.begin();
@@ -55,112 +58,87 @@ public:
 
   const buffer::list& get_bl() { encode(bl); return bl; };
 
-  inline void update_lengths(buffer::list &payload, buffer::list &middle, 
-			     buffer::list &data) {
-    hdr.front_len = payload.buffers().size();
-    hdr.middle_len = middle.buffers().size();
-    hdr.data_len = data.buffers().size();
-  }
-
-  void encode(buffer::list& bl) const {
+  inline void encode_hdr(buffer::list& bl) const {
     ::encode(msg_cnt, bl);
-    ::encode(hdr.seq, bl);
-    ::encode(hdr.tid, bl);
-    ::encode(hdr.type, bl);
-    ::encode(hdr.priority, bl);
-    ::encode(hdr.version, bl);
-    ::encode(hdr.front_len, bl);
-    ::encode(hdr.middle_len, bl);
-    ::encode(hdr.data_len, bl);
-    ::encode(hdr.data_off, bl);
-    //::encode(hdr.src, bl);
-    ::encode(hdr.compat_version, bl);
-    ::encode(hdr.crc, bl);
+    ::encode(hdr->seq, bl);
+    ::encode(hdr->tid, bl);
+    ::encode(hdr->type, bl);
+    ::encode(hdr->priority, bl);
+    ::encode(hdr->version, bl);
+    ::encode(hdr->front_len, bl);
+    ::encode(hdr->middle_len, bl);
+    ::encode(hdr->data_len, bl);
+    ::encode(hdr->data_off, bl);
+    //::encode(hdr->src, bl);
+    ::encode(hdr->compat_version, bl);
+    ::encode(hdr->crc, bl);
   }
 
-  void decode(buffer::list::iterator& bl) {
+  inline void encode_ftr(buffer::list& bl) const {
+    ::encode(ftr->front_crc, bl);
+    ::encode(ftr->middle_crc, bl);
+    ::encode(ftr->data_crc, bl);
+    ::encode(ftr->sig, bl);
+    ::encode(ftr->flags, bl);
+  }
+
+  inline void encode(buffer::list& bl) const {
+    encode_hdr(bl);
+    encode_ftr(bl);
+  }
+
+  inline void decode_hdr(buffer::list::iterator& bl) {
     ::decode(msg_cnt, bl);
-    ::decode(hdr.seq, bl);
-    ::decode(hdr.tid, bl);
-    ::decode(hdr.type, bl);
-    ::decode(hdr.priority, bl);
-    ::decode(hdr.version, bl);
-    ::decode(hdr.front_len, bl);
-    ::decode(hdr.middle_len, bl);
-    ::decode(hdr.data_len, bl);
-    ::decode(hdr.data_off, bl);
-    //::decode(hdr.src, bl);
-    ::decode(hdr.compat_version, bl);
-    ::decode(hdr.crc, bl);
+    ::decode(hdr->seq, bl);
+    ::decode(hdr->tid, bl);
+    ::decode(hdr->type, bl);
+    ::decode(hdr->priority, bl);
+    ::decode(hdr->version, bl);
+    ::decode(hdr->front_len, bl);
+    ::decode(hdr->middle_len, bl);
+    ::decode(hdr->data_len, bl);
+    ::decode(hdr->data_off, bl);
+    //::decode(hdr->src, bl);
+    ::decode(hdr->compat_version, bl);
+    ::decode(hdr->crc, bl);
   }
 
+  inline void decode_ftr(buffer::list::iterator& bl) {
+    ::decode(ftr->front_crc, bl);
+    ::decode(ftr->middle_crc, bl);
+    ::decode(ftr->data_crc, bl);
+    ::decode(ftr->sig, bl);
+    ::decode(ftr->flags, bl);
+  }
+
+  inline void decode(buffer::list::iterator& bl) {
+    decode_hdr(bl);
+    decode_ftr(bl);
+  }
+
+  virtual ~XioMsgHdr()
+    {}
 };
 
-WRITE_CLASS_ENCODER(xio_msg_hdr);
-
-class xio_msg_ftr
-{
-public:
-  ceph_msg_footer ftr;
-  buffer::list bl;
-public:
-  xio_msg_ftr(ceph_msg_footer &_ftr) : ftr(_ftr)
-    { }
-
-  xio_msg_ftr(ceph_msg_footer& _ftr, buffer::ptr p)
-    {
-      bl.append(p);
-      buffer::list::iterator bl_iter = bl.begin();
-      decode(bl_iter);
-      _ftr = ftr;
-    }
-
-  const buffer::list& get_bl() { encode(bl); return bl; };
-
-  void encode(buffer::list& bl) const {
-    ::encode(ftr.front_crc, bl);
-    ::encode(ftr.middle_crc, bl);
-    ::encode(ftr.data_crc, bl);
-    ::encode(ftr.sig, bl);
-    ::encode(ftr.flags, bl);
-  }
-
-  void decode(buffer::list::iterator& bl) {
-    ::decode(ftr.front_crc, bl);
-    ::decode(ftr.middle_crc, bl);
-    ::decode(ftr.data_crc, bl);
-    ::decode(ftr.sig, bl);
-    ::decode(ftr.flags, bl);
-  }
-
-  virtual ~xio_msg_ftr()
-    {
-      /* XXXX this masks a leak (I think) */
-      bl.clear();
-    }
-
-};
-
-WRITE_CLASS_ENCODER(xio_msg_ftr);
+WRITE_CLASS_ENCODER(XioMsgHdr);
 
 struct XioMsg : public RefCountedObject
 {
 public:
   Message* m;
-  xio_msg_hdr hdr;
-  xio_msg_ftr ftr;
+  XioMsgHdr hdr;
   struct xio_msg req_0;
   struct xio_msg *req_arr;
   int nbuffers;
 
 public:
   XioMsg(Message *_m) : m(_m),
-			hdr(m->get_header()),
-			ftr(m->get_footer()),
+			hdr(m->get_header(), m->get_footer()),
 			req_arr(NULL)
     {
       m->get();
       memset(&req_0, 0, sizeof(struct xio_msg));
+      /* XXX needed/wanted? on the last rather than first xio_msg? */
       req_0.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
       req_0.user_context = this;
     }
@@ -169,15 +147,15 @@ public:
     {
       cout << "~XioMsg called" << std::endl;
       free(req_arr);
-      m->put(); 
+      cout << "m nref before put: " << m->nref.read() << std::endl;
+      m->put();
     }
 };
 
-static inline void release_xio_req(struct xio_msg *rreq)
+static inline void dereg_xio_req(struct xio_msg *rreq)
 {
   int code;
   struct xio_iovec_ex *msg_iov;
-  XioMsg *xmsg = static_cast<XioMsg*>(rreq->user_context);
 
   for (unsigned int ix = 0; ix < rreq->out.data_iovlen; ++ix) {
     msg_iov = &rreq->out.data_iov[ix];
@@ -189,10 +167,12 @@ static inline void release_xio_req(struct xio_msg *rreq)
       }
     }
   }
+}
 
-  /* eventually frees xmsg */
-  if (xmsg)
-    xmsg->put();
+static inline void finalize_response_msg(struct xio_msg *rsp)
+{
+  /* currently, there is no user context */
+  free(rsp);
 }
 
 class XioCompletionHook : public Message::CompletionHook
