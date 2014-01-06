@@ -16,6 +16,7 @@
 #include <arpa/inet.h>
 #include <boost/lexical_cast.hpp>
 #include <set>
+#include <stdlib.h>
 
 #include "XioMsg.h"
 #include "XioMessenger.h"
@@ -262,7 +263,7 @@ int XioMessenger::session_event(struct xio_session *session,
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
     printf("xio_session_teardown %p\n", session);
-    xio_session_close(session);
+    xio_session_destroy(session);
     break;
   default:
     break;
@@ -306,7 +307,12 @@ int XioMessenger::send_message(Message *m, Connection *con)
   m->set_seq(0); /* XIO handles seq */
   m->encode(xcon->get_features(), !this->cct->_conf->ms_nocrc);
 
-  XioMsg *xmsg = new XioMsg(m);
+  /* XXX placement new */
+  XioMsg *xmsg = (XioMsg*) calloc(1, sizeof(XioMsg));
+  new (xmsg) XioMsg(m);
+
+  cout << "\nsend_message " << m << " new XioMsg " << xmsg
+       << " req_0 " << &xmsg->req_0 << std::endl;
 
   buffer::list blist;
   struct xio_msg *req = &xmsg->req_0;
@@ -439,8 +445,8 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
     XioConnection *conn = new XioConnection(this, XioConnection::ACTIVE,
 					    dest);
 
-    conn->session = xio_session_open(XIO_SESSION_REQ, &attr, xio_uri.c_str(),
-				     0, 0, this);
+    conn->session = xio_session_create(XIO_SESSION_REQ, &attr, xio_uri.c_str(),
+				       0, 0, this);
     if (! conn->session) {
       delete conn;
       return NULL;

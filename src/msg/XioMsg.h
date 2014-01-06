@@ -122,7 +122,7 @@ public:
 
 WRITE_CLASS_ENCODER(XioMsgHdr);
 
-struct XioMsg : public RefCountedObject
+struct XioMsg
 {
 public:
   Message* m;
@@ -130,24 +130,35 @@ public:
   struct xio_msg req_0;
   struct xio_msg *req_arr;
   int nbuffers;
+  int nref;
 
 public:
   XioMsg(Message *_m) : m(_m),
 			hdr(m->get_header(), m->get_footer()),
 			req_arr(NULL)
     {
-      m->get();
+      nref = 1;
       memset(&req_0, 0, sizeof(struct xio_msg));
       /* XXX needed/wanted? on the last rather than first xio_msg? */
       req_0.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
       req_0.user_context = this;
     }
 
+  XioMsg* get() { ++nref; return this; };
+
+  void put() {
+    --nref;
+    if (nref == 0) {
+      this->~XioMsg();
+      free(this);
+    }
+  }
+
   ~XioMsg()
     {
-      cout << "~XioMsg called" << std::endl;
+      cout << "~XioMsg called " << this << std::endl;
       free(req_arr);
-      cout << "m nref before put: " << m->nref.read() << std::endl;
+      cout << "m " << m << " nref before put: " << m->nref.read() << std::endl;
       m->put();
     }
 };

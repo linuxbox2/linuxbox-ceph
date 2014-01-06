@@ -43,8 +43,8 @@ public:
   XioPortal(XioMessenger *_msgr) : msgr(_msgr), ctx(NULL), server(NULL),
 				   conn(NULL), xio_uri(""), portal_id(NULL)
     {
-      ev_loop = xio_ev_loop_init();
-      ctx = xio_ctx_open(NULL, ev_loop, 0);
+      ev_loop = xio_ev_loop_create();
+      ctx = xio_ctx_create(NULL, ev_loop, 0);
       printf("XioPortal %p created ev_loop %p ctx %p\n",
 	     this, ev_loop, ctx);
     }
@@ -65,13 +65,13 @@ public:
       if (server) {
 	xio_unbind(server);
       }
-      xio_ctx_close(ctx);
+      xio_ctx_destroy(ctx);
       xio_ev_loop_destroy(&ev_loop);
       return NULL;
     }
 
   ~XioPortal()
-    { 
+    {
       free(portal_id);
     }
 };

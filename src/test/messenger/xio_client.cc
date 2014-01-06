@@ -22,6 +22,7 @@ using namespace std;
 #include "common/config.h"
 #include "msg/msg_types.h"
 #include "msg/XioMessenger.h"
+#include "msg/XioMsg.h"
 #include "messages/MPing.h"
 #include "common/Timer.h"
 #include "common/ceph_argparse.h"
@@ -78,7 +79,7 @@ int main(int argc, const char **argv)
 	// do stuff
 	while (conn->is_connected()) {
 	  messenger->send_message(new MPing(), conn);
-	  messenger->send_message(new_ping_monstyle("sping", 100), conn);
+	  //messenger->send_message(new_ping_monstyle("sping", 100), conn);
 	  nanosleep(&ts, NULL);
 	}
 
