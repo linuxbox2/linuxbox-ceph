@@ -44,7 +44,14 @@ public:
 				   conn(NULL), xio_uri(""), portal_id(NULL)
     {
       ev_loop = xio_ev_loop_create();
+
       ctx = xio_ctx_create(NULL, ev_loop, 0);
+      struct xio_context_params params =
+	{
+	  .user_context = this
+	};
+      xio_set_context_params(ctx, &params);
+
       printf("XioPortal %p created ev_loop %p ctx %p\n",
 	     this, ev_loop, ctx);
     }

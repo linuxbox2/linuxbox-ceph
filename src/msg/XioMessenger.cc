@@ -228,11 +228,21 @@ int XioMessenger::session_event(struct xio_session *session,
   switch (event_data->event) {
   case XIO_SESSION_NEW_CONNECTION_EVENT:
   {
-    struct xio_connection_params params;
     xcon = new XioConnection(this, XioConnection::PASSIVE, entity_inst_t());
-    xcon->conn = event_data->conn;
-    params.user_context = xcon;
-    xio_set_connection_params(event_data->conn, &params);
+    xcon->session = session;
+
+    struct xio_connection *conn = event_data->conn;
+    struct xio_context *ctx = xio_get_connection_context(conn);
+    xcon->conn = conn;
+
+    struct xio_context_params *ctx_params =
+      xio_get_context_params(ctx, NULL /* XXX fixme */);
+    xcon->portal = static_cast<XioPortal*>(ctx_params->user_context);
+
+    struct xio_connection_params conn_params;
+    conn_params.user_context = xcon;
+    xio_set_connection_params(event_data->conn, &conn_params);
+
     printf("new connection session %p xcon %p\n", session, xcon);
   }
   break;

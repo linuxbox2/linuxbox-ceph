@@ -26,12 +26,15 @@ extern "C" {
 
 namespace bi = boost::intrusive;
 
+class XioPortal;
+
 class XioConnection : public Connection
 {
 public:
   enum type { ACTIVE, PASSIVE };
 private:
   XioConnection::type xio_conn_type;
+  XioPortal *portal;
   entity_inst_t peer;
   struct xio_session *session;
   struct xio_connection	*conn;
@@ -82,6 +85,7 @@ public:
 		const entity_inst_t& peer) :
     Connection(m),
     xio_conn_type(_type),
+    portal(NULL),
     peer(peer),
     session(NULL),
     conn(NULL),
