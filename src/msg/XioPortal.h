@@ -21,6 +21,7 @@ extern "C" {
 #include "libxio.h"
 }
 #include "XioConnection.h"
+#include "XioMsg.h"
 #include <boost/lexical_cast.hpp>
 
 class XioMessenger;
@@ -32,17 +33,23 @@ private:
   struct xio_context *ctx;
   struct xio_server *server;
   struct xio_connection	*conn;
+  list<XioMsg*> send_queue; /* XXX replace with boost::intrusive */
+  pthread_spinlock_t sp;
   void *ev_loop;
   string xio_uri;
   char *portal_id;
+  bool shutdown;
+  bool suspended;
 
   friend class XioPortals;
   friend class XioMessenger;
 
 public:
   XioPortal(XioMessenger *_msgr) : msgr(_msgr), ctx(NULL), server(NULL),
-				   conn(NULL), xio_uri(""), portal_id(NULL)
+				   conn(NULL), xio_uri(""), portal_id(NULL),
+				   shutdown(false), suspended(false)
     {
+      pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
       ev_loop = xio_ev_loop_create();
       ctx = xio_ctx_create(NULL, ev_loop, 0);
       printf("XioPortal %p created ev_loop %p ctx %p\n",
@@ -59,14 +66,49 @@ public:
       return (!!server);
     }
 
+  void enqueue_for_send(XioMsg *xmsg)
+    {
+      /* XXX elevate refcnts? */
+      pthread_spin_lock(&sp);
+      send_queue.push_back(xmsg);
+      xio_ev_loop_stop(ev_loop, false); /* XXX can this move out of section? */
+      pthread_spin_unlock(&sp);
+    }
+
   void *entry()
     {
-      xio_ev_loop_run(ev_loop);
+      int ix, size;
+      XioConnection *xcon;
+      struct xio_msg *req;
+      XioMsg *xmsg;
+
+      while (! shutdown) {
+	/* barrier */
+	pthread_spin_lock(&sp);
+	size = send_queue.size();
+	if (size > 0) {
+	  for (ix = 0; ix < size; ++ix) {
+	    xmsg = send_queue.front();
+	    send_queue.pop_front();
+	    xcon = xmsg->xcon;
+	    req = &xmsg->req_0;
+	    (void) xio_send_request(xcon->conn, req);
+	    /* it's now possible to use sn and timestamp */
+	    xcon->send.set(req->timestamp);
+	  }
+	}
+	pthread_spin_unlock(&sp);
+	xio_ev_loop_run_timeout(ev_loop, 300);
+      }
+
+      /* shutting down */
       if (server) {
 	xio_unbind(server);
       }
+
       xio_ctx_destroy(ctx);
       xio_ev_loop_destroy(&ev_loop);
+
       return NULL;
     }
 
@@ -168,6 +210,12 @@ public:
 	portal = portals[p_ix];
 	portal->create();
       }
+    }
+
+  void enqueue_for_send(XioMsg *xmsg)
+    {
+      /* XXX later, may be be more send flows */
+      (portals[0])->enqueue_for_send(xmsg);
     }
 
   void join()

@@ -309,7 +309,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   /* XXX placement new */
   XioMsg *xmsg = (XioMsg*) calloc(1, sizeof(XioMsg));
-  new (xmsg) XioMsg(m);
+  new (xmsg) XioMsg(m, xcon);
 
   cout << "\nsend_message " << m << " new XioMsg " << xmsg
        << " req_0 " << &xmsg->req_0 << std::endl;
@@ -400,28 +400,32 @@ int XioMessenger::send_message(Message *m, Connection *con)
   req->out.header.iov_len = pb->length();
 
   /* deliver via xio, preserve ordering */
+#if 1
+  struct xio_msg *head = &xmsg->req_0;
+  if (xmsg->hdr.msg_cnt > 1) {
+    struct xio_msg *tail = head;
+    for (req_off = 1; req_off < ex_cnt; ++req_off) {
+      req = &xmsg->req_arr[req_off];
+      tail->next = req;
+      tail = req;
+    }
+  }
+  portals.enqueue_for_send(xmsg);
+#else
   pthread_spin_lock(&xcon->sp);
   if (xmsg->hdr.msg_cnt == 1) {
-    printf("send req %p header iov_base %p iov_len %d data.iovlen %d\n",
-	   req, req->out.header.iov_base,
-	   (int) req->out.header.iov_len,
-	   (int) req->out.data_iovlen);
-    code = xio_send_request(xcon->conn, req);
+    printf("send req %p iov_base %p iov_len %d\n",
+	   req, req->out.header.iov_base, (int) req->out.header.iov_len);
+    portals.enqueue_for_send(xmsg);
   }
   else {
     /* XXX xio was enhanced to permit chaining new xio_msg
      * structures (at our suggestion)--we can use this to
-     * remove the spinlockt */
-    xio_send_request(xcon->conn, &xmsg->req_0);
-    for (req_off = 0; req_off < ex_cnt; ++req_off) {
-      req = &xmsg->req_arr[req_off];
-      code = xio_send_request(xcon->conn, req);
-    }
+     * remove the spinlock */
+    portals.enqueue_for_send(xmsg);
   }
   pthread_spin_unlock(&xcon->sp);
-
-  /* it's now possible to use sn and timestamp */
-  xcon->send.set(req->timestamp);
+#endif
 
   return code;
 } /* send_message(Message *, Connection *) */

@@ -129,13 +129,16 @@ public:
   XioMsgHdr hdr;
   struct xio_msg req_0;
   struct xio_msg *req_arr;
+  XioConnection *xcon;
   int nbuffers;
   int nref;
 
 public:
-  XioMsg(Message *_m) : m(_m),
-			hdr(m->get_header(), m->get_footer()),
-			req_arr(NULL)
+  XioMsg(Message *_m, XioConnection *_xcon) :
+    m(_m),
+    hdr(m->get_header(), m->get_footer()),
+    req_arr(NULL),
+    xcon(_xcon)
     {
       nref = 1;
       memset(&req_0, 0, sizeof(struct xio_msg));
