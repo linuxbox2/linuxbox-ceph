@@ -38,6 +38,12 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
   case CEPH_MSG_PING:
     if (active) {
       cout << "pong!" << std::endl;
+      conn = m->get_connection();
+      code = messenger->send_message(new MPing(), conn);
+      if (code != 0) {
+	cout << "send_request returned " << code << std::endl;
+	return false;
+      }
     } else {
       cout << "ping!" << std::endl;
       conn = m->get_connection();

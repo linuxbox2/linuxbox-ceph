@@ -45,7 +45,7 @@ int main(int argc, const char **argv)
 
 	struct timespec ts = {
 		.tv_sec = 0,
-		.tv_nsec = 10000000
+		.tv_nsec = 1000000
 	};
 
 	argv_to_vec(argc, argv, args);
@@ -76,10 +76,14 @@ int main(int argc, const char **argv)
 
 	conn = messenger->get_connection(dest_server);
 
-	// do stuff
-	while (conn->is_connected()) {
+	int msg_ix;
+	for (msg_ix = 0; msg_ix < 256; ++msg_ix) {
 	  messenger->send_message(new MPing(), conn);
 	  //messenger->send_message(new_ping_monstyle("sping", 100), conn);
+	}
+
+	// do stuff
+	while (conn->is_connected()) {
 	  nanosleep(&ts, NULL);
 	}
 

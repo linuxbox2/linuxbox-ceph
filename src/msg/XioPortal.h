@@ -32,7 +32,7 @@ private:
   XioMessenger *msgr;
   struct xio_context *ctx;
   struct xio_server *server;
-  list<XioMsg*> send_queue; /* XXX replace with boost::intrusive */
+  list<XioMsg*> submit_queue; /* XXX replace with boost::intrusive */
   pthread_spinlock_t sp;
   void *ev_loop;
   string xio_uri;
@@ -48,9 +48,13 @@ public:
   portal_id(NULL)
     {
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
-      ev_loop = xio_ev_loop_create();
 
+      /* a portal is an xio_context and event loop */
+      ev_loop = xio_ev_loop_create();
       ctx = xio_ctx_create(NULL, ev_loop, 0);
+
+      /* associate this XioPortal object with the xio_context
+       * handle */
       struct xio_context_params params =
 	{
 	  .user_context = this
@@ -73,16 +77,16 @@ public:
 
   void enqueue_for_send(XioMsg *xmsg)
     {
-      /* XXX elevate refcnts? */
       pthread_spin_lock(&sp);
-      send_queue.push_back(xmsg);
-      xio_ev_loop_stop(ev_loop, false); /* XXX can this move out of section? */
+      submit_queue.push_back(xmsg);
+      xio_ev_loop_stop(ev_loop, false);
       pthread_spin_unlock(&sp);
     }
 
   void *entry()
     {
       int ix, size;
+      list<XioMsg*> send_queue; /* XXX see above */
       XioConnection *xcon;
       struct xio_msg *req;
       XioMsg *xmsg;
@@ -90,8 +94,12 @@ public:
       while (! shutdown) {
 	/* barrier */
 	pthread_spin_lock(&sp);
-	size = send_queue.size();
+	size = submit_queue.size();
 	if (size > 0) {
+	  send_queue.swap(submit_queue);
+	  /* submit and send may run in parallel */
+	  pthread_spin_unlock(&sp);
+	  /* XXX look out, no flow control */
 	  for (ix = 0; ix < size; ++ix) {
 	    xmsg = send_queue.front();
 	    send_queue.pop_front();
@@ -101,8 +109,8 @@ public:
 	    /* it's now possible to use sn and timestamp */
 	    xcon->send.set(req->timestamp);
 	  }
-	}
-	pthread_spin_unlock(&sp);
+	} else
+	  pthread_spin_unlock(&sp);
 	xio_ev_loop_run_timeout(ev_loop, 300);
       }
 
