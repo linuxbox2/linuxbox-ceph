@@ -27,6 +27,7 @@ extern "C" {
 namespace bi = boost::intrusive;
 
 class XioPortal;
+class XioMessenger;
 
 class XioConnection : public Connection
 {
@@ -76,23 +77,14 @@ private:
   typedef bi::avl_set< XioConnection, EntityHook,
 		       bi::compare<EntityComp> > EntitySet;
 
+  friend class XioPortal;
   friend class XioMessenger;
   friend class XioCompletionHook;
   friend class boost::intrusive_ptr<XioConnection>;
 
 public:
-  XioConnection(Messenger *m, XioConnection::type _type,
-		const entity_inst_t& peer) :
-    Connection(m),
-    xio_conn_type(_type),
-    portal(NULL),
-    peer(peer),
-    session(NULL),
-    conn(NULL),
-    in_seq()
-    {
-      pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
-    }
+  XioConnection(XioMessenger *m, XioConnection::type _type,
+		const entity_inst_t& peer);
 
   bool is_connected() { return !!conn; }
 

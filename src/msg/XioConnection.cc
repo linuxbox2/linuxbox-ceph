@@ -52,6 +52,19 @@ void print_ceph_msg(Message *m)
     std::endl;
 }
 
+XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
+			     const entity_inst_t& peer) :
+  Connection(m),
+  xio_conn_type(_type),
+  portal(m->default_portal()),
+  peer(peer),
+  session(NULL),
+  conn(NULL),
+  in_seq()
+{
+  pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
+}
+
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
 
 int XioConnection::on_msg_req(struct xio_session *session,

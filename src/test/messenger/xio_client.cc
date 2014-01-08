@@ -44,8 +44,8 @@ int main(int argc, const char **argv)
 	int r = 0;
 
 	struct timespec ts = {
-		.tv_sec = 1,
-		.tv_nsec = 0
+		.tv_sec = 0,
+		.tv_nsec = 10000000
 	};
 
 	argv_to_vec(argc, argv, args);

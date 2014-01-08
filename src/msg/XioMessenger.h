@@ -26,7 +26,6 @@ extern "C" {
 #include "common/Thread.h"
 #include "common/Mutex.h"
 
-
 class XioMessenger : public SimplePolicyMessenger
 {
 private:
@@ -40,6 +39,8 @@ public:
 	       string mname, uint64_t nonce, int nportals);
 
   virtual ~XioMessenger();
+
+  XioPortal* default_portal() { return portals.get_portal0(); }
 
   /* xio hooks */
   int new_session(struct xio_session *session,
@@ -89,12 +90,12 @@ public:
     { return EINVAL; }
 
   virtual int send_keepalive(Connection *con)
-    { return EINVAL; } 
+    { return EINVAL; }
 
   virtual void mark_down(const entity_addr_t& a)
     { }
 
-  virtual void mark_down(Connection *con) 
+  virtual void mark_down(Connection *con)
     { }
 
   virtual void mark_down_on_empty(Connection *con)
@@ -110,7 +111,7 @@ protected:
   virtual void ready()
     { }
 
-public:  
+public:
 };
 
 #endif /* XIO_MESSENGER_H */
