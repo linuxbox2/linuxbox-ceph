@@ -74,7 +74,6 @@ private:
   /* XXX Until we figure out a better strategy, let the user select the xio
    * transport explicitly;  must be set before connect() */
   bool use_xio;
-  void set_xio() { use_xio = true; };
 
   void wait_for_osdmap();
 
@@ -85,6 +84,7 @@ public:
   ~RadosClient();
   int ping_monitor(string mon_id, string *result);
   int connect();
+  int xio_connect();
   void shutdown();
 
   uint64_t get_instance_id();
