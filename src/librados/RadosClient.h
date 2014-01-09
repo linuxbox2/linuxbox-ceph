@@ -33,6 +33,7 @@ class Message;
 class MWatchNotify;
 class MLog;
 class SimpleMessenger;
+class XioMessenger;
 
 class librados::RadosClient : public Dispatcher
 {
@@ -48,7 +49,7 @@ private:
 
   OSDMap osdmap;
   MonClient monclient;
-  SimpleMessenger *messenger;
+  Messenger *messenger;
 
   bool _dispatch(Message *m);
   bool ms_dispatch(Message *m);
@@ -69,6 +70,11 @@ private:
   rados_log_callback_t log_cb;
   void *log_cb_arg;
   string log_watch;
+
+  /* XXX Until we figure out a better strategy, let the user select the xio
+   * transport explicitly;  must be set before connect() */
+  bool use_xio;
+  void set_xio() { use_xio = true; };
 
   void wait_for_osdmap();
 

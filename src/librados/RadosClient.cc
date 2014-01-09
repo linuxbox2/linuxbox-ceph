@@ -31,6 +31,7 @@
 #include "messages/MWatchNotify.h"
 #include "messages/MLog.h"
 #include "msg/SimpleMessenger.h"
+#include "msg/XioMessenger.h"
 
 // needed for static_cast
 #include "messages/PaxosServiceMessage.h"
@@ -77,6 +78,7 @@ librados::RadosClient::RadosClient(CephContext *cct_)
     timer(cct, lock),
     refcnt(1),
     log_last_version(0), log_cb(NULL), log_cb_arg(NULL),
+    use_xio(false),
     finisher(cct),
     max_watch_cookie(0)
 {
@@ -172,7 +174,17 @@ int librados::RadosClient::connect()
 
   err = -ENOMEM;
   nonce = getpid() + (1000000 * (uint64_t)rados_instance.inc());
-  messenger = new SimpleMessenger(cct, entity_name_t::CLIENT(-1), "radosclient", nonce);
+
+  switch (use_xio) {
+  case true:
+    messenger = new XioMessenger(cct, entity_name_t::GENERIC(),
+				 "radosclient", nonce, 0 /* portals */);
+    break;
+  default:
+    messenger = new SimpleMessenger(cct, entity_name_t::CLIENT(-1),
+				    "radosclient", nonce);
+    break;
+  };
   if (!messenger)
     goto out;
 

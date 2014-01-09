@@ -78,8 +78,8 @@ int main(int argc, const char **argv)
 
 	int msg_ix;
 	for (msg_ix = 0; msg_ix < 256; ++msg_ix) {
-	  messenger->send_message(new MPing(), conn);
-	  //messenger->send_message(new_ping_monstyle("sping", 100), conn);
+	  //messenger->send_message(new MPing(), conn);
+	  messenger->send_message(new_ping_monstyle("sping", 100), conn);
 	}
 
 	// do stuff
