@@ -247,8 +247,11 @@ int XioMessenger::session_event(struct xio_session *session,
   }
   break;
   case XIO_SESSION_CONNECTION_CLOSED_EVENT:
-    /* clean up mapped connections */
     printf("xio_session_connection_closed %p\n", session);
+    break;
+  case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
+    printf("xio client disconnection %p\n", event_data->conn_user_context);
+    /* clean up mapped connections */
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
     {
       XioConnection::EntitySet::iterator conn_iter =
@@ -266,10 +269,6 @@ int XioMessenger::session_event(struct xio_session *session,
     xcon->conn = NULL;
     /* XXX remove from ephemeral_conns list? */
     xcon->put();
-    break;
-  case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
-    xcon = static_cast<XioConnection*>(event_data->conn_user_context);
-    xio_disconnect(event_data->conn);
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
     printf("xio_session_teardown %p\n", session);
