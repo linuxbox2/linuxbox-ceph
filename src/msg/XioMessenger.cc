@@ -246,10 +246,8 @@ int XioMessenger::session_event(struct xio_session *session,
     printf("new connection session %p xcon %p\n", session, xcon);
   }
   break;
-  case XIO_SESSION_CONNECTION_CLOSED_EVENT:
-    printf("xio_session_connection_closed %p\n", session);
-    break;
-  case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
+  case XIO_SESSION_CONNECTION_CLOSED_EVENT: /* orderly discon */
+  case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT: /* unexpected discon */
     printf("xio client disconnection %p\n", event_data->conn_user_context);
     /* clean up mapped connections */
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
