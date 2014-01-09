@@ -37,7 +37,8 @@ private:
   void *ev_loop;
   string xio_uri;
   char *portal_id;
-  bool shutdown;
+  bool _shutdown;
+  bool drained;
 
   friend class XioPortals;
   friend class XioMessenger;
@@ -45,7 +46,7 @@ private:
 public:
   XioPortal(XioMessenger *_msgr) :
   msgr(_msgr), ctx(NULL), server(NULL), xio_uri(""),
-  portal_id(NULL)
+  portal_id(NULL), _shutdown(false), drained(false)
     {
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
 
@@ -78,8 +79,10 @@ public:
   void enqueue_for_send(XioMsg *xmsg)
     {
       pthread_spin_lock(&sp);
-      submit_queue.push_back(xmsg);
-      xio_ev_loop_stop(ev_loop, false);
+      if (! _shutdown) {
+	submit_queue.push_back(xmsg);
+	xio_ev_loop_stop(ev_loop, false);
+      }
       pthread_spin_unlock(&sp);
     }
 
@@ -91,9 +94,12 @@ public:
       struct xio_msg *req;
       XioMsg *xmsg;
 
-      while (! shutdown) {
+      do {
 	/* barrier */
 	pthread_spin_lock(&sp);
+	if (_shutdown) {
+	  drained = true;
+	}
 	size = submit_queue.size();
 	if (size > 0) {
 	  send_queue.swap(submit_queue);
@@ -105,14 +111,18 @@ public:
 	    send_queue.pop_front();
 	    xcon = xmsg->xcon;
 	    req = &xmsg->req_0;
-	    (void) xio_send_request(xcon->conn, req);
-	    /* it's now possible to use sn and timestamp */
-	    xcon->send.set(req->timestamp);
+	    /* handle response traffic */
+	    if (! req->request) {
+	      (void) xio_send_request(xcon->conn, req);
+	      xcon->send.set(req->timestamp);
+	    }
+	    else
+	      (void) xio_send_response(req);
 	  }
 	} else
 	  pthread_spin_unlock(&sp);
 	xio_ev_loop_run_timeout(ev_loop, 300);
-      }
+      } while ((!_shutdown) || (!drained));
 
       /* shutting down */
       if (server) {
@@ -121,6 +131,14 @@ public:
       xio_ctx_destroy(ctx);
       xio_ev_loop_destroy(&ev_loop);
       return NULL;
+    }
+
+  void shutdown()
+    {
+      pthread_spin_lock(&sp);
+      xio_ev_loop_stop(ev_loop, false);
+      _shutdown = true;
+      pthread_spin_unlock(&sp);
     }
 
   ~XioPortal()
@@ -220,6 +238,16 @@ public:
       for (p_ix = 0; p_ix < nportals; ++p_ix) {
 	portal = portals[p_ix];
 	portal->create();
+      }
+    }
+
+  void shutdown()
+    {
+      XioPortal *portal;
+      int nportals = portals.size();
+      for (int p_ix = 0; p_ix < nportals; ++p_ix) {
+	portal = portals[p_ix];
+	portal->shutdown();
       }
     }
 
