@@ -476,16 +476,12 @@ int main(int argc, const char **argv)
   osd = new OSD(g_ceph_context, whoami,
 		ms_cluster,
 		ms_public,
-#if 1
 		ms_xio_public,
-#endif
 		ms_hbclient,
 		ms_hb_front_server,
 		ms_hb_back_server,
 		ms_objecter,
-#if 1
 		ms_xio_objecter,
-#endif
 		&mc,
 		g_conf->osd_data, g_conf->osd_journal);
 
