@@ -170,6 +170,7 @@ OSDService::OSDService(OSD *osd) :
   infos_oid(OSD::make_infos_oid()),
   cluster_messenger(osd->cluster_messenger),
   client_messenger(osd->client_messenger),
+  client_xio_messenger(osd->client_xio_messenger),
   logger(osd->logger),
   recoverystate_perf(osd->recoverystate_perf),
   monc(osd->monc),
@@ -834,11 +835,16 @@ int OSD::peek_journal_fsid(string path, uuid_d& fsid)
 
 // cons/des
 
-OSD::OSD(CephContext *cct_, int id, Messenger *internal_messenger, Messenger *external_messenger,
+OSD::OSD(CephContext *cct_,
+	 int id,
+	 Messenger *internal_messenger,
+	 Messenger *external_messenger,
+	 Messenger *xio_external_messenger,
 	 Messenger *hb_clientm,
 	 Messenger *hb_front_serverm,
 	 Messenger *hb_back_serverm,
 	 Messenger *osdc_messenger,
+	 Messenger *xio_osdc_messenger,
 	 MonClient *mc,
 	 const std::string &dev, const std::string &jdev) :
   Dispatcher(cct_),
@@ -854,7 +860,9 @@ OSD::OSD(CephContext *cct_, int id, Messenger *internal_messenger, Messenger *ex
 								      cct->_conf->auth_service_required)),
   cluster_messenger(internal_messenger),
   client_messenger(external_messenger),
+  client_xio_messenger(xio_external_messenger),
   objecter_messenger(osdc_messenger),
+  objecter_xio_messenger(xio_osdc_messenger),
   monc(mc),
   logger(NULL),
   recoverystate_perf(NULL),
@@ -1199,6 +1207,9 @@ int OSD::init()
   hb_back_server_messenger->add_dispatcher_head(&heartbeat_dispatcher);
 
   objecter_messenger->add_dispatcher_head(&service.objecter_dispatcher);
+
+  client_xio_messenger->add_dispatcher_head(this);
+  objecter_xio_messenger->add_dispatcher_head(&service.objecter_dispatcher);
 
   monc->set_want_keys(CEPH_ENTITY_TYPE_MON | CEPH_ENTITY_TYPE_OSD);
   r = monc->init();

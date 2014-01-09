@@ -564,7 +564,7 @@ int main(int argc, const char **argv)
 					 entity_name_t::GENERIC(),
 					 "xio mon",
 					 0 /* nonce */,
-					 1 /* portals */);
+					 2 /* portals */);
 
   xmsgr->set_cluster_protocol(CEPH_MON_PROTOCOL);
   xmsgr->set_default_send_priority(CEPH_MSG_PRIO_HIGH);
