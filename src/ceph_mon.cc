@@ -601,11 +601,8 @@ int main(int argc, const char **argv)
        << " fsid " << monmap.get_fsid()
        << std::endl;
 
-  entity_addr_t xaddr = ipaddr;
-  xaddr.set_port(ipaddr.get_port()+1);
-
-  entity_addr_from_url(&xaddr, "tcp://localhost:1234");
-
+  entity_addr_t xaddr = messenger->get_myaddr();
+  xaddr.set_port(xaddr.get_port() + 111 /* XXXX shift */);
   err = xmsgr->bind(xaddr);
   if (err < 0)
     prefork.exit(1);

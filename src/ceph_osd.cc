@@ -420,9 +420,9 @@ int main(int argc, const char **argv)
   if (r < 0)
     exit(1);
 
-  entity_addr_t ms_xio_public_addr = g_conf->public_addr;
+  entity_addr_t ms_xio_public_addr = ms_public->get_myaddr();
   ms_xio_public_addr.set_port(
-    ms_xio_public_addr.get_port() + 1111 /* XXXX shift */);
+    ms_xio_public_addr.get_port() + 111 /* XXXX shift */);
   r = ms_xio_public->bind(ms_xio_public_addr);
   if (r < 0)
     exit(1);
@@ -448,9 +448,9 @@ int main(int argc, const char **argv)
 
   ms_objecter->bind(g_conf->public_addr);
 
-  entity_addr_t ms_xio_objecter_addr = g_conf->public_addr;
+  entity_addr_t ms_xio_objecter_addr = ms_objecter->get_myaddr();
   ms_xio_objecter_addr.set_port(
-    ms_xio_objecter_addr.get_port() + 2222 /* XXXX shift */);
+    ms_xio_objecter_addr.get_port() + 111 /* XXXX shift */);
   r = ms_xio_objecter->bind(ms_xio_objecter_addr);
   if (r < 0)
     exit(1);
