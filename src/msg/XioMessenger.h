@@ -33,12 +33,15 @@ private:
   Mutex conns_lock;
   XioConnection::EntitySet conns_entity_map;
   XioPortals portals;
+  int port_shift;
 
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
 	       string mname, uint64_t nonce, int nportals);
 
   virtual ~XioMessenger();
+
+  void set_port_shift(int shift) { port_shift = shift; }
 
   XioPortal* default_portal() { return portals.get_portal0(); }
 

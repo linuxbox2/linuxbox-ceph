@@ -168,7 +168,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 			   string mname, uint64_t nonce, int nportals)
   : SimplePolicyMessenger(cct, name, mname, nonce),
     conns_lock("XioMessenger::conns_lock"),
-    portals(this, nportals)
+    portals(this, nportals),
+    port_shift(0)
 {
   /* package init */
   if (! initialized.read()) {
@@ -423,12 +424,20 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
 ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
 {
+  entity_inst_t _dest = dest;
+  if (port_shift) {
+    _dest.addr.set_port(
+      _dest.addr.get_port() + port_shift);
+  }
   XioConnection::EntitySet::iterator conn_iter =
-    conns_entity_map.find(dest, XioConnection::EntityComp());
+    conns_entity_map.find(_dest, XioConnection::EntityComp());
   if (conn_iter != conns_entity_map.end())
     return static_cast<Connection*>(&(*conn_iter));
   else {
-    string xio_uri = xio_uri_from_entity(dest.addr, true /* want_port */);
+    string xio_uri = xio_uri_from_entity(_dest.addr, true /* want_port */);
+
+    printf("XioMessenger %p get_connection: xio_uri %s\n",
+	   this, xio_uri.c_str());
 
     /* XXX client session attributes */
     struct xio_session_attr attr = {
@@ -438,7 +447,7 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
     };
 
     XioConnection *conn = new XioConnection(this, XioConnection::ACTIVE,
-					    dest);
+					    _dest);
 
     conn->session = xio_session_create(XIO_SESSION_REQ, &attr, xio_uri.c_str(),
 				       0, 0, this);
