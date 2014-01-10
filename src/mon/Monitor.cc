@@ -411,9 +411,11 @@ int Monitor::preinit()
     get_str_list(g_conf->mon_initial_members, initial_members);
 
     if (!initial_members.empty()) {
-      dout(1) << " initial_members " << initial_members << ", filtering seed monmap" << dendl;
+      dout(1) << " initial_members " << initial_members <<
+	", filtering seed monmap" << dendl;
 
-      monmap->set_initial_members(g_ceph_context, initial_members, name, messenger->get_myaddr(),
+      monmap->set_initial_members(g_ceph_context, initial_members, name,
+				  messenger->get_myaddr(),
 				  &extra_probe_peers);
 
       dout(10) << " monmap is " << *monmap << dendl;
@@ -1277,17 +1279,20 @@ void Monitor::handle_probe(MMonProbe *m)
 void Monitor::handle_probe_probe(MMonProbe *m)
 {
   dout(10) << "handle_probe_probe " << m->get_source_inst() << *m << dendl;
-  MMonProbe *r = new MMonProbe(monmap->fsid, MMonProbe::OP_REPLY, name, has_ever_joined);
+  MMonProbe *r = new MMonProbe(monmap->fsid, MMonProbe::OP_REPLY, name,
+			       has_ever_joined);
   r->name = name;
   r->quorum = quorum;
-  monmap->encode(r->monmap_bl, m->get_connection()->get_features());
+  ConnectionRef con = m->get_connection();
+  monmap->encode(r->monmap_bl, con->get_features());
   r->paxos_first_version = paxos->get_first_committed();
   r->paxos_last_version = paxos->get_version();
-  messenger->send_message(r, m->get_connection());
+  con->get_messenger()->send_message(r, m->get_connection());
 
   // did we discover a peer here?
   if (!monmap->contains(m->get_source_addr())) {
-    dout(1) << " adding peer " << m->get_source_addr() << " to list of hints" << dendl;
+    dout(1) << " adding peer " << m->get_source_addr() << " to list of hints"
+	    << dendl;
     extra_probe_peers.insert(m->get_source_addr());
   }
   m->put();
@@ -1346,7 +1351,8 @@ void Monitor::handle_probe_reply(MMonProbe *m)
   // new initial peer?
   if (monmap->contains(m->name)) {
     if (monmap->get_addr(m->name).is_blank_ip()) {
-      dout(1) << " learned initial mon " << m->name << " addr " << m->get_source_addr() << dendl;
+      dout(1) << " learned initial mon " << m->name << " addr " <<
+	m->get_source_addr() << dendl;
       monmap->set_addr(m->name, m->get_source_addr());
       m->put();
 
@@ -2372,7 +2378,8 @@ void Monitor::try_send_message(Message *m, const entity_inst_t& to)
 
 void Monitor::send_reply(PaxosServiceMessage *req, Message *reply)
 {
-  MonSession *session = static_cast<MonSession*>(req->get_connection()->get_priv());
+  ConnectionRef con = req->get_connection();
+  MonSession *session = static_cast<MonSession*>(con->get_priv());
   if (!session) {
     dout(2) << "send_reply no session, dropping reply " << *reply
 	    << " to " << req << " " << *req << dendl;
@@ -2380,22 +2387,26 @@ void Monitor::send_reply(PaxosServiceMessage *req, Message *reply)
     return;
   }
   if (session->proxy_con) {
-    dout(15) << "send_reply routing reply to " << req->get_connection()->get_peer_addr()
+    dout(15) << "send_reply routing reply to " << con->get_peer_addr()
 	     << " via " << session->proxy_con->get_peer_addr()
 	     << " for request " << *req << dendl;
-    messenger->send_message(new MRoute(session->proxy_tid, reply),
-			    session->proxy_con);    
+
+    session->proxy_con->get_messenger()->send_message(
+      new MRoute(session->proxy_tid, reply), session->proxy_con);
   } else {
-    messenger->send_message(reply, session->con);
+    con->get_messenger()->send_message(reply, con);
   }
   session->put();
 }
 
 void Monitor::no_reply(PaxosServiceMessage *req)
 {
-  MonSession *session = static_cast<MonSession*>(req->get_connection()->get_priv());
+  ConnectionRef con = req->get_connection();
+  MonSession *session =
+    static_cast<MonSession*>(con->get_priv());
   if (!session) {
-    dout(2) << "no_reply no session, dropping non-reply to " << req << " " << *req << dendl;
+    dout(2) << "no_reply no session, dropping non-reply to " << req << " " <<
+      *req << dendl;
     return;
   }
   if (session->proxy_con) {
@@ -2403,15 +2414,17 @@ void Monitor::no_reply(PaxosServiceMessage *req)
       dout(10) << "no_reply to " << req->get_source_inst()
 	       << " via " << session->proxy_con->get_peer_addr()
 	       << " for request " << *req << dendl;
-      messenger->send_message(new MRoute(session->proxy_tid, NULL),
-			      session->proxy_con);
+      session->proxy_con->get_messenger()->send_message(
+	new MRoute(session->proxy_tid, NULL), session->proxy_con);
     } else {
-      dout(10) << "no_reply no quorum nullroute feature for " << req->get_source_inst()
+      dout(10) << "no_reply no quorum nullroute feature for " <<
+	req->get_source_inst()
 	       << " via " << session->proxy_con->get_peer_addr()
 	       << " for request " << *req << dendl;
     }
   } else {
-    dout(10) << "no_reply to " << req->get_source_inst() << " " << *req << dendl;
+    dout(10) << "no_reply to " << req->get_source_inst() << " " << *req
+	     << dendl;
   }
   session->put();
 }
@@ -2827,7 +2840,6 @@ void Monitor::handle_ping(MPing *m)
 {
   dout(10) << __func__ << " " << *m << dendl;
   MPing *reply = new MPing;
-  entity_inst_t inst = m->get_source_inst();
   bufferlist payload;
   Formatter *f = new JSONFormatter(true);
   f->open_object_section("pong");
@@ -3369,7 +3381,7 @@ void Monitor::send_latest_monmap(Connection *con)
 {
   bufferlist bl;
   monmap->encode(bl, con->get_features());
-  messenger->send_message(new MMonMap(bl), con);
+  con->get_messenger()->send_message(new MMonMap(bl), con);
 }
 
 void Monitor::handle_mon_get_map(MMonGetMap *m)
