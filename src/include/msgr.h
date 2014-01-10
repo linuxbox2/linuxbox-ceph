@@ -48,12 +48,14 @@ struct ceph_entity_name {
 	__le64 num;
 } __attribute__ ((packed));
 
+/* XXX we really couldn't imagine more than 8 kinds of endpoint? */
 #define CEPH_ENTITY_TYPE_MON    0x01
 #define CEPH_ENTITY_TYPE_MDS    0x02
 #define CEPH_ENTITY_TYPE_OSD    0x04
 #define CEPH_ENTITY_TYPE_CLIENT 0x08
 /* where is 0x10? */
 #define CEPH_ENTITY_TYPE_AUTH   0x20
+#define CEPH_ENTITY_TYPE_GENERIC_SERVER   0x40
 
 #define CEPH_ENTITY_TYPE_ANY    0xFF
 

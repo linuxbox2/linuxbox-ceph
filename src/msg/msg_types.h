@@ -46,7 +46,7 @@ public:
   static const int TYPE_CLIENT = CEPH_ENTITY_TYPE_CLIENT;
 
   // viable?
-  static const int TYPE_GENERIC_SERVER  = CEPH_ENTITY_TYPE_ANY;
+  static const int TYPE_GENERIC_SERVER  = CEPH_ENTITY_TYPE_GENERIC_SERVER;
 
   static const int NEW = -1;
 
