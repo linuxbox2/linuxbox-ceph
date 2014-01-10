@@ -283,6 +283,10 @@ int XioMessenger::session_event(struct xio_session *session,
 int XioMessenger::bind(const entity_addr_t& addr)
 {
   string base_uri = xio_uri_from_entity(addr, false /* want_port */);
+
+    printf("XioMessenger %p bind: xio_uri %s:%d\n",
+	   this, base_uri.c_str(), addr.get_port());
+
   return portals.bind(&xio_msgr_ops, base_uri, addr.get_port());
 } /* bind */
 
