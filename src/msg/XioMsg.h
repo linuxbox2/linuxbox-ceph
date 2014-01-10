@@ -40,6 +40,7 @@ class XioMsgHdr
 {
 public:
   __le32 msg_cnt;
+  __le32 peer_type;
   ceph_msg_header* hdr;
   ceph_msg_footer* ftr;
   buffer::list bl;
@@ -60,6 +61,7 @@ public:
 
   inline void encode_hdr(buffer::list& bl) const {
     ::encode(msg_cnt, bl);
+    ::encode(peer_type, bl);
     ::encode(hdr->seq, bl);
     ::encode(hdr->tid, bl);
     ::encode(hdr->type, bl);
@@ -89,6 +91,7 @@ public:
 
   inline void decode_hdr(buffer::list::iterator& bl) {
     ::decode(msg_cnt, bl);
+    ::decode(peer_type, bl);
     ::decode(hdr->seq, bl);
     ::decode(hdr->tid, bl);
     ::decode(hdr->type, bl);
@@ -139,6 +142,7 @@ public:
     req_arr(NULL), xcon(_xcon)
     {
       nref = 1;
+      hdr.peer_type = xcon->get_messenger()->get_myinst().name.type();
       memset(&req_0, 0, sizeof(struct xio_msg));
       /* XXX needed/wanted? on the last rather than first xio_msg? */
       req_0.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;

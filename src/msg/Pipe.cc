@@ -885,7 +885,7 @@ int Pipe::connect()
 
     ceph_msg_connect connect;
     connect.features = policy.features_supported;
-    connect.host_type = msgr->my_type;
+    connect.host_type = msgr->get_myinst().name.type();
     connect.global_seq = gseq;
     connect.connect_seq = cseq;
     connect.protocol_version = msgr->get_proto_version(peer_type, true);

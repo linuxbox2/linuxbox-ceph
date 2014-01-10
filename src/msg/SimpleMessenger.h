@@ -299,8 +299,6 @@ private:
    */
 
   // SimpleMessenger stuff
-  /// the peer type of our endpoint
-  int my_type;
   /// approximately unique ID set by the Constructor for use in entity_addr_t
   uint64_t nonce;
   /// overall lock used for SimpleMessenger data structures

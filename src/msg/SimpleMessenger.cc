@@ -42,7 +42,6 @@ SimpleMessenger::SimpleMessenger(CephContext *cct, entity_name_t name,
     accepter(this, _nonce),
     dispatch_queue(cct, this),
     reaper_thread(this),
-    my_type(name.type()),
     nonce(_nonce),
     lock("SimpleMessenger::lock"), need_addr(true), did_bind(false),
     global_seq(0),
@@ -152,6 +151,8 @@ void SimpleMessenger::set_addr_unknowns(entity_addr_t &addr)
 
 int SimpleMessenger::get_proto_version(int peer_type, bool connect)
 {
+  int my_type = my_inst.name.type();
+
   // set reply protocol version
   if (peer_type == my_type) {
     // internal
@@ -289,7 +290,7 @@ int SimpleMessenger::start()
   ldout(cct,1) << "messenger.start" << dendl;
 
   // register at least one entity, first!
-  assert(my_type >= 0);
+  assert(my_inst.name.type() >= 0);
 
   assert(!started);
   started = true;
@@ -557,7 +558,6 @@ void SimpleMessenger::wait()
   ldout(cct,10) << "wait: done." << dendl;
   ldout(cct,1) << "shutdown complete." << dendl;
   started = false;
-  my_type = -1;
 }
 
 
@@ -715,5 +715,5 @@ void SimpleMessenger::unlearn_addr()
 void SimpleMessenger::init_local_connection()
 {
   local_connection->peer_addr = my_inst.addr;
-  local_connection->peer_type = my_type;
+  local_connection->peer_type = my_inst.name.type();
 }

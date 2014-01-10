@@ -229,6 +229,12 @@ int XioConnection::on_msg_req(struct xio_session *session,
     m->set_recv_complete_stamp(t2);
     m->set_seq(seq);
 
+    /* validate peer type */
+    if (peer_type == -1)
+      peer_type = hdr.peer_type;
+    cout << "before dispatch: peer type: " << this->get_peer_type()
+	 << std::endl;
+
     /* dispatch it */
     msgr->ms_deliver_dispatch(m);
   } else {
