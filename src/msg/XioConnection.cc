@@ -26,6 +26,8 @@ void print_xio_msg_hdr(XioMsgHdr &hdr)
     " tid: " << hdr.hdr->tid <<
     " type: " << hdr.hdr->type <<
     " prio: " << hdr.hdr->priority <<
+    " name type: " << (int) hdr.hdr->src.type <<
+    " name num: " << (int) hdr.hdr->src.num <<
     " version: " << hdr.hdr->version <<
     " compat_version: " << hdr.hdr->compat_version <<
     " front_len: " << hdr.hdr->front_len <<

@@ -21,6 +21,7 @@ extern "C" {
 #include "libxio.h"
 }
 #include "XioConnection.h"
+#include "msg/msg_types.h"
 
 class XioMsgCnt
 {
@@ -71,7 +72,8 @@ public:
     ::encode(hdr->middle_len, bl);
     ::encode(hdr->data_len, bl);
     ::encode(hdr->data_off, bl);
-    //::encode(hdr->src, bl);
+    ::encode(hdr->src.type, bl);
+    ::encode(hdr->src.num, bl);
     ::encode(hdr->compat_version, bl);
     ::encode(hdr->crc, bl);
   }
@@ -101,7 +103,8 @@ public:
     ::decode(hdr->middle_len, bl);
     ::decode(hdr->data_len, bl);
     ::decode(hdr->data_off, bl);
-    //::decode(hdr->src, bl);
+    ::decode(hdr->src.type, bl);
+    ::decode(hdr->src.num, bl);
     ::decode(hdr->compat_version, bl);
     ::decode(hdr->crc, bl);
   }
@@ -142,7 +145,10 @@ public:
     req_arr(NULL), xcon(_xcon)
     {
       nref = 1;
-      hdr.peer_type = xcon->get_messenger()->get_myinst().name.type();
+      const entity_inst_t &inst = xcon->get_messenger()->get_myinst();
+      hdr.peer_type = inst.name.type();
+      hdr.hdr->src.type = inst.name.type();
+      hdr.hdr->src.num = inst.name.num();
       memset(&req_0, 0, sizeof(struct xio_msg));
       /* XXX needed/wanted? on the last rather than first xio_msg? */
       req_0.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
