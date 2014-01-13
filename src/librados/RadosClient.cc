@@ -185,7 +185,7 @@ int librados::RadosClient::connect()
   case true:
   {
     XioMessenger *xmsgr
-      = new XioMessenger(cct, entity_name_t::GENERIC(), "radosclient",
+      = new XioMessenger(cct, entity_name_t::CLIENT(-1), "radosclient",
 			 nonce, 0 /* portals */);
     xmsgr->set_port_shift(111) /* XXX */;
     messenger = xmsgr;
