@@ -1309,7 +1309,7 @@ bool OSDMonitor::prepare_boot(MOSDBoot *m)
 
 void OSDMonitor::_booted(MOSDBoot *m, bool logit)
 {
-  dout(7) << "_booted " << m->get_orig_source_inst() 
+  dout(7) << "_booted " << m->get_orig_source_inst()
 	  << " w " << m->sb.weight << " from " << m->sb.current_epoch << dendl;
 
   if (logit) {
@@ -1465,7 +1465,7 @@ bool OSDMonitor::preprocess_remove_snaps(MRemoveSnaps *m)
       continue;
     }
     const pg_pool_t *pi = osdmap.get_pg_pool(q->first);
-    for (vector<snapid_t>::iterator p = q->second.begin(); 
+    for (vector<snapid_t>::iterator p = q->second.begin();
 	 p != q->second.end();
 	 ++p) {
       if (*p > pi->get_snap_seq() ||
@@ -1483,7 +1483,7 @@ bool OSDMonitor::prepare_remove_snaps(MRemoveSnaps *m)
 {
   dout(7) << "prepare_remove_snaps " << *m << dendl;
 
-  for (map<int, vector<snapid_t> >::iterator p = m->snaps.begin(); 
+  for (map<int, vector<snapid_t> >::iterator p = m->snaps.begin();
        p != m->snaps.end();
        ++p) {
     pg_pool_t& pi = osdmap.pools[p->first];
@@ -1498,7 +1498,8 @@ bool OSDMonitor::prepare_remove_snaps(MRemoveSnaps *m)
 	dout(10) << " pool " << p->first << " removed_snaps added " << *q
 		 << " (now " << newpi->removed_snaps << ")" << dendl;
 	if (*q > newpi->get_snap_seq()) {
-	  dout(10) << " pool " << p->first << " snap_seq " << newpi->get_snap_seq() << " -> " << *q << dendl;
+	  dout(10) << " pool " << p->first << " snap_seq "
+		   << newpi->get_snap_seq() << " -> " << *q << dendl;
 	  newpi->set_snap_seq(*q);
 	}
 	newpi->set_snap_epoch(pending_inc.epoch);
@@ -1631,6 +1632,40 @@ void OSDMonitor::send_incremental(PaxosServiceMessage *req, epoch_t first)
     osd_epoch[osd] = last;
 }
 
+void OSDMonitor::send_incremental(epoch_t first, ConnectionRef &con,
+				  bool onetime)
+{
+  dout(5) << "send_incremental [" << first << ".." << osdmap.get_epoch() << "]"
+	  << " to " << con << dendl;
+
+  if (first < get_first_committed()) {
+    first = get_first_committed();
+    bufferlist bl;
+    int err = get_version_full(first, bl);
+    assert(err == 0);
+    assert(bl.length());
+
+    dout(20) << "send_incremental starting with base full "
+	     << first << " " << bl.length() << " bytes" << dendl;
+
+    MOSDMap *m = new MOSDMap(osdmap.get_fsid());
+    m->oldest_map = first;
+    m->newest_map = osdmap.get_epoch();
+    m->maps[first] = bl;
+    con->get_messenger()->send_message(m, con);
+    first++;
+  }
+
+  while (first <= osdmap.get_epoch()) {
+    epoch_t last = MIN(first + g_conf->osd_map_message_max, osdmap.get_epoch());
+    MOSDMap *m = build_incremental(first, last);
+    con->get_messenger()->send_message(m, con);
+    first = last + 1;
+    if (onetime)
+      break;
+  }
+}
+
 void OSDMonitor::send_incremental(epoch_t first, entity_inst_t& dest, bool onetime)
 {
   dout(5) << "send_incremental [" << first << ".." << osdmap.get_epoch() << "]"
@@ -1664,16 +1699,12 @@ void OSDMonitor::send_incremental(epoch_t first, entity_inst_t& dest, bool oneti
   }
 }
 
-
-
-
 epoch_t OSDMonitor::blacklist(const entity_addr_t& a, utime_t until)
 {
   dout(10) << "blacklist " << a << " until " << until << dendl;
   pending_inc.new_blacklist[a] = until;
   return pending_inc.epoch;
 }
-
 
 void OSDMonitor::check_subs()
 {
@@ -1694,11 +1725,11 @@ void OSDMonitor::check_sub(Subscription *sub)
   dout(10) << __func__ << " " << sub << " next " << sub->next
 	   << (sub->onetime ? " (onetime)":" (ongoing)") << dendl;
   if (sub->next <= osdmap.get_epoch()) {
+    Messenger *msgr = sub->session->con->get_messenger();
     if (sub->next >= 1)
       send_incremental(sub->next, sub->session->inst, sub->incremental_onetime);
     else
-      mon->messenger->send_message(build_latest_full(),
-				   sub->session->inst);
+      msgr->send_message(build_latest_full(), sub->session->con);
     if (sub->onetime)
       mon->session_map.remove_sub(sub);
     else
@@ -2601,7 +2632,6 @@ void OSDMonitor::get_pools_health(
     }
   }
 }
-
 
 int OSDMonitor::prepare_new_pool(MPoolOp *m)
 {
@@ -4301,7 +4331,7 @@ bool OSDMonitor::prepare_pool_op(MPoolOp *m)
     }
     break;
 
-  case POOL_OP_CREATE_UNMANAGED_SNAP: 
+  case POOL_OP_CREATE_UNMANAGED_SNAP:
     {
       uint64_t snapid;
       pp.add_unmanaged_snap(snapid);
@@ -4350,7 +4380,7 @@ int OSDMonitor::_prepare_remove_pool(uint64_t pool)
 {
   dout(10) << "_prepare_remove_pool " << pool << dendl;
   if (pending_inc.old_pools.count(pool)) {
-    dout(10) << "_prepare_remove_pool " << pool << " pending removal" << dendl;    
+    dout(10) << "_prepare_remove_pool " << pool << " pending removal" << dendl;
     return 0;  // already removed
   }
   pending_inc.old_pools.insert(pool);
