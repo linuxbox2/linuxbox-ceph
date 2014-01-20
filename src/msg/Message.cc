@@ -673,10 +673,12 @@ Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_foot
   // m->header.version, if non-zero, should be populated with the
   // newest version of the encoding the code supports.  If set, check
   // it against compat_version.
-  cout << "m->get_header().version " << m->get_header().version <<
-    " header.compat_version " << header.compat_version <<
-    std::endl;
-  
+  if (m->get_magic() & (MSG_MAGIC_XIO|MSG_MAGIC_TRACE_DTOR)) {
+    cout << "m->get_header().version " << m->get_header().version <<
+      " header.compat_version " << header.compat_version <<
+      std::endl;
+  }
+
   if (m->get_header().version &&
       m->get_header().version < header.compat_version) {
     if (cct) {

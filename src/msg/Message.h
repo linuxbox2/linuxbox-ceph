@@ -161,6 +161,11 @@
 
 // abstract Message class
 
+#define MSG_MAGIC_XIO          0x0002
+#define MSG_MAGIC_TRACE_1      0x0004
+#define MSG_MAGIC_TRACE_DTOR   0x0008
+#define MSG_MAGIC_TRACE_HDR    0x0010
+
 class Message : public RefCountedObject {
 protected:
   ceph_msg_header  header;      // headerelope
@@ -168,7 +173,7 @@ protected:
   bufferlist       payload;  // "front" unaligned blob
   bufferlist       middle;   // "middle" unaligned blob
   bufferlist       data;     // data payload (page-alignment will be preserved where possible)
-  
+ 
   /* recv_stamp is set when the Messenger starts reading the
    * Message off the wire */
   utime_t recv_stamp;
@@ -181,6 +186,8 @@ protected:
   utime_t recv_complete_stamp;
 
   ConnectionRef connection;
+
+  uint32_t magic;
 
 public:
   class CompletionHook : public Context {
@@ -216,6 +223,7 @@ protected:
 public:
   Message()
     : connection(NULL),
+      magic(0),
       completion_hook(NULL),
       byte_throttler(NULL),
       msg_throttler(NULL),
@@ -225,6 +233,7 @@ public:
   };
   Message(int t, int version=1, int compat_version=0)
     : connection(NULL),
+      magic(0),
       completion_hook(NULL),
       byte_throttler(NULL),
       msg_throttler(NULL),
@@ -244,7 +253,8 @@ public:
 
 protected:
   virtual ~Message() {
-    cout << __func__ << " called" << std::endl;
+    if (magic & (MSG_MAGIC_XIO|MSG_MAGIC_TRACE_DTOR))
+	cout << __func__ << " called" << std::endl;
     assert(nref.read() == 0);
     if (byte_throttler)
       byte_throttler->put(payload.length() + middle.length() + data.length());
@@ -273,6 +283,9 @@ public:
   void set_header(const ceph_msg_header &e) { header = e; }
   void set_footer(const ceph_msg_footer &e) { footer = e; }
   ceph_msg_footer &get_footer() { return footer; }
+
+  uint32_t get_magic() { return magic; }
+  void set_magic(int _magic) { magic = _magic; }
 
   /*
    * If you use get_[data, middle, payload] you shouldn't
@@ -395,7 +408,7 @@ public:
   virtual void encode_payload(uint64_t features) = 0;
   virtual const char *get_type_name() const = 0;
   virtual void print(ostream& out) const {
-    out << get_type_name();
+    out << get_type_name() << " magic: " << magic;
   }
 
   virtual void dump(Formatter *f) const;
