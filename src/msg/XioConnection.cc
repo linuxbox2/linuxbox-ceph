@@ -48,10 +48,12 @@ void print_xio_msg_hdr(XioMsgHdr &hdr)
 
 void print_ceph_msg(Message *m)
 {
-  ceph_msg_header& header = m->get_header();
-  cout << "header version " << header.version <<
-    " compat version " << header.compat_version <<
-    std::endl;
+  if (m->get_magic() & (MSG_MAGIC_XIO & MSG_MAGIC_TRACE_DTOR)) {
+    ceph_msg_header& header = m->get_header();
+    cout << "header version " << header.version <<
+      " compat version " << header.compat_version <<
+      std::endl;
+  }
 }
 
 XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
@@ -65,6 +67,8 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   in_seq()
 {
   pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
+  peer_addr = peer.addr;
+  peer_type = peer.name.type();
 }
 
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
@@ -97,10 +101,12 @@ int XioConnection::on_msg_req(struct xio_session *session,
    * xio_session */
   pthread_spin_lock(&sp);
   if (! in_seq.p) {
+#if 0 /* XXX */
     printf("receive req %p treq %p iov_base %p iov_len %d data_iovlen %d\n",
 	   req, treq, treq->in.header.iov_base,
 	   (int) treq->in.header.iov_len,
 	   (int) treq->in.data_iovlen);
+#endif
     XioMsgCnt msg_cnt(
       buffer::create_static(treq->in.header.iov_len,
 			    (char*) treq->in.header.iov_base));
@@ -138,7 +144,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   uint_to_timeval(t1, treq->timestamp);
 
+#if 0 /* XXX */
   print_xio_msg_hdr(hdr);
+#endif
 
   int ix, blen, iov_len;
   struct xio_iovec_ex *msg_iov;
@@ -154,11 +162,12 @@ int XioConnection::on_msg_req(struct xio_session *session,
       /* XXX need to detect any buffer which needs to be
        * split due to coalescing of a segment (front, middle,
        * data) boundary */
-
+#if 0 /* XXX */
       printf("recv req %p data off %d iov_base %p iov_len %d\n",
 	     treq, ix,
 	     msg_iov->iov_base,
 	     (int) msg_iov->iov_len);
+#endif
 
       /* XXX need to take only MIN(blen, iov_len) */
       front.append(
@@ -173,8 +182,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
 
   blen = header.middle_len;
-
-  cout << " front size: " << front.length() << std::endl;
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
@@ -226,21 +233,41 @@ int XioConnection::on_msg_req(struct xio_session *session,
     completion_hook->set_message(m);
     m->set_completion_hook(completion_hook);
 
+    /* trace flag */
+    m->set_magic(MSG_MAGIC_XIO|MSG_MAGIC_TRACE_1);
+
     /* update timestamps */
     m->set_recv_stamp(t1);
     m->set_recv_complete_stamp(t2);
     m->set_seq(seq);
 
-    /* validate peer type */
+    /* XXXX validate peer type */
     if (peer_type == -1)
       peer_type = hdr.peer_type;
     cout << "before dispatch: peer type: " << this->get_peer_type()
 	 << std::endl;
 
+    cout << "decode m is " << m->get_type() << std::endl;
+
+#if 0 /* XXX */
+    if (m->get_type() == 4) {
+      cout << "stop 4 " << std::endl;
+    }
+
+    if (m->get_type() == 18) {
+      cout << "stop 18 " << std::endl;
+    }
+#endif
+
+    if (m->get_type() == 15) {
+      cout << "stop 15 " << std::endl;
+    }
+
     /* dispatch it */
     msgr->ms_deliver_dispatch(m);
   } else {
     /* responds for undecoded messages and frees hook */
+    cout << "decode m failed" << std::endl;
     completion_hook->on_err_finalize(this);
   }
 

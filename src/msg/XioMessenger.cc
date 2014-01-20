@@ -20,6 +20,7 @@
 
 #include "XioMsg.h"
 #include "XioMessenger.h"
+#include "messages/MMonMap.h" /* XXX */
 
 Mutex mtx("XioMessenger Package Lock");
 atomic_t initialized;
@@ -319,12 +320,24 @@ int XioMessenger::send_message(Message *m, Connection *con)
   m->set_seq(0); /* XIO handles seq */
   m->encode(xcon->get_features(), !this->cct->_conf->ms_nocrc);
 
+  /* trace flag */
+  m->set_magic(MSG_MAGIC_XIO|MSG_MAGIC_TRACE_1);
+
   /* XXX placement new */
   XioMsg *xmsg = (XioMsg*) calloc(1, sizeof(XioMsg));
   new (xmsg) XioMsg(m, xcon);
 
+#if 1 /* XXX */
   cout << "\nsend_message " << m << " new XioMsg " << xmsg
-       << " req_0 " << &xmsg->req_0 << std::endl;
+       << " req_0 " << &xmsg->req_0 << " msg type " << m->get_type()
+       << std::endl;
+#endif
+
+  /* XXXX verify MonMap */
+  if (m->get_type() == 4) {
+    MMonMap *mm = static_cast<MMonMap*>(m);
+    cout << "stop 4" << *mm << std::endl;
+  }
 
   buffer::list blist;
   struct xio_msg *req = &xmsg->req_0;
@@ -369,6 +382,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
     /* track iovlen */
     req->out.data_iovlen = msg_off+1;
 
+    /* XXXX this SHOULD work fine (Eyal) */
 #if 0
     /* register it */
     iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
@@ -376,10 +390,12 @@ int XioMessenger::send_message(Message *m, Connection *con)
       abort();
 #endif
 
+#if 0 /* XXX */
     printf("send req %p data off %d iov_base %p iov_len %d\n",
 	   req, msg_off,
 	   iov->iov_base,
 	   (int) iov->iov_len);
+#endif
 
     /* advance iov(s) */
     if (++msg_off >= XIO_MAX_IOV) {
@@ -399,11 +415,13 @@ int XioMessenger::send_message(Message *m, Connection *con)
   /* fixup first msg */
   req = &xmsg->req_0;
 
-  void print_xio_msg_hdr(XioMsgHdr &hdr);
-  print_xio_msg_hdr(xmsg->hdr);
+  if (m->get_magic() & (MSG_MAGIC_XIO & MSG_MAGIC_TRACE_HDR)) {
+    void print_xio_msg_hdr(XioMsgHdr &hdr);
+    print_xio_msg_hdr(xmsg->hdr);
 
-  void print_ceph_msg(Message *m);
-  print_ceph_msg(m);
+    void print_ceph_msg(Message *m);
+    print_ceph_msg(m);
+  }
 
   const std::list<buffer::ptr>& header = xmsg->hdr.get_bl().buffers();
   assert(header.size() == 1); /* XXX */
