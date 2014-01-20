@@ -1941,7 +1941,8 @@ void get_command_descriptions(const MonCommand *commands,
 void Monitor::handle_command(MMonCommand *m)
 {
   if (m->fsid != monmap->fsid) {
-    dout(0) << "handle_command on fsid " << m->fsid << " != " << monmap->fsid << dendl;
+    dout(0) << "handle_command on fsid " << m->fsid << " != "
+	    << monmap->fsid << dendl;
     reply_command(m, -EPERM, "wrong fsid", 0);
     return;
   }
@@ -2574,6 +2575,11 @@ bool Monitor::_ms_dispatch(Message *m)
 {
   bool ret = true;
 
+  /* XXX */
+  cout << "Monitor::ms_dispatch m->type " << m->get_type()
+       << " magic " << m->get_magic() << " shutdown "
+       << is_shutdown() << std::endl;
+
   if (is_shutdown()) {
     m->put();
     return true;
@@ -2677,36 +2683,44 @@ bool Monitor::dispatch(MonSession *s, Message *m, const bool src_is_mon)
   switch (m->get_type()) {
 
     case MSG_ROUTE:
+      cout << "handle_route " << *m << std::endl;
       handle_route(static_cast<MRoute*>(m));
       break;
 
     // misc
     case CEPH_MSG_MON_GET_MAP:
+      cout << "handle_mon_get_map " << *m << std::endl;
       handle_mon_get_map(static_cast<MMonGetMap*>(m));
       break;
 
     case CEPH_MSG_MON_GET_VERSION:
+      cout << "handle_get_version " << *m << std::endl;
       handle_get_version(static_cast<MMonGetVersion*>(m));
       break;
 
     case MSG_MON_COMMAND:
+      cout << "handle_command " << *m << std::endl;
       handle_command(static_cast<MMonCommand*>(m));
       break;
 
     case CEPH_MSG_MON_SUBSCRIBE:
       /* FIXME: check what's being subscribed, filter accordingly */
+      cout << "handle_subscribe " << *m << std::endl;
       handle_subscribe(static_cast<MMonSubscribe*>(m));
       break;
 
     case MSG_MON_PROBE:
+      cout << "handle_probe " << *m << std::endl;
       handle_probe(static_cast<MMonProbe*>(m));
       break;
 
     // Sync (i.e., the new slurp, but on steroids)
     case MSG_MON_SYNC:
+      cout << "handle_sync " << *m << std::endl;
       handle_sync(static_cast<MMonSync*>(m));
       break;
     case MSG_MON_SCRUB:
+      cout << "handle_scrub " << *m << std::endl;
       handle_scrub(static_cast<MMonScrub*>(m));
       break;
 
@@ -3280,11 +3294,12 @@ void Monitor::handle_subscribe(MMonSubscribe *m)
     }
   }
 
-  // ???
-
-  if (reply)
-    messenger->send_message(new MMonSubscribeAck(monmap->get_fsid(), (int)g_conf->mon_subscribe_interval),
-			    m->get_source_inst());
+  if (reply) {
+    ConnectionRef con = m->get_connection();
+    con->get_messenger()->send_message(
+      new MMonSubscribeAck(monmap->get_fsid(),
+			   (int)g_conf->mon_subscribe_interval), con);
+  }
 
   s->put();
   m->put();
