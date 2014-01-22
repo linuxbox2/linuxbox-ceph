@@ -73,7 +73,7 @@ public:
 
   virtual void wait();
 
-  virtual int shutdown() { started = false; return 0; }
+  virtual int shutdown();
 
   virtual int send_message(Message *m, const entity_inst_t& dest);
 

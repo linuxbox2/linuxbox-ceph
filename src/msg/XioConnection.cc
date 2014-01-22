@@ -69,6 +69,10 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
   peer_addr = peer.addr;
   peer_type = peer.name.type();
+
+  /* XXXX fake features, aieee! */
+  set_features(68719476735);
+
 }
 
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
@@ -145,7 +149,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
   uint_to_timeval(t1, treq->timestamp);
 
 #if 0 /* XXX */
-  print_xio_msg_hdr(hdr);
+  int iov_front_len;
+  if (hdr.hdr->type == 41) {
+    iov_front_len = 0;
+    print_xio_msg_hdr(hdr);
+  }
 #endif
 
   int ix, blen, iov_len;
@@ -163,10 +171,13 @@ int XioConnection::on_msg_req(struct xio_session *session,
        * split due to coalescing of a segment (front, middle,
        * data) boundary */
 #if 0 /* XXX */
-      printf("recv req %p data off %d iov_base %p iov_len %d\n",
-	     treq, ix,
-	     msg_iov->iov_base,
-	     (int) msg_iov->iov_len);
+      if (hdr.hdr->type == 41) {
+	printf("recv req %p data off %d iov_base %p iov_len %d\n",
+	       treq, ix,
+	       msg_iov->iov_base,
+	       (int) msg_iov->iov_len);
+	iov_front_len += msg_iov->iov_len;
+      }
 #endif
 
       /* XXX need to take only MIN(blen, iov_len) */
@@ -180,6 +191,15 @@ int XioConnection::on_msg_req(struct xio_session *session,
      * the new start (carry) and not advance */
     msg_iter++;
   }
+
+#if 0 /* XXX */
+      if (hdr.hdr->type == 41) {
+	printf("iov_front_len %d\n", iov_front_len);
+	cout << "front (payload) dump:" << std::endl;
+	front.hexdump(cout);
+      }
+#endif
+
 
   blen = header.middle_len;
 
@@ -257,11 +277,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
     if (m->get_type() == 18) {
       cout << "stop 18 " << std::endl;
     }
-#endif
 
     if (m->get_type() == 15) {
       cout << "stop 15 " << std::endl;
     }
+#endif
 
     /* dispatch it */
     msgr->ms_deliver_dispatch(m);

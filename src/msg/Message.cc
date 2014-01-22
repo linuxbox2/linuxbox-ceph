@@ -673,7 +673,7 @@ Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_foot
   // m->header.version, if non-zero, should be populated with the
   // newest version of the encoding the code supports.  If set, check
   // it against compat_version.
-  if (m->get_magic() & (MSG_MAGIC_XIO|MSG_MAGIC_TRACE_DTOR)) {
+  if (m->get_magic() & (MSG_MAGIC_XIO & MSG_MAGIC_TRACE_DTOR)) {
     cout << "m->get_header().version " << m->get_header().version <<
       " header.compat_version " << header.compat_version <<
       std::endl;
@@ -692,7 +692,7 @@ Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_foot
     m->put();
     return 0;
   }
-  
+
   m->set_header(header);
   m->set_footer(footer);
   m->set_payload(front);
