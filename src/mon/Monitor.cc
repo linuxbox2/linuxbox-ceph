@@ -3252,7 +3252,7 @@ void Monitor::handle_timecheck(MTimeCheck *m)
 void Monitor::handle_subscribe(MMonSubscribe *m)
 {
   dout(10) << "handle_subscribe " << *m << dendl;
-  
+
   bool reply = false;
 
   MonSession *s = static_cast<MonSession *>(m->get_connection()->get_priv());
@@ -3271,7 +3271,7 @@ void Monitor::handle_subscribe(MMonSubscribe *m)
     if ((p->second.flags & CEPH_SUBSCRIBE_ONETIME) == 0)
       reply = true;
 
-    session_map.add_update_sub(s, p->first, p->second.start, 
+    session_map.add_update_sub(s, p->first, p->second.start,
 			       p->second.flags & CEPH_SUBSCRIBE_ONETIME,
 			       m->get_connection()->has_feature(CEPH_FEATURE_INCSUBOSDMAP));
 
