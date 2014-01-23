@@ -192,9 +192,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
     msg_iter++;
   }
 
-#if 0 /* XXX */
-      if (hdr.hdr->type == 41) {
-	printf("iov_front_len %d\n", iov_front_len);
+#if 1 /* XXX */
+      if (hdr.hdr->type == 48) {
+	//printf("iov_front_len %d\n", iov_front_len);
 	cout << "front (payload) dump:" << std::endl;
 	front.hexdump(cout);
       }
@@ -264,22 +264,24 @@ int XioConnection::on_msg_req(struct xio_session *session,
     /* XXXX validate peer type */
     if (peer_type == -1)
       peer_type = hdr.peer_type;
-    cout << "before dispatch: peer type: " << this->get_peer_type()
-	 << std::endl;
 
     cout << "decode m is " << m->get_type() << std::endl;
 
-#if 0 /* XXX */
+#if 1 /* XXX */
     if (m->get_type() == 4) {
       cout << "stop 4 " << std::endl;
+    }
+
+    if (m->get_type() == 15) {
+      cout << "stop 15 " << std::endl;
     }
 
     if (m->get_type() == 18) {
       cout << "stop 18 " << std::endl;
     }
 
-    if (m->get_type() == 15) {
-      cout << "stop 15 " << std::endl;
+    if (m->get_type() == 48) {
+      cout << "stop 48 " << std::endl;
     }
 #endif
 

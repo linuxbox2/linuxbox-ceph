@@ -717,6 +717,11 @@ Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_foot
     return 0;
   }
 
+#if 1 /* XXXXX kill me */
+  cout << "Message:  decoded " << m->get_type()
+       << std::endl;
+#endif
+
   // done!
   return m;
 }
