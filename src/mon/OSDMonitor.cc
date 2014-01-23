@@ -1724,10 +1724,11 @@ void OSDMonitor::check_sub(Subscription *sub)
 {
   dout(10) << __func__ << " " << sub << " next " << sub->next
 	   << (sub->onetime ? " (onetime)":" (ongoing)") << dendl;
+
   if (sub->next <= osdmap.get_epoch()) {
     Messenger *msgr = sub->session->con->get_messenger();
     if (sub->next >= 1)
-      send_incremental(sub->next, sub->session->inst, sub->incremental_onetime);
+      send_incremental(sub->next, sub->session->con, sub->incremental_onetime);
     else
       msgr->send_message(build_latest_full(), sub->session->con);
     if (sub->onetime)
@@ -1738,7 +1739,6 @@ void OSDMonitor::check_sub(Subscription *sub)
 }
 
 // TICK
-
 
 void OSDMonitor::tick()
 {
