@@ -42,6 +42,7 @@ private:
   pthread_spinlock_t sp;
   atomic_t send;
   atomic_t recv;
+  uint32_t magic;
 
   /* batching */
   struct msg_seq {
@@ -89,6 +90,9 @@ public:
   bool is_connected() { return !!conn; }
 
   const entity_inst_t& get_peer() const { return peer; }
+
+  uint32_t get_magic() { return magic; }
+  void set_magic(int _magic) { magic = _magic; }
 
   int passive_setup(); /* XXX */
 

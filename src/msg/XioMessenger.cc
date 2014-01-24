@@ -35,9 +35,11 @@ static int on_session_event(struct xio_session *session,
 {
   XioMessenger *msgr = static_cast<XioMessenger*>(cb_user_context);
 
-  printf("session event: %s. reason: %s\n",
-	 xio_session_event_str(event_data->event),
-	 xio_strerror(event_data->reason));
+  if (msgr->get_magic() & (MSG_MAGIC_XIO)) {
+    printf("session event: %s. reason: %s\n",
+	   xio_session_event_str(event_data->event),
+	   xio_strerror(event_data->reason));
+  }
 
   return msgr->session_event(session, event_data, cb_user_context);
 }
@@ -48,7 +50,9 @@ static int on_new_session(struct xio_session *session,
 {
   XioMessenger *msgr = static_cast<XioMessenger*>(cb_user_context);
 
-  printf("new session %p user_context %p\n", session, cb_user_context);
+  if (msgr->get_magic() & (MSG_MAGIC_XIO)) {
+    printf("new session %p user_context %p\n", session, cb_user_context);
+  }
 
   return (msgr->new_session(session, req, cb_user_context));
 }
@@ -57,12 +61,13 @@ static int on_msg_send_complete(struct xio_session *session,
 				struct xio_msg *rsp,
 				void *conn_user_context)
 {
-
-  printf("msg send complete: session: %p rsp: %p user_context %p\n",
-	 session, rsp, conn_user_context);
-
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
+
+  if (xcon->get_magic() & (MSG_MAGIC_XIO)) {
+    printf("msg send complete: session: %p rsp: %p user_context %p\n",
+	   session, rsp, conn_user_context);
+  }
 
   return xcon->on_msg_send_complete(session, rsp, conn_user_context);
 }
@@ -75,7 +80,9 @@ static int on_msg(struct xio_session *session,
   XioConnection *xcon =
     static_cast<XioConnection*>(cb_user_context);
 
-  printf("on_msg session %p xcon %p\n", session, xcon);
+  if (xcon->get_magic() & (MSG_MAGIC_XIO)) {
+    printf("on_msg session %p xcon %p\n", session, xcon);
+  }
 
   return xcon->on_msg_req(session, req, more_in_batch,
 			  cb_user_context);
@@ -86,11 +93,13 @@ static int on_msg_delivered(struct xio_session *session,
 			    int more_in_batch,
 			    void *conn_user_context)
 {
-  printf("msg delivered session: %p msg: %p more: %d conn_user_context %p\n",
-	   session, msg, more_in_batch, conn_user_context);
-
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
+
+  if (xcon->get_magic() & (MSG_MAGIC_XIO)) {
+    printf("msg delivered session: %p msg: %p more: %d conn_user_context %p\n",
+	   session, msg, more_in_batch, conn_user_context);
+  }
 
   return xcon->on_msg_delivered(session, msg, more_in_batch, conn_user_context);
 
@@ -102,8 +111,14 @@ static int on_msg_error(struct xio_session *session,
 			struct xio_msg  *msg,
 			void *conn_user_context)
 {
-  printf("msg error session: %p error: %s msg: %p conn_user_context %p\n",
-	 session, xio_strerror(error), msg, conn_user_context);
+  XioConnection *xcon =
+    static_cast<XioConnection*>(conn_user_context);
+
+  if (xcon->get_magic() & (MSG_MAGIC_XIO)) {
+    printf("msg error session: %p error: %s msg: %p conn_user_context %p\n",
+	   session, xio_strerror(error), msg, conn_user_context);
+  }
+
   /* XIO promises to flush back undelivered messags */
     dereg_xio_req(msg);
     XioMsg *xmsg = static_cast<XioMsg*>(msg->user_context);
@@ -118,8 +133,14 @@ static int on_cancel(struct xio_session *session,
 		     enum xio_status result,
 		     void *conn_user_context)
 {
-  printf("on cancel: session: %p msg: %p conn_user_context %p\n",
-	 session, msg, conn_user_context);
+  XioConnection *xcon =
+    static_cast<XioConnection*>(conn_user_context);
+
+  if (xcon->get_magic() & (MSG_MAGIC_XIO)) {
+    printf("on cancel: session: %p msg: %p conn_user_context %p\n",
+	   session, msg, conn_user_context);
+  }
+
   return 0;
 }
 
@@ -127,8 +148,14 @@ static int on_cancel_request(struct xio_session *session,
 			     struct xio_msg  *msg,
 			     void *conn_user_context)
 {
-  printf("on cancel request: session: %p msg: %p conn_user_context %p\n",
-	 session, msg, conn_user_context);
+  XioConnection *xcon =
+    static_cast<XioConnection*>(conn_user_context);
+
+  if (xcon->get_magic() & (MSG_MAGIC_XIO)) {
+    printf("on cancel request: session: %p msg: %p conn_user_context %p\n",
+	   session, msg, conn_user_context);
+  }
+
   return 0;
 }
 
@@ -181,11 +208,12 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       unsigned xopt;
 
-#if 0
-      xopt = XIO_LOG_LEVEL_TRACE;
-      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_LEVEL,
-		  &xopt, sizeof(unsigned));
-#endif
+      if (magic & (MSG_MAGIC_TRACE_XIO)) {
+	xopt = XIO_LOG_LEVEL_TRACE;
+	xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_LEVEL,
+		    &xopt, sizeof(unsigned));
+      }
+
       xopt = 1;
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_DISABLE_HUGETBL,
 		  &xopt, sizeof(unsigned));
@@ -244,12 +272,16 @@ int XioMessenger::session_event(struct xio_session *session,
     conn_params.user_context = xcon;
     xio_set_connection_params(event_data->conn, &conn_params);
 
-    printf("new connection session %p xcon %p\n", session, xcon);
+    if (magic & (MSG_MAGIC_XIO)) {
+      printf("new connection session %p xcon %p\n", session, xcon);
+    }
   }
   break;
   case XIO_SESSION_CONNECTION_CLOSED_EVENT: /* orderly discon */
   case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT: /* unexpected discon */
-    printf("xio client disconnection %p\n", event_data->conn_user_context);
+    if (magic & (MSG_MAGIC_XIO)) {
+      printf("xio client disconnection %p\n", event_data->conn_user_context);
+    }
     /* clean up mapped connections */
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
     {
@@ -270,7 +302,9 @@ int XioMessenger::session_event(struct xio_session *session,
     xcon->put();
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
-    printf("xio_session_teardown %p\n", session);
+    if (magic & (MSG_MAGIC_XIO)) {
+      printf("xio_session_teardown %p\n", session);
+    }
     xio_session_destroy(session);
     break;
   default:
@@ -283,9 +317,10 @@ int XioMessenger::session_event(struct xio_session *session,
 int XioMessenger::bind(const entity_addr_t& addr)
 {
   string base_uri = xio_uri_from_entity(addr, false /* want_port */);
-
+  if (magic & (MSG_MAGIC_XIO)) {
     printf("XioMessenger %p bind: xio_uri %s:%d\n",
 	   this, base_uri.c_str(), addr.get_port());
+  }
 
   return portals.bind(&xio_msgr_ops, base_uri, addr.get_port());
 } /* bind */
@@ -321,28 +356,26 @@ int XioMessenger::send_message(Message *m, Connection *con)
   m->encode(xcon->get_features(), !this->cct->_conf->ms_nocrc);
 
   /* trace flag */
-  m->set_magic(MSG_MAGIC_XIO|MSG_MAGIC_TRACE_1);
+  m->set_magic(magic);
 
   /* XXX placement new */
   XioMsg *xmsg = (XioMsg*) calloc(1, sizeof(XioMsg));
   new (xmsg) XioMsg(m, xcon);
 
-#if 1 /* XXX */
-  cout << "\nsend_message " << m << " new XioMsg " << xmsg
-       << " req_0 " << &xmsg->req_0 << " msg type " << m->get_type()
-       << " features: " << xcon->get_features() << std::endl;
-#endif
+  if (magic & (MSG_MAGIC_XIO)) {
+    cout << "\nsend_message " << m << " new XioMsg " << xmsg
+	 << " req_0 " << &xmsg->req_0 << " msg type " << m->get_type()
+	 << " features: " << xcon->get_features() << std::endl;
 
-#if 1 /* XXX */
-  /* XXXX verify */
-  if (m->get_type() == 43) {
-    cout << "stop 43 " << *m << std::endl;
-    buffer::list &payload = m->get_payload();
-    cout << "payload dump:" << std::endl;
-    payload.hexdump(cout);
-    trace_hdr = true;
+    /* XXXX verify */
+    if (m->get_type() == 43) {
+      cout << "stop 43 " << *m << std::endl;
+      buffer::list &payload = m->get_payload();
+      cout << "payload dump:" << std::endl;
+      payload.hexdump(cout);
+      trace_hdr = true;
+    }
   }
-#endif
 
   buffer::list blist;
   struct xio_msg *req = &xmsg->req_0;
@@ -353,10 +386,12 @@ int XioMessenger::send_message(Message *m, Connection *con)
   buffer::list &middle = m->get_middle();
   buffer::list &data = m->get_data();
 
-  cout << "payload: " << payload.buffers().size() <<
-    " middle: " << middle.buffers().size() <<
-    " data: " << data.buffers().size() <<
-    std::endl;
+  if (magic & (MSG_MAGIC_XIO)) {
+    cout << "payload: " << payload.buffers().size() <<
+      " middle: " << middle.buffers().size() <<
+      " data: " << data.buffers().size() <<
+      std::endl;
+  }
 
   blist.append(payload);
   blist.append(middle);
@@ -393,13 +428,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
     iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
     if (! iov->mr)
       abort();
-#endif
-
-#if 0 /* XXX */
-    printf("send req %p data off %d iov_base %p iov_len %d\n",
-	   req, msg_off,
-	   iov->iov_base,
-	   (int) iov->iov_len);
 #endif
 
     /* advance iov(s) */
@@ -471,8 +499,10 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
   else {
     string xio_uri = xio_uri_from_entity(_dest.addr, true /* want_port */);
 
-    printf("XioMessenger %p get_connection: xio_uri %s\n",
-	   this, xio_uri.c_str());
+    if (magic & (MSG_MAGIC_XIO)) {
+      printf("XioMessenger %p get_connection: xio_uri %s\n",
+	     this, xio_uri.c_str());
+    }
 
     /* XXX client session attributes */
     struct xio_session_attr attr = {

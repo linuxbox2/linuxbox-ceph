@@ -64,6 +64,7 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   peer(peer),
   session(NULL),
   conn(NULL),
+  magic(m->get_magic()),
   in_seq()
 {
   pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
@@ -169,13 +170,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   uint_to_timeval(t1, treq->timestamp);
 
-#if 1 /* XXX */
-  int iov_front_len;
-  if (hdr.hdr->type == 43) {
-    iov_front_len = 0;
-    print_xio_msg_hdr(hdr);
+  if (magic & (MSG_MAGIC_TRACE_XCON)) {
+    if (hdr.hdr->type == 43) {
+      print_xio_msg_hdr(hdr);
+    }
   }
-#endif
 
   unsigned int ix, blen, iov_len;
   struct xio_iovec_ex *msg_iov;
@@ -211,13 +210,12 @@ int XioConnection::on_msg_req(struct xio_session *session,
     msg_iter++;
   }
 
-#if 1 /* XXX */
-  if (hdr.hdr->type == 43) {
-    //printf("iov_front_len %d\n", iov_front_len);
-    cout << "front (payload) dump:" << std::endl;
-    payload.hexdump(cout);
+  if (magic & (MSG_MAGIC_TRACE_XCON)) {
+    if (hdr.hdr->type == 43) {
+      cout << "front (payload) dump:" << std::endl;
+      payload.hexdump(cout);
+    }
   }
-#endif
 
   blen = header.middle_len;
 
@@ -278,8 +276,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
   Message *m =
     decode_message(msgr->cct, header, footer, payload, middle, data);
 
-  cout << "m is " << m << std::endl;
-
   if (m) {
     /* completion */
     this->get(); /* XXX getting underrun */
@@ -290,7 +286,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
     m->set_completion_hook(completion_hook);
 
     /* trace flag */
-    m->set_magic(MSG_MAGIC_XIO|MSG_MAGIC_TRACE_1);
+    m->set_magic(magic);
 
     /* update timestamps */
     m->set_recv_stamp(t1);
@@ -298,7 +294,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
     m->set_seq(seq);
 
     /* XXXX validate peer type */
-    if (peer_type != hdr.peer_type) { /* XXX isn't peer_type -1? */
+    if (peer_type != (int) hdr.peer_type) { /* XXX isn't peer_type -1? */
       peer_type = hdr.peer_type;
       if (xio_conn_type == XioConnection::PASSIVE) {
 	/* XXX kick off feature/authn/authz negotiation
@@ -310,25 +306,25 @@ int XioConnection::on_msg_req(struct xio_session *session,
       }
     }
 
-    cout << "decode m is " << m->get_type() << std::endl;
+    if (magic & (MSG_MAGIC_TRACE_XCON)) {
+      cout << "decode m is " << m->get_type() << std::endl;
 
-#if 1 /* XXX */
-    if (m->get_type() == 4) {
-      cout << "stop 4 " << std::endl;
-    }
+      if (m->get_type() == 4) {
+	cout << "stop 4 " << std::endl;
+      }
 
-    if (m->get_type() == 15) {
-      cout << "stop 15 " << std::endl;
-    }
+      if (m->get_type() == 15) {
+	cout << "stop 15 " << std::endl;
+      }
 
-    if (m->get_type() == 18) {
-      cout << "stop 18 " << std::endl;
-    }
+      if (m->get_type() == 18) {
+	cout << "stop 18 " << std::endl;
+      }
 
-    if (m->get_type() == 48) {
-      cout << "stop 48 " << std::endl;
+      if (m->get_type() == 48) {
+	cout << "stop 48 " << std::endl;
+      }
     }
-#endif
 
     /* dispatch it */
     msgr->ms_deliver_dispatch(m);

@@ -167,9 +167,7 @@ public:
 
   ~XioMsg()
     {
-      cout << "~XioMsg called " << this << std::endl;
       free(req_arr);
-      cout << "m " << m << " nref before put: " << m->nref.read() << std::endl;
       m->put();
     }
 };

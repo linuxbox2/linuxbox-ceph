@@ -34,6 +34,7 @@ private:
   XioConnection::EntitySet conns_entity_map;
   XioPortals portals;
   int port_shift;
+  uint32_t magic;
 
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
@@ -44,6 +45,9 @@ public:
   void set_port_shift(int shift) { port_shift = shift; }
 
   XioPortal* default_portal() { return portals.get_portal0(); }
+
+  uint32_t get_magic() { return magic; }
+  void set_magic(int _magic) { magic = _magic; }
 
   /* xio hooks */
   int new_session(struct xio_session *session,

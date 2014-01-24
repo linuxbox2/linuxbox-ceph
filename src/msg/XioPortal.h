@@ -39,6 +39,7 @@ private:
   char *portal_id;
   bool _shutdown;
   bool drained;
+  uint32_t magic;
 
   friend class XioPortals;
   friend class XioMessenger;
@@ -46,7 +47,8 @@ private:
 public:
   XioPortal(XioMessenger *_msgr) :
   msgr(_msgr), ctx(NULL), server(NULL), xio_uri(""),
-  portal_id(NULL), _shutdown(false), drained(false)
+  portal_id(NULL), _shutdown(false), drained(false),
+  magic(0)
     {
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
 
@@ -62,8 +64,10 @@ public:
 	};
       xio_set_context_params(ctx, &params);
 
-      printf("XioPortal %p created ev_loop %p ctx %p\n",
-	     this, ev_loop, ctx);
+      if (magic & (MSG_MAGIC_XIO)) {
+	printf("XioPortal %p created ev_loop %p ctx %p\n",
+	       this, ev_loop, ctx);
+      }
     }
 
   int bind(struct xio_session_ops *ops, const string &_uri)
@@ -71,8 +75,10 @@ public:
       xio_uri = _uri;
       portal_id = strdup(xio_uri.c_str());
       server = xio_bind(ctx, ops, portal_id, NULL, 0, msgr);
-      printf("xio_bind: portal %p %s returned server %p\n",
-	     this, xio_uri.c_str(), server);
+      if (magic & (MSG_MAGIC_XIO)) {
+	printf("xio_bind: portal %p %s returned server %p\n",
+	       this, xio_uri.c_str(), server);
+      }
       return (!!server);
     }
 

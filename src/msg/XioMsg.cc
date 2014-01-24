@@ -20,8 +20,6 @@
 
 void XioCompletionHook::finish(int r)
 {
-  printf("XioCompletionHook::finish called %p (%d)\n", this, r);
-
   struct xio_msg *msg, *rsp;
   list <struct xio_msg *>::iterator iter;
 
