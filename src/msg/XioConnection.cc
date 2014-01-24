@@ -75,6 +75,27 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
 
 }
 
+int XioConnection::passive_setup()
+{
+  /* XXX passive setup is a placeholder for (potentially active-side
+     initiated) feature and auth* negotiation */
+  static bufferlist authorizer, authorizer_reply; /* static because fake */
+  static CryptoKey session_key; /* ditto */
+  bool authorizer_valid;
+
+  XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
+
+  /* XXX fake authorizer! */
+  msgr->ms_deliver_verify_authorizer(
+    this, peer_type, CEPH_AUTH_NONE,
+    authorizer,
+    authorizer_reply,
+    authorizer_valid,
+    session_key);
+
+  return (0);
+}
+
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
 
 int XioConnection::on_msg_req(struct xio_session *session,
@@ -148,9 +169,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   uint_to_timeval(t1, treq->timestamp);
 
-#if 0 /* XXX */
+#if 1 /* XXX */
   int iov_front_len;
-  if (hdr.hdr->type == 41) {
+  if (hdr.hdr->type == 43) {
     iov_front_len = 0;
     print_xio_msg_hdr(hdr);
   }
@@ -170,8 +191,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
       /* XXX need to detect any buffer which needs to be
        * split due to coalescing of a segment (front, middle,
        * data) boundary */
-#if 0 /* XXX */
-      if (hdr.hdr->type == 41) {
+#if 1 /* XXX */
+      if (hdr.hdr->type == 43) {
 	printf("recv req %p data off %d iov_base %p iov_len %d\n",
 	       treq, ix,
 	       msg_iov->iov_base,
@@ -193,7 +214,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
 
 #if 1 /* XXX */
-      if (hdr.hdr->type == 48) {
+      if (hdr.hdr->type == 43) {
 	//printf("iov_front_len %d\n", iov_front_len);
 	cout << "front (payload) dump:" << std::endl;
 	front.hexdump(cout);
@@ -262,8 +283,17 @@ int XioConnection::on_msg_req(struct xio_session *session,
     m->set_seq(seq);
 
     /* XXXX validate peer type */
-    if (peer_type == -1)
+    if (peer_type != hdr.peer_type) { /* XXX isn't peer_type -1? */
       peer_type = hdr.peer_type;
+      if (xio_conn_type == XioConnection::PASSIVE) {
+	/* XXX kick off feature/authn/authz negotiation
+	 * nb:  very possibly the active side should initiate this, but
+	 * for now, call a passive hook so OSD and friends can create
+	 * sessions without actually negotiating
+	 */
+	passive_setup();
+      }
+    }
 
     cout << "decode m is " << m->get_type() << std::endl;
 
