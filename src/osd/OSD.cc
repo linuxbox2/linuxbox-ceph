@@ -4639,15 +4639,23 @@ void OSD::_dispatch(Message *m)
 {
   assert(osd_lock.is_locked());
   dout(20) << "_dispatch " << m << " " << *m << dendl;
+
+  /* XXX kill me */
+  cout << "_dispatch " << m << " " << *m << std::endl;
+
   Session *session = NULL;
 
   logger->set(l_osd_buf, buffer::get_total_alloc());
 
   switch (m->get_type()) {
 
-    // -- don't need lock -- 
+    // -- don't need lock --
   case CEPH_MSG_PING:
     dout(10) << "ping from " << m->get_source() << dendl;
+
+    /* XXX kill me */
+    cout << "ping from " << m->get_source() << std::endl;
+
     m->put();
     break;
 

@@ -333,14 +333,10 @@ int XioMessenger::send_message(Message *m, Connection *con)
        << " features: " << xcon->get_features() << std::endl;
 #endif
 
-#if 0 /* XXX */
+#if 1 /* XXX */
   /* XXXX verify */
-#include "messages/MOSDMap.h" /* XXX */
-  if (m->get_type() == 41) {
-    MOSDMap *mo = static_cast<MOSDMap*>(m);
-    cout << "stop 41 " << *mo << std::endl;
-    epoch_t last_epoch = mo->get_last();
-    cout << "last epoch: " << last_epoch << std::endl;
+  if (m->get_type() == 43) {
+    cout << "stop 43 " << *m << std::endl;
     buffer::list &payload = m->get_payload();
     cout << "payload dump:" << std::endl;
     payload.hexdump(cout);
