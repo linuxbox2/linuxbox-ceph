@@ -156,7 +156,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   ceph_msg_header header;
   ceph_msg_footer footer;
-  buffer::list front, middle, data;
+  buffer::list payload, middle, data;
 
   struct timeval t1, t2;
   uint64_t seq;
@@ -177,8 +177,10 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
 #endif
 
-  int ix, blen, iov_len;
+  unsigned int ix, blen, iov_len;
   struct xio_iovec_ex *msg_iov;
+  uint32_t take_len, left_len = 0;
+  char *left_base;
 
   blen = header.front_len;
 
@@ -191,22 +193,18 @@ int XioConnection::on_msg_req(struct xio_session *session,
       /* XXX need to detect any buffer which needs to be
        * split due to coalescing of a segment (front, middle,
        * data) boundary */
-#if 1 /* XXX */
-      if (hdr.hdr->type == 43) {
-	printf("recv req %p data off %d iov_base %p iov_len %d\n",
-	       treq, ix,
-	       msg_iov->iov_base,
-	       (int) msg_iov->iov_len);
-	iov_front_len += msg_iov->iov_len;
-      }
-#endif
 
-      /* XXX need to take only MIN(blen, iov_len) */
-      front.append(
+      take_len = MIN(blen, msg_iov->iov_len);
+      payload.append(
 	buffer::create_static(
-	  msg_iov->iov_len, (char*) msg_iov->iov_base));
-
-      blen -= msg_iov->iov_len;
+	  take_len, (char*) msg_iov->iov_base));
+      blen -= take_len;
+      if (! blen) {
+	left_len = msg_iov->iov_len - take_len;
+	if (left_len) {
+	  left_base = ((char*) msg_iov->iov_base) + take_len;
+	}
+      }
     }
     /* XXX as above, if a buffer is split, then we needed to track
      * the new start (carry) and not advance */
@@ -214,15 +212,20 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
 
 #if 1 /* XXX */
-      if (hdr.hdr->type == 43) {
-	//printf("iov_front_len %d\n", iov_front_len);
-	cout << "front (payload) dump:" << std::endl;
-	front.hexdump(cout);
-      }
+  if (hdr.hdr->type == 43) {
+    //printf("iov_front_len %d\n", iov_front_len);
+    cout << "front (payload) dump:" << std::endl;
+    payload.hexdump(cout);
+  }
 #endif
 
-
   blen = header.middle_len;
+
+  if (blen && left_len) {
+    middle.append(
+      buffer::create_static(left_len, left_base));
+    left_len = 0;
+  }
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
@@ -230,16 +233,28 @@ int XioConnection::on_msg_req(struct xio_session *session,
     for (ix = 0; blen && (ix < iov_len); ++ix) {
       msg_iov = &treq->in.data_iov[ix];
 
-      /* XXX need to take only MIN(blen, iov_len) */
+      take_len = MIN(blen, msg_iov->iov_len);
       middle.append(
 	buffer::create_static(
-	  msg_iov->iov_len, (char*) msg_iov->iov_base));
-      blen -= msg_iov->iov_len;
+	  take_len, (char*) msg_iov->iov_base));
+      blen -= take_len;
+      if (! blen) {
+	left_len = msg_iov->iov_len - take_len;
+	if (left_len) {
+	  left_base = ((char*) msg_iov->iov_base) + take_len;
+	}
+      }
     }
     msg_iter++;
   }
 
   blen = header.data_len;
+
+  if (blen && left_len) {
+    data.append(
+      buffer::create_static(left_len, left_base));
+    left_len = 0;
+  }
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
@@ -261,7 +276,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   recv.set(treq->timestamp);
 
   Message *m =
-    decode_message(msgr->cct, header, footer, front, middle, data);
+    decode_message(msgr->cct, header, footer, payload, middle, data);
 
   cout << "m is " << m << std::endl;
 
