@@ -253,8 +253,6 @@ public:
 
 protected:
   virtual ~Message() {
-    if (magic & (MSG_MAGIC_XIO|MSG_MAGIC_TRACE_DTOR))
-	cout << __func__ << " called" << std::endl;
     assert(nref.read() == 0);
     if (byte_throttler)
       byte_throttler->put(payload.length() + middle.length() + data.length());
