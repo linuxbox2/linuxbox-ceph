@@ -221,7 +221,8 @@ void SimpleMessenger::reaper()
   while (!pipe_reap_queue.empty()) {
     Pipe *p = pipe_reap_queue.front();
     pipe_reap_queue.pop_front();
-    ldout(cct,10) << "reaper reaping pipe " << p << " " << p->get_peer_addr() << dendl;
+    ldout(cct,10) << "reaper reaping pipe " << p << " " <<
+      p->get_peer_addr() << dendl;
     p->pipe_lock.Lock();
     p->discard_out_queue();
     if (p->connection_state) {
@@ -401,8 +402,7 @@ void SimpleMessenger::submit_message(Message *m, Connection *con,
   // existing connection?
   if (con) {
     Pipe *pipe = NULL;
-    bool ok = static_cast<PipeConnection*>(con)->try_get_pipe(
-      (RefCountedObject**)&pipe);
+    bool ok = static_cast<PipeConnection*>(con)->try_get_pipe(&pipe);
     if (!ok) {
       ldout(cct,0) << "submit_message " << *m << " remote, " << dest_addr
 		   << ", failed lossy con, dropping message " << m << dendl;

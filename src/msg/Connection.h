@@ -108,8 +108,10 @@ public:
 
 typedef boost::intrusive_ptr<Connection> ConnectionRef;
 
+class Pipe;
+
 struct PipeConnection : public Connection {
-  RefCountedObject *pipe;
+  Pipe* pipe;
 
   friend class boost::intrusive_ptr<PipeConnection>;
   friend class Pipe;
@@ -120,51 +122,15 @@ public:
     : Connection(m),
       pipe(NULL) { }
 
-  ~PipeConnection() {
-    if (priv) {
-      priv->put();
-    }
-    if (pipe)
-      pipe->put();
-  }
+  ~PipeConnection();
 
-  RefCountedObject *get_pipe() {
-    Mutex::Locker l(lock);
-    if (pipe)
-      return pipe->get();
-    return NULL;
-  }
+  Pipe* get_pipe();
 
-  bool try_get_pipe(RefCountedObject **p) {
-    Mutex::Locker l(lock);
-    if (failed) {
-      *p = NULL;
-    } else {
-      if (pipe)
-	*p = pipe->get();
-      else
-	*p = NULL;
-    }
-    return !failed;
-  }
+  bool try_get_pipe(Pipe** p);
 
-  bool clear_pipe(RefCountedObject *old_p) {
-    if (old_p == pipe) {
-      Mutex::Locker l(lock);
-      pipe->put();
-      pipe = NULL;
-      failed = true;
-      return true;
-    }
-    return false;
-  }
+  bool clear_pipe(Pipe* old_p);
 
-  void reset_pipe(RefCountedObject *p) {
-    Mutex::Locker l(lock);
-    if (pipe)
-      pipe->put();
-    pipe = p->get();
-  }
+  void reset_pipe(Pipe* p);
 
   bool is_connected() {
     Mutex::Locker l(lock);

@@ -35,6 +35,14 @@ struct RefCountedObject {
     if (nref.dec() == 0)
       delete this;
   }
+  bool safe_put() {
+    //generic_dout(0) << "RefCountedObject::put " << this << " " << nref.read() << " -> " << (nref.read() - 1) << dendl;
+    if (nref.dec() == 0) {
+      delete this;
+      return true;
+    }
+    return false;
+  }
 };
 
 /**

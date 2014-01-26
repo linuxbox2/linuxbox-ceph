@@ -108,6 +108,23 @@ class DispatchQueue;
     uint64_t conn_id;
     ostream& _pipe_prefix(std::ostream *_dout);
 
+    Pipe* get() {
+      /* XXXX kill me!  this is here to trap a use-after free on pipe */
+      int _n = nref.read();
+      cout << "Pipe::get pre-op nref " << _n << " " << this << std::endl;
+      return static_cast<Pipe*>(RefCountedObject::get());
+    }
+
+    void put() {
+      int _n = nref.read();
+      bool deleted = RefCountedObject::safe_put();
+      /* XXXX kill me!  this is here to trap a use-after free on pipe */
+      if (deleted) {
+	cout << "Pipe::put deleted=true " << this << std::endl;
+      }
+      cout << "Pipe::put pre-op nref " << _n << " " << this << std::endl;
+    }
+
     enum {
       STATE_ACCEPTING,
       STATE_CONNECTING,

@@ -111,7 +111,8 @@ set (libcommon_files
 	../msg/Message.cc 
 	RefCountedObj.cc 
 	../msg/Messenger.cc 
-	../msg/Pipe.cc 
+	../msg/Pipe.cc
+	../msg/PipeConnection.cc
 	../msg/SimpleMessenger.cc
 	${xio_messenger_cc}
 	../msg/msg_types.cc 
