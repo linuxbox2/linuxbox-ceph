@@ -75,12 +75,25 @@ int main(int argc, const char **argv)
 	conn = messenger->get_connection(dest_server);
 
 	// do stuff
+	time_t t1, t2;
+
+	t1 = time(NULL);
+
+	int msg_ix;
+	for (msg_ix = 0; msg_ix < 25; ++msg_ix) {
+	  //messenger->send_message(new MPing(), conn);
+	  messenger->send_message(new_ping_monstyle("sping", 100), conn);
+	}
+
+	// do stuff
 	while (conn->is_connected()) {
-	  messenger->send_message(new MPing(), conn);
-	  messenger->send_message(new_ping_monstyle("sping", 3), conn);
 	  nanosleep(&ts, NULL);
 	}
 
+	t2 = time(NULL);
+	cout << "Processed " << dispatcher->get_dcount() + 256
+	     << " round-trip messages in " << t2-t1 << "s"
+	     << std::endl;
 out:
 	return r;
 }

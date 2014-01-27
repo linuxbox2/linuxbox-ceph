@@ -22,9 +22,12 @@ class SimpleDispatcher: public Dispatcher {
 private:
   bool active;
   Messenger *messenger;
+  uint64_t dcount;
 public:
   SimpleDispatcher(Messenger *msgr);
   virtual ~SimpleDispatcher();
+
+  uint64_t get_dcount() { return dcount; }
 
   void set_active() {
     active = true;

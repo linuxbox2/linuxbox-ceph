@@ -44,8 +44,8 @@ int main(int argc, const char **argv)
 	int r = 0;
 
 	struct timespec ts = {
-		.tv_sec = 0,
-		.tv_nsec = 1000000
+		.tv_sec = 1,
+		.tv_nsec = 0
 	};
 
 	argv_to_vec(argc, argv, args);
@@ -76,8 +76,12 @@ int main(int argc, const char **argv)
 
 	conn = messenger->get_connection(dest_server);
 
+	// do stuff
+	time_t t1, t2;
+	t1 = time(NULL);
+
 	int msg_ix;
-	for (msg_ix = 0; msg_ix < 256; ++msg_ix) {
+	for (msg_ix = 0; msg_ix < 512; ++msg_ix) {
 	  //messenger->send_message(new MPing(), conn);
 	  messenger->send_message(new_ping_monstyle("sping", 100), conn);
 	}
@@ -87,6 +91,10 @@ int main(int argc, const char **argv)
 	  nanosleep(&ts, NULL);
 	}
 
+	t2 = time(NULL);
+	cout << "Processed " << dispatcher->get_dcount() + 256
+	     << " round-trip messages in " << t2-t1 << "s"
+	     << std::endl;
 out:
 	return r;
 }

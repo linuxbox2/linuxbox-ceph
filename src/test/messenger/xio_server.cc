@@ -56,7 +56,7 @@ int main(int argc, const char **argv)
 				     entity_name_t::GENERIC(),
 				     "xio_server",
 				     0 /* nonce */,
-				     2 /* portals */);
+				     4 /* portals */);
 	messenger->set_default_policy(
 	  Messenger::Policy::stateless_server(CEPH_FEATURES_ALL, 0));
 

@@ -18,7 +18,8 @@
 SimpleDispatcher::SimpleDispatcher(Messenger *msgr) :
   Dispatcher(msgr->cct),
   active(false),
-  messenger(msgr)
+  messenger(msgr),
+  dcount(0)
 {
   // nothing
 }
@@ -32,12 +33,16 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
   ConnectionRef conn;
   int code;
 
+#if 0
   cout << __func__ << " " << m << std::endl;
+#endif
 
   switch (m->get_type()) {
   case CEPH_MSG_PING:
     if (active) {
+#if 0
       cout << "pong!" << std::endl;
+#endif
       conn = m->get_connection();
       code = messenger->send_message(new MPing(), conn);
       if (code != 0) {
@@ -45,7 +50,9 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 	return false;
       }
     } else {
+#if 0
       cout << "ping!" << std::endl;
+#endif
       conn = m->get_connection();
       code = messenger->send_message(new MPing(), conn);
       if (code != 0) {
@@ -58,6 +65,9 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
   default:
     abort();
   }
+
+  ++dcount;
+
   return true;
 }
 
