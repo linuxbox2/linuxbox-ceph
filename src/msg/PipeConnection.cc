@@ -21,8 +21,10 @@ PipeConnection::~PipeConnection() {
     if (priv) {
 	priv->put();
     }
-    if (pipe)
+    if (pipe) {
 	pipe->put();
+	pipe = NULL;
+    }
 }
 
 Pipe* PipeConnection::get_pipe() {
@@ -46,8 +48,10 @@ bool PipeConnection::try_get_pipe(Pipe **p) {
 }
 
 bool PipeConnection::clear_pipe(Pipe *old_p) {
+    Mutex::Locker l(lock);
+    cout << __func__ << " pipe: " << pipe << " old_p: " << old_p <<
+	std::endl;
     if (old_p == pipe) {
-	Mutex::Locker l(lock);
 	pipe->put();
 	pipe = NULL;
 	failed = true;
