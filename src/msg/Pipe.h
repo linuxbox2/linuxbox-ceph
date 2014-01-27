@@ -111,7 +111,9 @@ class DispatchQueue;
     Pipe* get() {
       /* XXXX kill me!  this is here to trap a use-after free on pipe */
       int _n = nref.read();
+#if 0 /* XXX */
       cout << "Pipe::get pre-op nref " << _n << " " << this << std::endl;
+#endif
       return static_cast<Pipe*>(RefCountedObject::get());
     }
 
@@ -119,10 +121,12 @@ class DispatchQueue;
       int _n = nref.read();
       bool deleted = RefCountedObject::safe_put();
       /* XXXX kill me!  this is here to trap a use-after free on pipe */
+#if 0 /* XXX */
       if (deleted) {
 	cout << "Pipe::put deleted=true " << this << std::endl;
       }
       cout << "Pipe::put pre-op nref " << _n << " " << this << std::endl;
+#endif
     }
 
     enum {
