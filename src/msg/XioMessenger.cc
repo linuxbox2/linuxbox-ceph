@@ -196,7 +196,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
   : SimplePolicyMessenger(cct, name, mname, nonce),
     conns_lock("XioMessenger::conns_lock"),
     portals(this, nportals),
-    port_shift(0)
+    port_shift(0),
+    magic(0)
 {
   /* package init */
   if (! initialized.read()) {
