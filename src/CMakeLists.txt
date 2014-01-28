@@ -12,7 +12,7 @@ endif(HAVE_XIO)
 
 add_definitions("${AM_COMMON_FLAGS}")
 
-set(EXTRALIBS uuid rt profiler)
+set(EXTRALIBS uuid rt profiler dl)
 
 set(CRYPTO_LIBS cryptopp)
 
