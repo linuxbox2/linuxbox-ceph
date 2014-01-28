@@ -32,7 +32,7 @@ private:
   XioMessenger *msgr;
   struct xio_context *ctx;
   struct xio_server *server;
-  list<XioMsg*> submit_queue; /* XXX replace with boost::intrusive */
+  XioMsg::Queue submit_q;
   uint32_t sq_size;
   pthread_spinlock_t sp;
   void *ev_loop;
@@ -88,7 +88,7 @@ public:
     {
       pthread_spin_lock(&sp);
       if (! _shutdown) {
-	submit_queue.push_back(xmsg);
+	submit_q.push_back(*xmsg);
 	++sq_size;
 	if (sq_size > 0)
 	  xio_ev_loop_stop(ev_loop, false);
@@ -99,7 +99,8 @@ public:
   void *entry()
     {
       int ix, size;
-      list<XioMsg*> send_queue; /* XXX see above */
+      XioMsg::Queue send_q;
+      XioMsg::Queue::iterator q_iter;
       XioConnection *xcon;
       struct xio_msg *req;
       XioMsg *xmsg;
@@ -112,14 +113,15 @@ public:
 	}
 	size = sq_size;
 	if (size > 0) {
-	  send_queue.swap(submit_queue);
+	  send_q.splice(send_q.end(), submit_q);
 	  sq_size = 0;
 	  /* submit and send may run in parallel */
 	  pthread_spin_unlock(&sp);
 	  /* XXX look out, no flow control */
 	  for (ix = 0; ix < size; ++ix) {
-	    xmsg = send_queue.front();
-	    send_queue.pop_front();
+	    q_iter = send_q.begin();
+	    xmsg = &(*q_iter);
+	    send_q.erase(q_iter);
 	    xcon = xmsg->xcon;
 	    req = &xmsg->req_0;
 	    /* handle response traffic */

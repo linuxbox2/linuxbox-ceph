@@ -22,6 +22,9 @@ extern "C" {
 }
 #include "XioConnection.h"
 #include "msg/msg_types.h"
+#include <boost/intrusive/list.hpp>
+
+namespace bi = boost::intrusive;
 
 class XioMsgCnt
 {
@@ -136,6 +139,7 @@ public:
   struct xio_msg req_0;
   struct xio_msg* req_arr;
   XioConnection *xcon;
+  bi::list_member_hook<> submit_list;
   int nbuffers;
   int nref;
 
@@ -170,6 +174,13 @@ public:
       free(req_arr);
       m->put();
     }
+
+  typedef bi::list< XioMsg,
+		    bi::member_hook< XioMsg,
+				     bi::list_member_hook<>,
+				     &XioMsg::submit_list >
+		    > Queue;
+
 };
 
 static inline void dereg_xio_req(struct xio_msg *rreq)
