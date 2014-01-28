@@ -126,6 +126,9 @@ int MonClient::get_monmap_privately()
 
   while (monmap.fsid.is_zero()) {
     cur_mon = _pick_random_mon();
+
+    /* XXX note, MonClient doesn't have multi-messenger problems, because
+     * a Messenger of desired type is already selected */
     cur_con = messenger->get_connection(monmap.get_inst(cur_mon));
     ldout(cct, 10) << "querying mon." << cur_mon << " " << cur_con->get_peer_addr() << dendl;
     messenger->send_message(new MMonGetMap, cur_con);
@@ -434,7 +437,7 @@ void MonClient::shutdown()
   monc_lock.Lock();
   timer.shutdown();
 
-  messenger->mark_down(cur_con);
+  cur_con->get_messenger()->mark_down(cur_con);
   cur_con.reset(NULL);
 
   monc_lock.Unlock();
@@ -600,7 +603,7 @@ void MonClient::_reopen_session(int rank, string name)
   }
 
   if (cur_con) {
-    messenger->mark_down(cur_con);
+    cur_con->get_messenger()->mark_down(cur_con);
   }
   cur_con = messenger->get_connection(monmap.get_inst(cur_mon));
 	
