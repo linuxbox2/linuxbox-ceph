@@ -90,7 +90,7 @@ public:
       if (! _shutdown) {
 	submit_queue.push_back(xmsg);
 	++sq_size;
-	if (sq_size > 1000)
+	if (sq_size > 0)
 	  xio_ev_loop_stop(ev_loop, false);
       }
       pthread_spin_unlock(&sp);
