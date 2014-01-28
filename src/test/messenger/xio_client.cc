@@ -62,7 +62,7 @@ int main(int argc, const char **argv)
 
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 
-	entity_addr_from_url(&dest_addr, "tcp://localhost:1234");
+	entity_addr_from_url(&dest_addr, "tcp://10.17.23.10:1234");
 	entity_inst_t dest_server(entity_name_t::GENERIC(), dest_addr);
 
 	dispatcher = new SimpleDispatcher(messenger);
@@ -81,9 +81,9 @@ int main(int argc, const char **argv)
 	t1 = time(NULL);
 
 	int msg_ix;
-	for (msg_ix = 0; msg_ix < 512; ++msg_ix) {
-	  //messenger->send_message(new MPing(), conn);
-	  messenger->send_message(new_ping_monstyle("sping", 100), conn);
+	for (msg_ix = 0; msg_ix < 5000000; ++msg_ix) {
+	  messenger->send_message(new MPing(), conn);
+	  //messenger->send_message(new_ping_monstyle("sping", 100), conn);
 	}
 
 	// do stuff
@@ -95,6 +95,8 @@ int main(int argc, const char **argv)
 	cout << "Processed " << dispatcher->get_dcount() + 256
 	     << " round-trip messages in " << t2-t1 << "s"
 	     << std::endl;
+
+	conn->put();
 out:
 	return r;
 }

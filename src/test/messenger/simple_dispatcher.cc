@@ -32,6 +32,7 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 {
   ConnectionRef conn;
   int code;
+  uint64_t dc = 0;
 
 #if 0
   cout << __func__ << " " << m << std::endl;
@@ -43,22 +44,10 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 #if 0
       cout << "pong!" << std::endl;
 #endif
-      conn = m->get_connection();
-      code = messenger->send_message(new MPing(), conn);
-      if (code != 0) {
-	cout << "send_request returned " << code << std::endl;
-	return false;
-      }
     } else {
 #if 0
       cout << "ping!" << std::endl;
 #endif
-      conn = m->get_connection();
-      code = messenger->send_message(new MPing(), conn);
-      if (code != 0) {
-	cout << "send_reply returned " << code << std::endl;
-	return false;
-      }
     }
     m->put();
     break;
@@ -66,7 +55,10 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
     abort();
   }
 
-  ++dcount;
+  dc = ++dcount;
+  if ((dc % 1000000) == 0) {
+    cout << "ping " << dc << time(0) << std::endl;
+  }
 
   return true;
 }

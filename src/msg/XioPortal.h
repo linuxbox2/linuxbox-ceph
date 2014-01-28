@@ -33,6 +33,7 @@ private:
   struct xio_context *ctx;
   struct xio_server *server;
   list<XioMsg*> submit_queue; /* XXX replace with boost::intrusive */
+  uint32_t sq_size;
   pthread_spinlock_t sp;
   void *ev_loop;
   string xio_uri;
@@ -51,6 +52,7 @@ public:
   magic(0)
     {
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
+      sq_size = 0;
 
       /* a portal is an xio_context and event loop */
       ev_loop = xio_ev_loop_create();
@@ -87,7 +89,9 @@ public:
       pthread_spin_lock(&sp);
       if (! _shutdown) {
 	submit_queue.push_back(xmsg);
-	xio_ev_loop_stop(ev_loop, false);
+	++sq_size;
+	if (sq_size > 1000)
+	  xio_ev_loop_stop(ev_loop, false);
       }
       pthread_spin_unlock(&sp);
     }
@@ -106,9 +110,10 @@ public:
 	if (_shutdown) {
 	  drained = true;
 	}
-	size = submit_queue.size();
+	size = sq_size;
 	if (size > 0) {
 	  send_queue.swap(submit_queue);
+	  sq_size = 0;
 	  /* submit and send may run in parallel */
 	  pthread_spin_unlock(&sp);
 	  /* XXX look out, no flow control */

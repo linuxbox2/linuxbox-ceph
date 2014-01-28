@@ -99,6 +99,8 @@ int XioConnection::passive_setup()
 
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
 
+static uint64_t rcount;
+
 int XioConnection::on_msg_req(struct xio_session *session,
 			      struct xio_msg *req,
 			      int more_in_batch,
@@ -107,6 +109,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
   struct xio_msg *treq;
   XioMsg *xmsg;
 
+  uint64_t rc;
+
   /* XXX this is an asymmetry Eyal plans to fix, at some point */
   switch (req->type) {
   case XIO_MSG_TYPE_RSP:
@@ -114,6 +118,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
     dereg_xio_req(req);
     xmsg = static_cast<XioMsg*>(req->user_context);
     xio_release_response(req);
+    rc = ++rcount;
+    if ((rc % 1000000) == 0)
+      cout << "xio finished " << rc << " " << time(0) << std::endl;
     if (xmsg)
       xmsg->put();
     return 0;
