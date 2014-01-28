@@ -299,8 +299,9 @@ int XioMessenger::session_event(struct xio_session *session,
        * an address other than xcon, there's nothing to clean up */
     }
     xcon->conn = NULL;
-    /* XXX remove from ephemeral_conns list? */
-    xcon->put();
+#if 0 /* XXX remove from an ephemeral_conns list? */
+    xcon->put(); /* XXX currently, there is no sentinel ref */
+#endif
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
     if (magic & (MSG_MAGIC_XIO)) {
