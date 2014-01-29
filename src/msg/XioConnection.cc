@@ -188,12 +188,13 @@ int XioConnection::on_msg_req(struct xio_session *session,
   uint32_t take_len, left_len = 0;
   char *left_base;
 
+  ix = 0;
   blen = header.front_len;
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
     iov_len = treq->in.data_iovlen;
-    for (ix = 0; blen && (ix < iov_len); ++ix) {
+    for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &treq->in.data_iov[ix];
 
       /* XXX need to detect any buffer which needs to be
@@ -214,7 +215,10 @@ int XioConnection::on_msg_req(struct xio_session *session,
     }
     /* XXX as above, if a buffer is split, then we needed to track
      * the new start (carry) and not advance */
-    msg_iter++;
+    if (ix == iov_len) {
+      msg_iter++;
+      ix = 0;
+    }
   }
 
   if (magic & (MSG_MAGIC_TRACE_XCON)) {
@@ -235,7 +239,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
     iov_len = treq->in.data_iovlen;
-    for (ix = 0; blen && (ix < iov_len); ++ix) {
+    for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &treq->in.data_iov[ix];
 
       take_len = MIN(blen, msg_iov->iov_len);
@@ -250,7 +254,10 @@ int XioConnection::on_msg_req(struct xio_session *session,
 	}
       }
     }
-    msg_iter++;
+    if (ix == iov_len) {
+      msg_iter++;
+      ix = 0;
+    }
   }
 
   blen = header.data_len;
@@ -264,14 +271,17 @@ int XioConnection::on_msg_req(struct xio_session *session,
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
     iov_len = treq->in.data_iovlen;
-    for (ix = 0; blen && (ix < iov_len); ++ix) {
+    for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &treq->in.data_iov[ix];
       data.append(
 	buffer::create_static(
 	  msg_iov->iov_len, (char*) msg_iov->iov_base));
       blen -= msg_iov->iov_len;
     }
-    msg_iter++;
+    if (ix == iov_len) {
+      msg_iter++;
+      ix = 0;
+    }
   }
 
   seq = treq->sn;
