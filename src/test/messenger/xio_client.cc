@@ -81,7 +81,7 @@ int main(int argc, const char **argv)
 	t1 = time(NULL);
 
 	int msg_ix;
-	for (msg_ix = 0; msg_ix < 3; ++msg_ix) {
+	for (msg_ix = 0; msg_ix < 300; ++msg_ix) {
 	  messenger->send_message(
 	    new_ping_with_data("xio_client", 8192), conn);
 	}

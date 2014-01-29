@@ -344,14 +344,14 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     /* XXXX this SHOULD work fine (Eyal) */
     switch (type) {
     case BUFFER_DATA:
+      //break;
+    default:
 #if 1 /* XXX Eyal! */
       /* register it */
       iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
       if (! iov->mr)
 	abort();
 #endif
-      break;
-    default:
       break;
     }
 
