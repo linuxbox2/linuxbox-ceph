@@ -325,7 +325,7 @@ enum bl_type
 
 static inline void
 xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
-		  struct xio_iovec_ex *msg_iov, struct xio_iovec_ex *iov,
+		  struct xio_iovec_ex*& msg_iov, struct xio_iovec_ex*& iov,
 		  int ex_cnt, int& msg_off, int& req_off, bl_type type)
 {
 
@@ -344,7 +344,7 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     /* XXXX this SHOULD work fine (Eyal) */
     switch (type) {
     case BUFFER_DATA:
-#if 0 /* XXX Eyal! */
+#if 1 /* XXX Eyal! */
       /* register it */
       iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
       if (! iov->mr)
