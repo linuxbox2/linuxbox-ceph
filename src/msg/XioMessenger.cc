@@ -316,6 +316,61 @@ int XioMessenger::session_event(struct xio_session *session,
   return 0;
 }
 
+enum bl_type
+{
+  BUFFER_PAYLOAD,
+  BUFFER_MIDDLE,
+  BUFFER_DATA
+};
+
+static inline void
+xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
+		  struct xio_iovec_ex *msg_iov, struct xio_iovec_ex *iov,
+		  int ex_cnt, int& msg_off, int& req_off, bl_type type)
+{
+
+  const std::list<buffer::ptr>& buffers = bl.buffers();
+  list<bufferptr>::const_iterator pb;
+  for (pb = buffers.begin(); pb != buffers.end(); ++pb) {
+
+    /* assign buffer */
+    iov = &msg_iov[msg_off];
+    iov->iov_base = (void *) pb->c_str(); // is this efficient?
+    iov->iov_len = pb->length();
+
+    /* track iovlen */
+    req->out.data_iovlen = msg_off+1;
+
+    /* XXXX this SHOULD work fine (Eyal) */
+    switch (type) {
+    case BUFFER_DATA:
+#if 0 /* XXX Eyal! */
+      /* register it */
+      iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
+      if (! iov->mr)
+	abort();
+#endif
+      break;
+    default:
+      break;
+    }
+
+    /* advance iov(s) */
+    if (++msg_off >= XIO_MAX_IOV) {
+      if (++req_off < ex_cnt) {
+	/* next record */
+	req->out.data_iovlen = XIO_MAX_IOV;
+	req->more_in_batch++;
+	/* XXX chain it */
+	req = &xmsg->req_arr[req_off];
+	req->user_context = xmsg->get();
+	msg_iov = req->out.data_iov;
+	msg_off = 0;
+      }
+    }
+  }
+}
+
 int XioMessenger::bind(const entity_addr_t& addr)
 {
   string base_uri = xio_uri_from_entity(addr, false /* want_port */);
@@ -379,9 +434,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
     }
   }
 
-  buffer::list blist;
   struct xio_msg *req = &xmsg->req_0;
-  struct xio_iovec_ex *msg_iov = req->out.data_iov, *iov;
+  struct xio_iovec_ex *msg_iov = req->out.data_iov, *iov = NULL;
   int ex_cnt;
 
   buffer::list &payload = m->get_payload();
@@ -395,12 +449,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
       std::endl;
   }
 
-  blist.append(payload);
-  blist.append(middle);
-  blist.append(data);
-
-  const std::list<buffer::ptr>& buffers = blist.buffers();
-  xmsg->nbuffers = buffers.size();
+  xmsg->nbuffers = payload.buffers().size() + middle.buffers().size() +
+    data.buffers().size();
   ex_cnt = ((3 + xmsg->nbuffers) / XIO_MAX_IOV);
   xmsg->hdr.msg_cnt = 1 + ex_cnt;
 
@@ -413,39 +463,14 @@ int XioMessenger::send_message(Message *m, Connection *con)
   int msg_off = 0;
   int req_off = -1; /* most often, not used */
 
-  list<bufferptr>::const_iterator pb;
-  for (pb = buffers.begin(); pb != buffers.end(); ++pb) {
+  xio_place_buffers(payload, xmsg, req, msg_iov, iov, ex_cnt, msg_off,
+		    req_off, BUFFER_PAYLOAD);
 
-    /* assign buffer */
-    iov = &msg_iov[msg_off];
-    iov->iov_base = (void *) pb->c_str(); // is this efficient?
-    iov->iov_len = pb->length();
+  xio_place_buffers(middle, xmsg, req, msg_iov, iov, ex_cnt, msg_off,
+		    req_off, BUFFER_MIDDLE);
 
-    /* track iovlen */
-    req->out.data_iovlen = msg_off+1;
-
-    /* XXXX this SHOULD work fine (Eyal) */
-#if 0
-    /* register it */
-    iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
-    if (! iov->mr)
-      abort();
-#endif
-
-    /* advance iov(s) */
-    if (++msg_off >= XIO_MAX_IOV) {
-      if (++req_off < ex_cnt) {
-	/* next record */
-	req->out.data_iovlen = XIO_MAX_IOV;
-	req->more_in_batch++;
-	/* XXX chain it */
-	req = &xmsg->req_arr[req_off];
-	req->user_context = xmsg->get();
-	msg_iov = req->out.data_iov;
-	msg_off = 0;
-      }
-    }
-  }
+  xio_place_buffers(data, xmsg, req, msg_iov, iov, ex_cnt, msg_off,
+		    req_off, BUFFER_DATA);
 
   /* fixup first msg */
   req = &xmsg->req_0;
@@ -460,7 +485,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   const std::list<buffer::ptr>& header = xmsg->hdr.get_bl().buffers();
   assert(header.size() == 1); /* XXX */
-  pb = header.begin();
+  list<bufferptr>::const_iterator pb = header.begin();
   req->out.header.iov_base = (char*) pb->c_str();
   req->out.header.iov_len = pb->length();
 
