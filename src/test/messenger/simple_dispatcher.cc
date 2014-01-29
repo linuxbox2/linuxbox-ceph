@@ -55,6 +55,7 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
   {
     MDataPing* mdp = static_cast<MDataPing*>(m);
     cout << "MDataPing " << mdp->tag << " " << mdp->counter << std::endl;
+    mdp->get_data().hexdump(cout);
   }
     break;
   default:
