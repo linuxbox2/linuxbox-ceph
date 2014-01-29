@@ -14,6 +14,7 @@
 
 #include "simple_dispatcher.h"
 #include "messages/MPing.h"
+#include "messages/MDataPing.h"
 
 SimpleDispatcher::SimpleDispatcher(Messenger *msgr) :
   Dispatcher(msgr->cct),
@@ -31,7 +32,6 @@ SimpleDispatcher::~SimpleDispatcher() {
 bool SimpleDispatcher::ms_dispatch(Message *m)
 {
   ConnectionRef conn;
-  int code;
   uint64_t dc = 0;
 
 #if 0
@@ -50,6 +50,12 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 #endif
     }
     m->put();
+    break;
+  case MSG_DATA_PING:
+  {
+    MDataPing* mdp = static_cast<MDataPing*>(m);
+    cout << "MDataPing " << mdp->tag << " " << mdp->counter << std::endl;
+  }
     break;
   default:
     abort();

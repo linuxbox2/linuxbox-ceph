@@ -159,6 +159,9 @@
 #define MSG_TIMECHECK             0x600
 #define MSG_MON_HEALTH            0x601
 
+// Xio Testing
+#define MSG_DATA_PING		  0x602
+
 // abstract Message class
 
 #define MSG_MAGIC_XIO          0x0002

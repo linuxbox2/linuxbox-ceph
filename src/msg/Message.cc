@@ -88,6 +88,8 @@ using namespace std;
 #include "messages/MMonGetVersionReply.h"
 #include "messages/MMonHealth.h"
 
+#include "messages/MDataPing.h"
+
 #include "messages/MAuth.h"
 #include "messages/MAuthReply.h"
 #include "messages/MMonSubscribe.h"
@@ -653,6 +655,10 @@ Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_foot
 
   case MSG_MON_HEALTH:
     m = new MMonHealth();
+    break;
+
+  case MSG_DATA_PING:
+    m = new MDataPing();
     break;
 
     // -- simple messages without payload --
