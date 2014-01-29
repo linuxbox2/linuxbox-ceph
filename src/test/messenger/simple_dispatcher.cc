@@ -49,7 +49,6 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
       cout << "ping!" << std::endl;
 #endif
     }
-    m->put();
     break;
   case MSG_DATA_PING:
   {
@@ -66,6 +65,8 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
   if ((dc % 1000000) == 0) {
     cout << "ping " << dc << time(0) << std::endl;
   }
+
+  m->put();
 
   return true;
 }

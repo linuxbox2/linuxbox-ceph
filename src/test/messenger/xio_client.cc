@@ -44,7 +44,7 @@ int main(int argc, const char **argv)
 	int r = 0;
 
 	struct timespec ts = {
-		.tv_sec = 1,
+		.tv_sec = 5,
 		.tv_nsec = 0
 	};
 
@@ -70,6 +70,8 @@ int main(int argc, const char **argv)
 
 	dispatcher->set_active(); // this side is the pinger
 
+	int n_msgs = 300000;
+
 	r = messenger->start();
 	if (r < 0)
 		goto out;
@@ -81,7 +83,7 @@ int main(int argc, const char **argv)
 	t1 = time(NULL);
 
 	int msg_ix;
-	for (msg_ix = 0; msg_ix < 300; ++msg_ix) {
+	for (msg_ix = 0; msg_ix < n_msgs; ++msg_ix) {
 	  messenger->send_message(
 	    new_ping_with_data("xio_client", 8192), conn);
 	}
@@ -92,11 +94,12 @@ int main(int argc, const char **argv)
 	}
 
 	t2 = time(NULL);
-	cout << "Processed " << dispatcher->get_dcount() + 256
+	cout << "Processed " << n_msgs
 	     << " round-trip messages in " << t2-t1 << "s"
 	     << std::endl;
 
 	conn->put();
+
 out:
 	return r;
 }
