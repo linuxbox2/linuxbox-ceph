@@ -129,7 +129,7 @@ find_package(snappy REQUIRED)
 set(HAVE_LIBSNAPPY ${SNAPPY_FOUND})
 endif(${WITH_SNAPPY})
 
-option(WITH_TCMALLOC "Use TCMalloc as Allocator" OFF)
+option(WITH_TCMALLOC "Use TCMalloc as Allocator" ON)
 if(${WITH_TCMALLOC})
 find_package(tcmalloc REQUIRED)
 set(HAVE_LIBTCMALLOC ${Tcmalloc_FOUND})

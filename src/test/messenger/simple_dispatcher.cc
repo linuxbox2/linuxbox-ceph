@@ -62,8 +62,8 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
   }
 
   dc = ++dcount;
-  if ((dc % 1000000) == 0) {
-    cout << "ping " << dc << time(0) << std::endl;
+  if ((dc % 100000) == 0) {
+    cout << "ping " << dc << " " << time(0) << std::endl;
   }
 
   m->put();
