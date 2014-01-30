@@ -265,8 +265,7 @@ int XioMessenger::session_event(struct xio_session *session,
     struct xio_context *ctx = xio_get_connection_context(conn);
     xcon->conn = conn;
 
-    struct xio_context_params *ctx_params =
-      xio_get_context_params(ctx, NULL /* XXX fixme */);
+    struct xio_context_params *ctx_params = xio_context_get_params(ctx);
     xcon->portal = static_cast<XioPortal*>(ctx_params->user_context);
 
     struct xio_connection_params conn_params;

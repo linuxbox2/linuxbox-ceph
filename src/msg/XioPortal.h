@@ -117,8 +117,7 @@ public:
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
 
       /* a portal is an xio_context and event loop */
-      ev_loop = xio_ev_loop_create();
-      ctx = xio_ctx_create(NULL, ev_loop, 0);
+      ctx = xio_context_create(NULL, 0);
 
       /* associate this XioPortal object with the xio_context
        * handle */
@@ -126,7 +125,7 @@ public:
 	{
 	  .user_context = this
 	};
-      xio_set_context_params(ctx, &params);
+      xio_context_set_params(ctx, &params);
 
       if (magic & (MSG_MAGIC_XIO)) {
 	printf("XioPortal %p created ev_loop %p ctx %p\n",
@@ -150,7 +149,7 @@ public:
     {
       if (! _shutdown) {
 	submit_q.enq(xmsg);
-	xio_ev_loop_stop(ev_loop, false);
+	xio_context_stop_loop(ctx, false);
       }
     }
 
@@ -199,7 +198,7 @@ public:
 	if (timestamp)
 	  xcon->send.set(timestamp); /* XXX will tolerate non-monotonic */
 
-	xio_ev_loop_run_timeout(ev_loop, 300);
+	xio_context_run_loop(ctx, 300);
 
       } while ((!_shutdown) || (!drained));
 
@@ -207,15 +206,14 @@ public:
       if (server) {
 	xio_unbind(server);
       }
-      xio_ctx_destroy(ctx);
-      xio_ev_loop_destroy(&ev_loop);
+      xio_context_destroy(ctx);
       return NULL;
     }
 
   void shutdown()
     {
       pthread_spin_lock(&sp);
-      xio_ev_loop_stop(ev_loop, false);
+      xio_context_stop_loop(ctx, false);
       _shutdown = true;
       pthread_spin_unlock(&sp);
     }
