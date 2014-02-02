@@ -1,9 +1,17 @@
 add_definitions("-DCEPH_LIBDIR=${LIBRARY_OUTPUT_PATH}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-
 include_directories("."
   "${PROJECT_SOURCE_DIR}/src/")
+
+if(${WITH_TCMALLOC})
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+  set(TCMALLOC_LIBS tcmalloc)
+  set(TCMALLOC_srcs
+    ${PROJECT_SOURCE_DIR}/src/perfglue/heap_profiler.cc)
+else()
+  set(TCMALLOC_srcs
+    ${PROJECT_SOURCE_DIR}/src/perfglue/disabled_heap_profiler.cc)
+endif(${WITH_TCMALLOC})
 
 set(simple_server_srcs
 	simple_server.cc
@@ -28,7 +36,7 @@ target_link_libraries(simple_client os global common boost_regex
 
 if (HAVE_XIO)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -I${Xio_INCLUDE_DIR}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${Xio_INCLUDE_DIR}")
 
 set(xio_server_srcs
 	xio_server.cc
