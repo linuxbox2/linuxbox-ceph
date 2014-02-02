@@ -33,6 +33,19 @@ void XioCompletionHook::finish(int r)
       /* XXX ack it (Eyal:  we'd like an xio_ack_response) */
       rsp = (struct xio_msg *) calloc(1, sizeof(struct xio_msg));
       rsp->request = msg;
+
+      unsigned int ix;
+      struct xio_iovec_ex *iov;
+      size_t iov_len = msg->in.data_iovlen;
+      struct xio_rdma_mp_mem *mp;
+
+      for (ix = 0; ix < iov_len; ++ix) {
+	iov = &msg->in.data_iov[ix];
+	mp = (struct xio_rdma_mp_mem *) iov->user_context;
+	xio_rdma_mempool_free(mp);
+	free(mp); /* XXX tcmalloc'd */
+      }
+
       pthread_spin_lock(&xcon->sp);
       (void) xio_send_response(rsp); /* XXX can now chain */
       pthread_spin_unlock(&xcon->sp);

@@ -26,6 +26,8 @@ atomic_t initialized;
 
 atomic_t XioMessenger::nInstances;
 
+struct xio_rdma_mempool *xio_msgr_mpool;
+
 static struct xio_session_ops xio_msgr_ops;
 
 /* Accelio API callouts */
@@ -159,6 +161,25 @@ static int on_cancel_request(struct xio_session *session,
   return 0;
 }
 
+static int get_dma_buffers(struct xio_msg *msg, void *conn_user_context)
+{
+  unsigned int ix;
+  struct xio_iovec_ex *iov;
+  size_t iov_len = msg->in.data_iovlen;
+  struct xio_rdma_mp_mem *mp;
+
+  for (ix = 0; ix < iov_len; ++ix) {
+    iov = &msg->in.data_iov[ix];
+    mp = (struct xio_rdma_mp_mem *) malloc(sizeof(struct xio_rdma_mp_mem));
+    (void) xio_rdma_mempool_alloc(xio_msgr_mpool, iov->iov_len, mp);
+    iov->iov_base = mp->addr;
+    iov->mr = mp->mr;
+    iov->user_context = mp;
+  }
+
+  return 0;
+}
+
 /* free functions */
 static string xio_uri_from_entity(const entity_addr_t& addr, bool want_port)
 {
@@ -219,6 +240,15 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_DISABLE_HUGETBL,
 		  &xopt, sizeof(unsigned));
 
+      /* set up mempool */
+      xio_msgr_mpool = xio_rdma_mempool_create_ex();
+      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 512, 0, 4096, 128);
+      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 4096, 0, 4096, 128);
+      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 32768, 0, 4096,
+					    128);
+      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, (1024*1024), 0,
+					    4096, 128);
+
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
       xio_msgr_ops.on_new_session = on_new_session;
@@ -229,7 +259,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_msgr_ops.on_msg_error = on_msg_error;
       xio_msgr_ops.on_cancel = on_cancel;
       xio_msgr_ops.on_cancel_request = on_cancel_request;
-      xio_msgr_ops.assign_data_in_buf = NULL;
+      xio_msgr_ops.assign_data_in_buf = get_dma_buffers;
 
       /* mark initialized */
       initialized.set(1);
