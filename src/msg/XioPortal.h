@@ -190,13 +190,13 @@ public:
 	    }
 	    else
 	      (void) xio_send_response(req);
+
+	    if (timestamp)
+	      xcon->send.set(timestamp);
 	  }
 	}
 
 	pthread_spin_unlock(&sp);
-
-	if (timestamp)
-	  xcon->send.set(timestamp); /* XXX will tolerate non-monotonic */
 
 	xio_context_run_loop(ctx, 300);
 
