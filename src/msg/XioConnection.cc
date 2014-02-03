@@ -186,7 +186,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   unsigned int ix, blen, iov_len;
   struct xio_iovec_ex *msg_iov;
   uint32_t take_len, left_len = 0;
-  char *left_base;
+  char *left_base = NULL;
 
   ix = 0;
   blen = header.front_len;
