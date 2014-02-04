@@ -47,7 +47,7 @@ int main(int argc, const char **argv)
 	argv_to_vec(argc, argv, args);
 	env_to_vec(args);
 
-	entity_addr_from_url(&bind_addr, "tcp://0.0.0.0:1234");
+	entity_addr_from_url(&bind_addr, "tcp://10.1.1.13:1234");
 
 	global_init(NULL, args, CEPH_ENTITY_TYPE_ANY, CODE_ENVIRONMENT_DAEMON,
 		    0);

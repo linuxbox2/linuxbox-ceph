@@ -34,6 +34,8 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
   ConnectionRef conn;
   uint64_t dc = 0;
 
+  dc = ++dcount;
+
 #if 0
   cout << __func__ << " " << m << std::endl;
 #endif
@@ -46,14 +48,14 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 #endif
     } else {
 #if 0
-      cout << "ping!" << std::endl;
+      cout << "ping! " << dc << std::endl;
 #endif
     }
     break;
   case MSG_DATA_PING:
   {
     MDataPing* mdp = static_cast<MDataPing*>(m);
-    cout << "MDataPing " << mdp->tag << " " << mdp->counter << std::endl;
+    //cout << "MDataPing " << mdp->tag << " " << mdp->counter << std::endl;
     //mdp->get_data().hexdump(cout);
   }
     break;
@@ -61,7 +63,6 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
     abort();
   }
 
-  dc = ++dcount;
   if ((dc % 100000) == 0) {
     cout << "ping " << dc << " " << time(0) << std::endl;
   }

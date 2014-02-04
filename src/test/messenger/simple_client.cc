@@ -60,13 +60,15 @@ int main(int argc, const char **argv)
 
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 
-	entity_addr_from_url(&dest_addr, "tcp://10.17.23.20:1234");
+	entity_addr_from_url(&dest_addr, "tcp://10.1.1.13:1234");
 	entity_inst_t dest_server(entity_name_t::GENERIC(), dest_addr);
 
 	dispatcher = new SimpleDispatcher(messenger);
 	messenger->add_dispatcher_head(dispatcher);
 
 	dispatcher->set_active(); // this side is the pinger
+
+	int n_msgs = 1000000;
 
 	r = messenger->start();
 	if (r < 0)
@@ -80,9 +82,14 @@ int main(int argc, const char **argv)
 	t1 = time(NULL);
 
 	int msg_ix;
-	for (msg_ix = 0; msg_ix < 25; ++msg_ix) {
-	  //messenger->send_message(new MPing(), conn);
-	  messenger->send_message(new_ping_monstyle("sping", 100), conn);
+	for (msg_ix = 0; msg_ix < n_msgs; ++msg_ix) {
+#if 1
+	  messenger->send_message(
+	    new MPing(), conn);
+#else
+	  messenger->send_message(
+	    new_ping_with_data("xio_client", 32768), conn);
+#endif
 	}
 
 	// do stuff

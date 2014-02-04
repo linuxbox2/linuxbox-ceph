@@ -84,7 +84,8 @@ private:
 	  lane = &qlane[ix];
 	  pthread_spin_lock(&lane->sp);
 	  if (lane->size > 0) {
-	    send_q.splice(send_q.end(), lane->q);
+	    XioMsg::Queue::const_iterator i1 = send_q.end();
+	    send_q.splice(i1, lane->q);
 	    lane->size = 0;
 	  }
 	  pthread_spin_unlock(&lane->sp);
@@ -183,13 +184,14 @@ public:
 	    send_q.erase(q_iter);
 	    xcon = xmsg->xcon;
 	    req = &xmsg->req_0;
+
 	    /* handle response traffic */
 	    if (! req->request) {
 	      (void) xio_send_request(xcon->conn, req);
 	      timestamp = req->timestamp;
-	    }
-	    else
+	    } else {
 	      (void) xio_send_response(req);
+	    }
 
 	    if (timestamp)
 	      xcon->send.set(timestamp);
@@ -287,8 +289,6 @@ public:
     {
       const char **portals_vec = get_vec()+1;
       int portals_len = get_portals_len()-1;
-
-      printf("portals_vec %p len %d\n", portals_vec, portals_len);
 
       return xio_accept(session,
 			portals_vec,
