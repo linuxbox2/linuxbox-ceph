@@ -246,6 +246,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 4096, 0, 4096, 128);
       (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 32768, 0, 4096,
 					    128);
+      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 65536, 0, 4096,
+					    1280000);
       (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, (1024*1024), 0,
 					    4096, 128);
 

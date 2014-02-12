@@ -186,16 +186,16 @@ public:
 static inline void dereg_xio_req(struct xio_msg *rreq)
 {
   int code;
-  struct xio_iovec_ex *msg_iov;
+  struct xio_iovec_ex *iov;
 
   for (unsigned int ix = 0; ix < rreq->out.data_iovlen; ++ix) {
-    msg_iov = &rreq->out.data_iov[ix];
-    if (msg_iov->mr) {
-      code = xio_dereg_mr(&msg_iov->mr);
-      if (code != 0) {
+    iov = &rreq->out.data_iov[ix];
+    if (iov->mr) {
+	code = xio_dereg_mr(&iov->mr);
+	if (code != 0) {
 	  printf("%s xio_dereg_mr failed (%s)\n",
 		 __func__, xio_strerror(code));
-      }
+	}
     }
   }
 }

@@ -18,6 +18,11 @@
 
 #include "msg/Message.h"
 #include "messages/MPing.h"
+extern "C" {
+#include "libxio.h"
+}
+
+typedef void (*mdata_hook_func)(struct xio_rdma_mp_mem *mp);
 
 
 class MDataPing : public Message {
@@ -29,15 +34,32 @@ class MDataPing : public Message {
 
   std::string tag;
   uint32_t counter;
+  mdata_hook_func mdata_hook;
+  struct xio_rdma_mp_mem mp;
   bool free_data;
 
   MDataPing()
     : Message(MSG_DATA_PING, HEAD_VERSION, COMPAT_VERSION),
+      mdata_hook(NULL),
       free_data(false)
   {}
+
+  struct xio_rdma_mp_mem *get_mp()
+    {
+      return &mp;
+    }
+
+  void set_rdma_hook(mdata_hook_func hook)
+    {
+      mdata_hook = hook;
+    }
+
 private:
   ~MDataPing()
     {
+      if (mdata_hook)
+	mdata_hook(&mp);
+
       if (free_data)  {
 	const std::list<buffer::ptr>& buffers = data.buffers();
 	list<bufferptr>::const_iterator pb;
