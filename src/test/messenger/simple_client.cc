@@ -60,7 +60,7 @@ int main(int argc, const char **argv)
 
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 
-	entity_addr_from_url(&dest_addr, "tcp://10.1.1.13:1234");
+	entity_addr_from_url(&dest_addr, "tcp://localhost:1234");
 	entity_inst_t dest_server(entity_name_t::GENERIC(), dest_addr);
 
 	dispatcher = new SimpleDispatcher(messenger);
