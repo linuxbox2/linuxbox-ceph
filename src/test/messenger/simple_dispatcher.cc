@@ -63,7 +63,7 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
     abort();
   }
 
-  if ((dc % 100000) == 0) {
+  if ((dc % 10000) == 0) {
     cout << "ping " << dc << " " << time(0) << std::endl;
   }
 
