@@ -190,12 +190,15 @@ static inline void dereg_xio_req(struct xio_msg *rreq)
 
   for (unsigned int ix = 0; ix < rreq->out.data_iovlen; ++ix) {
     iov = &rreq->out.data_iov[ix];
-    if (iov->mr) {
+    /* XXX currently, user_context MUST be a mempool handle */
+    if (! iov->user_context) {
+      if (iov->mr) {
 	code = xio_dereg_mr(&iov->mr);
 	if (code != 0) {
 	  printf("%s xio_dereg_mr failed (%s)\n",
 		 __func__, xio_strerror(code));
 	}
+      }
     }
   }
 }

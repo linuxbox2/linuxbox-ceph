@@ -264,6 +264,30 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     }
   };
 
+#if defined(HAVE_XIO)
+  class buffer::xio_mempool : public buffer::raw {
+  public:
+    struct xio_rdma_mp_mem *mp;
+    xio_mempool(struct xio_rdma_mp_mem *_mp, unsigned l) :
+      raw((char*)mp->addr, l), mp(_mp)
+      { }
+    ~xio_mempool() {}
+    raw* clone_empty() {
+      return new buffer::raw_char(len);
+    }
+  };
+
+  struct xio_rdma_mp_mem* get_xio_mp(const buffer::ptr& bp)
+  {
+    buffer::xio_mempool *mb = dynamic_cast<buffer::xio_mempool*>(bp.get_raw());
+    if (mb) {
+      return mb->mp;
+    }
+    return NULL;
+  }
+
+#endif /* HAVE_XIO */
+
   buffer::raw* buffer::copy(const char *c, unsigned len) {
     raw* r = new raw_char(len);
     memcpy(r->data, c, len);

@@ -62,6 +62,12 @@ void	*valloc(size_t);
 #include "page.h"
 #include "crc32c.h"
 
+#if defined(HAVE_XIO)
+extern "C" {
+#include "libxio.h"
+}
+#endif /* HAVE_XIO */
+
 #ifdef __CEPH__
 # include "include/assert.h"
 #else
@@ -116,7 +122,6 @@ public:
   /// enable/disable tracking of cached crcs
   static void track_cached_crc(bool b);
 
-
 private:
  
   /* hack for memory utilization debugging. */
@@ -134,12 +139,16 @@ private:
   class raw_hack_aligned;
   class raw_char;
 
+public:
+  class xio_mempool;
+
+private:
   friend std::ostream& operator<<(std::ostream& out, const raw &r);
 
 public:
 
   /*
-   * named constructors 
+   * named constructors
    */
   static raw* copy(const char *c, unsigned len);
   static raw* create(unsigned len);
@@ -148,8 +157,11 @@ public:
   static raw* claim_malloc(unsigned len, char *buf);
   static raw* create_static(unsigned len, char *buf);
   static raw* create_page_aligned(unsigned len);
-  
-  
+
+#if defined(HAVE_XIO)
+  static raw* create_xio_mempool(struct xio_rdma_mp_mem *mp);
+#endif
+
   /*
    * a buffer pointer.  references (a subsequence of) a raw buffer.
    */
@@ -454,6 +466,10 @@ public:
     }
   };
 };
+
+#if defined(HAVE_XIO)
+  struct xio_rdma_mp_mem* get_xio_mp(const buffer::ptr& bp);
+#endif
 
 typedef buffer::ptr bufferptr;
 typedef buffer::list bufferlist;

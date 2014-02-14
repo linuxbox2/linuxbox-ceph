@@ -6,7 +6,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wno-invalid-offsetof -Wnon-virtual-dtor -
 
 if (HAVE_XIO)
 
-  set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -I${Xio_INCLUDE_DIR}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -I${Xio_INCLUDE_DIR} -DHAVE_XIO")
 
 endif(HAVE_XIO)
 

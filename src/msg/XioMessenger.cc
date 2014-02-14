@@ -245,9 +245,11 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 512, 0, 4096, 128);
       (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 4096, 0, 4096, 128);
       (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 32768, 0, 4096,
-					    128);
+					    32768);
       (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 65536, 0, 4096,
 					    32768);
+      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 131072, 0, 4096,
+					    65536);
       (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, (1024*1024), 0,
 					    4096, 128);
 
@@ -377,12 +379,18 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     case BUFFER_DATA:
       //break;
     default:
-#if 1 /* XXX Eyal! */
-      /* register it */
-      iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
-      if (! iov->mr)
-	abort();
-#endif
+    {
+      struct xio_rdma_mp_mem *mp = get_xio_mp(*pb);
+      if (mp) {
+	iov->user_context = mp;
+	iov->mr = mp->mr;
+      } else {
+	/* register it */
+	iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
+	if (! iov->mr)
+	  abort();
+      }
+    }
       break;
     }
 

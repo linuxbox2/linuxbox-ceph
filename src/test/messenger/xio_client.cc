@@ -70,7 +70,7 @@ int main(int argc, const char **argv)
 
 	dispatcher->set_active(); // this side is the pinger
 
-	int n_msgs = 20000;
+	int n_msgs = 1000000;
 
 	r = messenger->start();
 	if (r < 0)
@@ -89,7 +89,7 @@ int main(int argc, const char **argv)
 	    new MPing(), conn);
 #else
 	  messenger->send_message(
-	    new_ping_with_data("xio_client", 65536), conn);
+	    new_ping_with_data("xio_client", 131072), conn);
 #endif
 	}
 
