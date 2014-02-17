@@ -64,7 +64,10 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
   }
 
   if ((dc % 512) == 0) {
-    cout << "ping " << dc << " " << time(0) << std::endl;
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME_COARSE, &ts);
+    cout << "ping " << dc << " nanos: " <<
+      ts.tv_nsec + (ts.tv_sec * 1000000000)  << std::endl;
   }
 
   m->put();
