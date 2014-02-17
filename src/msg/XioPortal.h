@@ -198,7 +198,7 @@ public:
 
 	pthread_spin_unlock(&sp);
 
-	xio_context_run_loop(ctx, 3000);
+	xio_context_run_loop(ctx, 100);
 
       } while ((!_shutdown) || (!drained));
 
