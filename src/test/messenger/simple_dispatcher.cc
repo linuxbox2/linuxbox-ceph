@@ -63,7 +63,7 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
     abort();
   }
 
-  if ((dc % 1000000) == 0) {
+  if ((dc % 2048) == 0) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME_COARSE, &ts);
     cout << "ping " << dc << " nanos: " <<
