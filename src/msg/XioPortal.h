@@ -44,6 +44,7 @@ private:
       uint32_t size;
       XioMsg::Queue q;
       pthread_spinlock_t sp;
+      pthread_mutex_t mtx;
       CACHE_PAD(0);
     };
 
@@ -57,6 +58,7 @@ private:
 	for (ix = 0; ix < nlanes; ++ix) {
 	  lane = &qlane[ix];
 	  pthread_spin_init(&lane->sp, PTHREAD_PROCESS_PRIVATE);
+	  pthread_mutex_init(&lane->mtx, NULL);
 	  lane->size = 0;
 	}
       }
@@ -69,10 +71,18 @@ private:
     void enq(XioMsg* xmsg)
       {
 	Lane* lane = get_lane();
+#if 0
 	pthread_spin_lock(&lane->sp);
+#else
+	pthread_mutex_lock(&lane->mtx);
+#endif
 	lane->q.push_back(*xmsg);
 	++(lane->size);
+#if 0
 	pthread_spin_unlock(&lane->sp);
+#else
+	pthread_mutex_unlock(&lane->mtx);
+#endif
       }
 
     void deq(XioMsg::Queue &send_q)
@@ -82,13 +92,21 @@ private:
 
 	for (ix = 0; ix < nlanes; ++ix) {
 	  lane = &qlane[ix];
-	  pthread_spin_lock(&lane->sp);
+#if 0
+	pthread_spin_lock(&lane->sp);
+#else
+	pthread_mutex_lock(&lane->mtx);
+#endif
 	  if (lane->size > 0) {
 	    XioMsg::Queue::const_iterator i1 = send_q.end();
 	    send_q.splice(i1, lane->q);
 	    lane->size = 0;
 	  }
-	  pthread_spin_unlock(&lane->sp);
+#if 0
+	pthread_spin_unlock(&lane->sp);
+#else
+	pthread_mutex_unlock(&lane->mtx);
+#endif
 	}
       }
 
@@ -99,6 +117,7 @@ private:
   struct xio_server *server;
   SubmitQueue submit_q;
   pthread_spinlock_t sp;
+  pthread_mutex_t mtx;
   void *ev_loop;
   string xio_uri;
   char *portal_id;
@@ -116,6 +135,7 @@ public:
   magic(0)
     {
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
+      pthread_mutex_init(&mtx, NULL);
 
       /* a portal is an xio_context and event loop */
       ctx = xio_context_create(NULL, 0);
@@ -167,7 +187,11 @@ public:
 	size = send_q.size();
 
 	/* shutdown() barrier */
+#if 0
 	pthread_spin_lock(&sp);
+#else
+	pthread_mutex_lock(&mtx);
+#endif
 
 	if (_shutdown) {
 	  drained = true;
@@ -196,7 +220,11 @@ public:
 	  }
 	}
 
+#if 0
 	pthread_spin_unlock(&sp);
+#else
+	pthread_mutex_unlock(&mtx);
+#endif
 
 	xio_context_run_loop(ctx, 100);
 
@@ -212,10 +240,18 @@ public:
 
   void shutdown()
     {
-      pthread_spin_lock(&sp);
+#if 0
+	pthread_spin_lock(&sp);
+#else
+	pthread_mutex_lock(&mtx);
+#endif
       xio_context_stop_loop(ctx, false);
       _shutdown = true;
-      pthread_spin_unlock(&sp);
+#if 0
+	pthread_spin_lock(&sp);
+#else
+	pthread_mutex_lock(&mtx);
+#endif
     }
 
   ~XioPortal()
