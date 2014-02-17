@@ -132,7 +132,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   /* XXX Accelio guarantees message ordering at
    * xio_session */
-  pthread_spin_lock(&sp);
+  //pthread_spin_lock(&sp);
   if (! in_seq.p) {
 #if 0 /* XXX */
     printf("receive req %p treq %p iov_base %p iov_len %d data_iovlen %d\n",
@@ -148,13 +148,13 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
   in_seq.append(req);
   if (in_seq.cnt > 0) {
-    pthread_spin_unlock(&sp);
+    //pthread_spin_unlock(&sp);
     return 0;
   }
   else
     in_seq.p = false;
 
-  pthread_spin_unlock(&sp);
+  //pthread_spin_unlock(&sp);
 
   XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
   XioCompletionHook *completion_hook =
