@@ -39,9 +39,14 @@ int main(int argc, const char **argv)
 	vector<const char*> args;
 	Messenger* messenger;
 	SimpleDispatcher *dispatcher;
+	std::vector<const char*>::iterator arg_iter;
+	std::string val;
 	entity_addr_t dest_addr;
 	ConnectionRef conn;
 	int r = 0;
+
+	std::string addr = "localhost";
+	std::string port = "1234";
 
 	struct timespec ts = {
 		.tv_sec = 5,
@@ -54,6 +59,18 @@ int main(int argc, const char **argv)
 	global_init(NULL, args,
 		    CEPH_ENTITY_TYPE_ANY, CODE_ENVIRONMENT_UTILITY, 0);
 
+	for (arg_iter = args.begin(); arg_iter != args.end();) {
+	  if (ceph_argparse_witharg(args, arg_iter, &val, "--addr",
+				    (char*) NULL)) {
+	    addr = val;
+	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--port",
+				    (char*) NULL)) {
+	    port = val;
+	  } else {
+	    ++arg_iter;
+	  }
+	};
+
 	messenger = new XioMessenger(g_ceph_context,
 				     entity_name_t::GENERIC(),
 				     "xio_client",
@@ -62,7 +79,11 @@ int main(int argc, const char **argv)
 
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 
-	entity_addr_from_url(&dest_addr, "tcp://10.17.23.10:1234");
+	string dest_str = "tcp://";
+	dest_str += addr;
+	dest_str += ":";
+	dest_str += port;
+	entity_addr_from_url(&dest_addr, dest_str.c_str());
 	entity_inst_t dest_server(entity_name_t::GENERIC(), dest_addr);
 
 	dispatcher = new SimpleDispatcher(messenger);
@@ -89,7 +110,7 @@ int main(int argc, const char **argv)
 	    new MPing(), conn);
 #else
 	  messenger->send_message(
-	    new_ping_with_data("xio_client", 131072), conn);
+	    new_ping_with_data("xio_client", 65536), conn);
 #endif
 	}
 
