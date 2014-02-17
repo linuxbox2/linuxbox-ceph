@@ -90,7 +90,7 @@ int main(int argc, const char **argv)
 
 	dispatcher->set_active(); // this side is the pinger
 
-	int n_msgs = 1000000;
+	int n_msgs = 1000;
 
 	r = messenger->start();
 	if (r < 0)

@@ -382,7 +382,10 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     {
       struct xio_rdma_mp_mem *mp = get_xio_mp(*pb);
       if (mp) {
+#if 0
+// XXX disable for delivery receipt experiment 
 	iov->user_context = mp;
+#endif
 	iov->mr = mp->mr;
       } else {
 	/* register it */

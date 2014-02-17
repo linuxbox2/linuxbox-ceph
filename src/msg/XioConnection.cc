@@ -16,6 +16,7 @@
 #include "XioMsg.h"
 #include "XioConnection.h"
 #include "XioMessenger.h"
+#include "messages/MDataPing.h"
 
 void print_xio_msg_hdr(XioMsgHdr &hdr)
 {
@@ -369,5 +370,14 @@ int XioConnection::on_msg_delivered(struct xio_session *session,
 				    void *conn_user_context)
 {
   /* requester delivery receipt */
+
+  /* HACK HACK */
+  XioMsg* xmsg = static_cast<XioMsg*>(req->user_context);
+  MDataPing* md = dynamic_cast<MDataPing *>(xmsg->get_message());
+  if (md) {
+    md->mdata_hook(&md->mp);
+    md->mdata_hook = NULL;
+  }
+
   return 0;
 }  /* on_msg_delivered */
