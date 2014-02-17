@@ -55,7 +55,7 @@ int main(int argc, const char **argv)
 	global_init(NULL, args, CEPH_ENTITY_TYPE_ANY, CODE_ENVIRONMENT_DAEMON,
 		    0);
 
-	for (arg_iter = args.begin(); arg_iter != args.end(); ++arg_iter) {
+	for (arg_iter = args.begin(); arg_iter != args.end();) {
 	  if (ceph_argparse_witharg(args, arg_iter, &val, "--addr",
 				    (char*) NULL)) {
 	    addr = val;
