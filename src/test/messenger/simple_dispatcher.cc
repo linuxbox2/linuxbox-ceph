@@ -34,7 +34,7 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
   ConnectionRef conn;
   uint64_t dc = 0;
 
-  dc = ++dcount;
+  dc = dcount++;
 
 #if 0
   cout << __func__ << " " << m << std::endl;
@@ -63,7 +63,7 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
     abort();
   }
 
-  if ((dc % 512) == 0) {
+  if ((dc % 2048) == 0) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME_COARSE, &ts);
     cout << "ping " << dc << " nanos: " <<
