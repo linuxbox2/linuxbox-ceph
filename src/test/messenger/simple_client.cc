@@ -47,10 +47,9 @@ int main(int argc, const char **argv)
 	std::string addr = "localhost";
 	std::string port = "1234";
 
-	struct timespec ts = {
-		.tv_sec = 1,
-		.tv_nsec = 0
-	};
+	struct timespec ts;
+	ts.tv_sec = 1;
+	ts.tv_nsec = 0;
 
 	argv_to_vec(argc, argv, args);
 	env_to_vec(args);

@@ -122,10 +122,8 @@ public:
 
       /* associate this XioPortal object with the xio_context
        * handle */
-      struct xio_context_params params =
-	{
-	  .user_context = this
-	};
+      struct xio_context_params params;
+      params.user_context = this;
       xio_context_set_params(ctx, &params);
 
       if (magic & (MSG_MAGIC_XIO)) {
