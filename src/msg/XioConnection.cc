@@ -371,6 +371,7 @@ int XioConnection::on_msg_delivered(struct xio_session *session,
 {
   /* requester delivery receipt */
 
+#if 0
   /* HACK HACK */
   XioMsg* xmsg = static_cast<XioMsg*>(req->user_context);
   MDataPing* md = dynamic_cast<MDataPing *>(xmsg->get_message());
@@ -378,6 +379,7 @@ int XioConnection::on_msg_delivered(struct xio_session *session,
     md->mdata_hook(&md->mp);
     md->mdata_hook = NULL;
   }
+#endif
 
   return 0;
 }  /* on_msg_delivered */
