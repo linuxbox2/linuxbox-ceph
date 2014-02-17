@@ -37,20 +37,41 @@ int main(int argc, const char **argv)
 	vector<const char*> args;
 	Messenger *messenger;
 	Dispatcher *dispatcher;
+	std::vector<const char*>::iterator arg_iter;
+	std::string val;
 	entity_addr_t bind_addr;
 	int r = 0;
 
 	using std::endl;
+
+	std::string addr = "localhost";
+	std::string port = "1234";
 
 	cout << "Simple Server starting..." << endl;
 
 	argv_to_vec(argc, argv, args);
 	env_to_vec(args);
 
-	entity_addr_from_url(&bind_addr, "tcp://10.1.1.13:1234");
-
 	global_init(NULL, args, CEPH_ENTITY_TYPE_ANY, CODE_ENVIRONMENT_DAEMON,
 		    0);
+
+	for (arg_iter = args.begin(); arg_iter != args.end(); ++arg_iter) {
+	  if (ceph_argparse_witharg(args, arg_iter, &val, "--addr",
+				    (char*) NULL)) {
+	    addr = val;
+	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--port",
+				    (char*) NULL)) {
+	    port = val;
+	  } else {
+	    ++arg_iter;
+	  }
+	};
+
+	string dest_str = "tcp://";
+	dest_str += addr;
+	dest_str += ":";
+	dest_str += port;
+	entity_addr_from_url(&bind_addr, dest_str.c_str());
 
 	messenger = Messenger::create(g_ceph_context,
 				      entity_name_t::GENERIC(),
