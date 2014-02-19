@@ -218,6 +218,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     conns_lock("XioMessenger::conns_lock"),
     portals(this, nportals, _short_circuit),
     port_shift(0),
+    short_circuit(_short_circuit),
     magic(0)
 {
   /* package init */
@@ -359,7 +360,8 @@ enum bl_type
 static inline void
 xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
 		  struct xio_iovec_ex*& msg_iov, struct xio_iovec_ex*& iov,
-		  int ex_cnt, int& msg_off, int& req_off, bl_type type)
+		  int ex_cnt, int& msg_off, int& req_off, bl_type type,
+		  bool short_circuit)
 {
 
   const std::list<buffer::ptr>& buffers = bl.buffers();
@@ -374,27 +376,28 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     /* track iovlen */
     req->out.data_iovlen = msg_off+1;
 
-    /* XXXX this SHOULD work fine (Eyal) */
-    switch (type) {
-    case BUFFER_DATA:
-      //break;
-    default:
-    {
-      struct xio_rdma_mp_mem *mp = get_xio_mp(*pb);
-      if (mp) {
+    if (! short_circuit) {
+      switch (type) {
+      case BUFFER_DATA:
+	//break;
+      default:
+      {
+	struct xio_rdma_mp_mem *mp = get_xio_mp(*pb);
+	if (mp) {
 #if 0
-// XXX disable for delivery receipt experiment 
-	iov->user_context = mp;
+// XXX disable for delivery receipt experiment
+	  iov->user_context = mp;
 #endif
-	iov->mr = mp->mr;
-      } else {
-	/* register it */
-	iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
-	if (! iov->mr)
-	  abort();
+	  iov->mr = mp->mr;
+	} else {
+	  /* register it */
+	  iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
+	  if (! iov->mr)
+	    abort();
+	}
       }
-    }
       break;
+      }
     }
 
     /* advance iov(s) */
@@ -506,13 +509,13 @@ int XioMessenger::send_message(Message *m, Connection *con)
   int req_off = -1; /* most often, not used */
 
   xio_place_buffers(payload, xmsg, req, msg_iov, iov, ex_cnt, msg_off,
-		    req_off, BUFFER_PAYLOAD);
+		    req_off, BUFFER_PAYLOAD, short_circuit);
 
   xio_place_buffers(middle, xmsg, req, msg_iov, iov, ex_cnt, msg_off,
-		    req_off, BUFFER_MIDDLE);
+		    req_off, BUFFER_MIDDLE, short_circuit);
 
   xio_place_buffers(data, xmsg, req, msg_iov, iov, ex_cnt, msg_off,
-		    req_off, BUFFER_DATA);
+		    req_off, BUFFER_DATA, short_circuit);
 
   /* fixup first msg */
   req = &xmsg->req_0;

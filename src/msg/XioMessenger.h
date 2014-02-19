@@ -36,6 +36,7 @@ private:
   XioConnection::EntitySet conns_entity_map;
   XioPortals portals;
   int port_shift;
+  bool short_circuit;
   uint32_t magic;
 
 public:
