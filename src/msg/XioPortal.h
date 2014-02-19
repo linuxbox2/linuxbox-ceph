@@ -174,7 +174,7 @@ public:
 
   void *entry()
     {
-      int ix, size;
+      int ix, size, code;
       XioMsg::Queue send_q;
       XioMsg::Queue::iterator q_iter;
       XioConnection *xcon;
@@ -209,10 +209,14 @@ public:
 
 	    /* handle response traffic */
 	    if (! req->request) {
-	      (void) xio_send_request(xcon->conn, req);
+	      code = xio_send_request(xcon->conn, req);
 	      timestamp = req->timestamp;
 	    } else {
-	      (void) xio_send_response(req);
+	      code = xio_send_response(req);
+	    }
+
+	    if (code) {
+	      abort();
 	    }
 
 	    if (timestamp)
