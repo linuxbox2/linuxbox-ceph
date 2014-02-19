@@ -96,6 +96,8 @@ public:
 
   int passive_setup(); /* XXX */
 
+  void short_circuit_msg(struct xio_msg *req);
+
   int on_msg_req(struct xio_session *session, struct xio_msg *req,
 		 int more_in_batch, void *cb_user_context);
 

@@ -124,15 +124,17 @@ private:
   bool _shutdown;
   bool drained;
   uint32_t magic;
+  bool short_circuit;
 
   friend class XioPortals;
   friend class XioMessenger;
 
 public:
-  XioPortal(XioMessenger *_msgr) :
+  XioPortal(XioMessenger *_msgr, bool _short_circuit) :
   msgr(_msgr), ctx(NULL), server(NULL), submit_q(), xio_uri(""),
   portal_id(NULL), _shutdown(false), drained(false),
-  magic(0)
+  magic(0),
+  short_circuit(_short_circuit)
     {
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
       pthread_mutex_init(&mtx, NULL);
@@ -207,20 +209,26 @@ public:
 	    xcon = xmsg->xcon;
 	    req = &xmsg->req_0;
 
-	    /* handle response traffic */
-	    if (! req->request) {
-	      code = xio_send_request(xcon->conn, req);
-	      timestamp = req->timestamp;
+	    if (short_circuit) {
+	      /* bypass Xio for testing */
+	      xcon->short_circuit_msg(req);
 	    } else {
-	      code = xio_send_response(req);
-	    }
 
-	    if (code) {
-	      abort();
-	    }
+	      /* handle response traffic */
+	      if (! req->request) {
+		code = xio_send_request(xcon->conn, req);
+		timestamp = req->timestamp;
+	      } else {
+		code = xio_send_response(req);
+	      }
 
-	    if (timestamp)
-	      xcon->send.set(timestamp);
+	      if (code) {
+		abort();
+	      }
+
+	      if (timestamp)
+		xcon->send.set(timestamp);
+	    }
 	  }
 	}
 
@@ -272,12 +280,12 @@ private:
   int n;
 
 public:
-  XioPortals(XioMessenger *msgr, int _n) : p_vec(NULL), n(_n)
+  XioPortals(XioMessenger *msgr, int _n, bool _short_circuit) : p_vec(NULL), n(_n)
     {
       /* n session portals, plus 1 to accept new sessions */
       int ix, np = n+1;
       for (ix = 0; ix < np; ++ix) {
-	portals.push_back(new XioPortal(msgr));
+	portals.push_back(new XioPortal(msgr, _short_circuit));
       }
     }
 

@@ -355,6 +355,225 @@ int XioConnection::on_msg_req(struct xio_session *session,
   return 0;
 }
 
+void XioConnection::short_circuit_msg(struct xio_msg *req)
+{
+
+  struct xio_msg *treq;
+
+  /* XXX this is an asymmetry Eyal plans to fix, at some point */
+  switch (req->type) {
+  case XIO_MSG_TYPE_RSP:
+    abort();
+    return;
+    break;
+  default:
+    treq = req;
+    break;
+  }
+
+  /* XXX Accelio guarantees message ordering at
+   * xio_session */
+  //pthread_spin_lock(&sp);
+  if (! in_seq.p) {
+#if 0 /* XXX */
+    printf("receive req %p treq %p iov_base %p iov_len %d data_iovlen %d\n",
+	   req, treq, treq->in.header.iov_base,
+	   (int) treq->in.header.iov_len,
+	   (int) treq->in.data_iovlen);
+#endif
+    XioMsgCnt msg_cnt(
+      buffer::create_static(treq->in.header.iov_len,
+			    (char*) treq->in.header.iov_base));
+    in_seq.cnt = msg_cnt.msg_cnt;
+    in_seq.p = true;
+  }
+  in_seq.append(req);
+  if (in_seq.cnt > 0) {
+    //pthread_spin_unlock(&sp);
+    return;
+  }
+  else
+    in_seq.p = false;
+
+  //pthread_spin_unlock(&sp);
+
+  XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
+  XioCompletionHook *completion_hook =
+    new XioCompletionHook(NULL, in_seq.seq);
+  list<struct xio_msg *>& msg_seq = completion_hook->msg_seq;
+  in_seq.seq.clear();
+
+  ceph_msg_header header;
+  ceph_msg_footer footer;
+  buffer::list payload, middle, data;
+
+  struct timeval t1, t2;
+  uint64_t seq;
+
+  list<struct xio_msg *>::iterator msg_iter = msg_seq.begin();
+  treq = *msg_iter;
+  XioMsgHdr hdr(header, footer,
+		buffer::create_static(treq->in.header.iov_len,
+				      (char*) treq->in.header.iov_base));
+
+  uint_to_timeval(t1, treq->timestamp);
+
+  if (magic & (MSG_MAGIC_TRACE_XCON)) {
+    if (hdr.hdr->type == 43) {
+      print_xio_msg_hdr(hdr);
+    }
+  }
+
+  unsigned int ix, blen, iov_len;
+  struct xio_iovec_ex *msg_iov;
+  uint32_t take_len, left_len = 0;
+  char *left_base = NULL;
+
+  ix = 0;
+  blen = header.front_len;
+
+  while (blen && (msg_iter != msg_seq.end())) {
+    treq = *msg_iter;
+    iov_len = treq->in.data_iovlen;
+    for (; blen && (ix < iov_len); ++ix) {
+      msg_iov = &treq->in.data_iov[ix];
+
+      /* XXX need to detect any buffer which needs to be
+       * split due to coalescing of a segment (front, middle,
+       * data) boundary */
+
+      take_len = MIN(blen, msg_iov->iov_len);
+      payload.append(
+	buffer::create_static(
+	  take_len, (char*) msg_iov->iov_base));
+      blen -= take_len;
+      if (! blen) {
+	left_len = msg_iov->iov_len - take_len;
+	if (left_len) {
+	  left_base = ((char*) msg_iov->iov_base) + take_len;
+	}
+      }
+    }
+    /* XXX as above, if a buffer is split, then we needed to track
+     * the new start (carry) and not advance */
+    if (ix == iov_len) {
+      msg_iter++;
+      ix = 0;
+    }
+  }
+
+  if (magic & (MSG_MAGIC_TRACE_XCON)) {
+    if (hdr.hdr->type == 43) {
+      cout << "front (payload) dump:" << std::endl;
+      payload.hexdump(cout);
+    }
+  }
+
+  blen = header.middle_len;
+
+  if (blen && left_len) {
+    middle.append(
+      buffer::create_static(left_len, left_base));
+    left_len = 0;
+  }
+
+  while (blen && (msg_iter != msg_seq.end())) {
+    treq = *msg_iter;
+    iov_len = treq->in.data_iovlen;
+    for (; blen && (ix < iov_len); ++ix) {
+      msg_iov = &treq->in.data_iov[ix];
+
+      take_len = MIN(blen, msg_iov->iov_len);
+      middle.append(
+	buffer::create_static(
+	  take_len, (char*) msg_iov->iov_base));
+      blen -= take_len;
+      if (! blen) {
+	left_len = msg_iov->iov_len - take_len;
+	if (left_len) {
+	  left_base = ((char*) msg_iov->iov_base) + take_len;
+	}
+      }
+    }
+    if (ix == iov_len) {
+      msg_iter++;
+      ix = 0;
+    }
+  }
+
+  blen = header.data_len;
+
+  if (blen && left_len) {
+    data.append(
+      buffer::create_static(left_len, left_base));
+    left_len = 0;
+  }
+
+  while (blen && (msg_iter != msg_seq.end())) {
+    treq = *msg_iter;
+    iov_len = treq->in.data_iovlen;
+    for (; blen && (ix < iov_len); ++ix) {
+      msg_iov = &treq->in.data_iov[ix];
+      data.append(
+	buffer::create_static(
+	  msg_iov->iov_len, (char*) msg_iov->iov_base));
+      blen -= msg_iov->iov_len;
+    }
+    if (ix == iov_len) {
+      msg_iter++;
+      ix = 0;
+    }
+  }
+
+  seq = treq->sn;
+  uint_to_timeval(t2, treq->timestamp);
+
+  /* update connection timestamp */
+  recv.set(treq->timestamp);
+
+  Message *m =
+    decode_message(msgr->cct, header, footer, payload, middle, data);
+
+  if (m) {
+    /* completion */
+    this->get(); /* XXX getting underrun */
+    m->set_connection(this);
+
+    /* reply hook */
+    completion_hook->set_message(m);
+    m->set_completion_hook(completion_hook);
+
+    /* trace flag */
+    m->set_magic(magic);
+
+    /* update timestamps */
+    m->set_recv_stamp(t1);
+    m->set_recv_complete_stamp(t2);
+    m->set_seq(seq);
+
+    /* XXXX validate peer type */
+    if (peer_type != (int) hdr.peer_type) { /* XXX isn't peer_type -1? */
+      peer_type = hdr.peer_type;
+      if (xio_conn_type == XioConnection::PASSIVE) {
+	/* XXX kick off feature/authn/authz negotiation
+	 * nb:  very possibly the active side should initiate this, but
+	 * for now, call a passive hook so OSD and friends can create
+	 * sessions without actually negotiating
+	 */
+	passive_setup();
+      }
+    }
+
+    /* dispatch it */
+    msgr->ms_deliver_dispatch(m);
+  } else {
+    /* responds for undecoded messages and frees hook */
+    cout << "decode m failed" << std::endl;
+    completion_hook->on_err_finalize(this);
+  }
+
+}
+
 int XioConnection::on_msg_send_complete(struct xio_session *session,
 					struct xio_msg *rsp,
 					void *conn_user_context)

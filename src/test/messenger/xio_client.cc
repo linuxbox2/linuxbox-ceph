@@ -74,7 +74,8 @@ int main(int argc, const char **argv)
 				     entity_name_t::GENERIC(),
 				     "xio_client",
 				     0 /* nonce */,
-				     0 /* portals */);
+				     0 /* portals */,
+				     true /* short circuit */);
 
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 
