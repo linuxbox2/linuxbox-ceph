@@ -382,8 +382,8 @@ void XioConnection::short_circuit_msg(struct xio_msg *req)
 	   (int) treq->in.data_iovlen);
 #endif
     XioMsgCnt msg_cnt(
-      buffer::create_static(treq->in.header.iov_len,
-			    (char*) treq->in.header.iov_base));
+      buffer::create_static(treq->out.header.iov_len,
+			    (char*) treq->out.header.iov_base));
     in_seq.cnt = msg_cnt.msg_cnt;
     in_seq.p = true;
   }
@@ -413,8 +413,8 @@ void XioConnection::short_circuit_msg(struct xio_msg *req)
   list<struct xio_msg *>::iterator msg_iter = msg_seq.begin();
   treq = *msg_iter;
   XioMsgHdr hdr(header, footer,
-		buffer::create_static(treq->in.header.iov_len,
-				      (char*) treq->in.header.iov_base));
+		buffer::create_static(treq->out.header.iov_len,
+				      (char*) treq->out.header.iov_base));
 
   uint_to_timeval(t1, treq->timestamp);
 
@@ -434,9 +434,9 @@ void XioConnection::short_circuit_msg(struct xio_msg *req)
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
-    iov_len = treq->in.data_iovlen;
+    iov_len = treq->out.data_iovlen;
     for (; blen && (ix < iov_len); ++ix) {
-      msg_iov = &treq->in.data_iov[ix];
+      msg_iov = &treq->out.data_iov[ix];
 
       /* XXX need to detect any buffer which needs to be
        * split due to coalescing of a segment (front, middle,
@@ -479,9 +479,9 @@ void XioConnection::short_circuit_msg(struct xio_msg *req)
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
-    iov_len = treq->in.data_iovlen;
+    iov_len = treq->out.data_iovlen;
     for (; blen && (ix < iov_len); ++ix) {
-      msg_iov = &treq->in.data_iov[ix];
+      msg_iov = &treq->out.data_iov[ix];
 
       take_len = MIN(blen, msg_iov->iov_len);
       middle.append(
@@ -511,9 +511,9 @@ void XioConnection::short_circuit_msg(struct xio_msg *req)
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
-    iov_len = treq->in.data_iovlen;
+    iov_len = treq->out.data_iovlen;
     for (; blen && (ix < iov_len); ++ix) {
-      msg_iov = &treq->in.data_iov[ix];
+      msg_iov = &treq->out.data_iov[ix];
       data.append(
 	buffer::create_static(
 	  msg_iov->iov_len, (char*) msg_iov->iov_base));
