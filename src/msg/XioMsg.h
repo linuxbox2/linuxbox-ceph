@@ -231,4 +231,19 @@ public:
   virtual ~XioCompletionHook() { }
 };
 
+class XioShortCircuitHook : public Message::CompletionHook
+{
+private:
+  list <struct xio_msg *> msg_seq;
+  friend class XioConnection;
+  friend class XioMessenger;
+public:
+  XioShortCircuitHook(Message *_m, list <struct xio_msg *>& _msg_seq) :
+    CompletionHook(_m), msg_seq(_msg_seq)
+    {}
+  virtual void finish(int r);
+  void on_err_finalize(XioConnection *xcon);
+  virtual ~XioShortCircuitHook() { }
+};
+
 #endif /* XIO_MSG_H */

@@ -86,3 +86,25 @@ void XioCompletionHook::on_err_finalize(XioConnection *xcon)
     }
   }
 }
+
+/* Short Circuit (Testing) */
+
+void XioShortCircuitHook::finish(int r)
+{
+  struct xio_msg *msg;
+  list <struct xio_msg *>::iterator iter;
+  XioMsg *xmsg;
+
+  for (iter = msg_seq.begin(); iter != msg_seq.end(); ++iter) {
+    msg = *iter;
+    xmsg = static_cast<XioMsg*>(msg->user_context);
+    if (xmsg)
+      xmsg->put();
+  }
+}
+
+void XioShortCircuitHook::on_err_finalize(XioConnection *xcon)
+{
+  finish(0);
+  abort();
+}

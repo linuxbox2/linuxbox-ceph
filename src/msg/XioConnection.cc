@@ -372,15 +372,11 @@ void XioConnection::short_circuit_msg(struct xio_msg *req)
   }
 
   /* XXX Accelio guarantees message ordering at
-   * xio_session */
+   * xio_session--we DONT, but we're not sending sequences, so skip the
+   * spinlock, which won't be paid for in a real workload */
+
   //pthread_spin_lock(&sp);
   if (! in_seq.p) {
-#if 0 /* XXX */
-    printf("receive req %p treq %p iov_base %p iov_len %d data_iovlen %d\n",
-	   req, treq, treq->in.header.iov_base,
-	   (int) treq->in.header.iov_len,
-	   (int) treq->in.data_iovlen);
-#endif
     XioMsgCnt msg_cnt(
       buffer::create_static(treq->out.header.iov_len,
 			    (char*) treq->out.header.iov_base));
@@ -398,8 +394,7 @@ void XioConnection::short_circuit_msg(struct xio_msg *req)
   //pthread_spin_unlock(&sp);
 
   XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
-  XioCompletionHook *completion_hook =
-    new XioCompletionHook(NULL, in_seq.seq);
+  XioShortCircuitHook *completion_hook = new XioShortCircuitHook(NULL, in_seq.seq);
   list<struct xio_msg *>& msg_seq = completion_hook->msg_seq;
   in_seq.seq.clear();
 
