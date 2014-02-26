@@ -96,7 +96,7 @@ set(ceph_mon_srcs
 
 add_executable(ceph-mon ${ceph_mon_srcs})
 
-target_link_libraries(ceph-mon mon boost_regex boost_thread common os global ${TCMALLOC_LIBS})
+target_link_libraries(ceph-mon mon boost_regex boost_thread common os global ${TCMALLOC_LIBS} ${LTTNG_LIBS})
 
 # osd
 set(ceph_osd_srcs
@@ -107,7 +107,7 @@ set(ceph_osd_srcs
 
 add_executable(ceph-osd ${ceph_osd_srcs})
 
-target_link_libraries(ceph-osd osd os global ${TCMALLOC_LIBS})
+target_link_libraries(ceph-osd osd os global ${TCMALLOC_LIBS} ${LTTNG_LIBS})
 
 #mds
 set(ceph_mds_srcs
@@ -116,7 +116,7 @@ set(ceph_mds_srcs
 )
 add_executable(ceph-mds ${ceph_mds_srcs})
 
-target_link_libraries(ceph-mds mds osdc ${CMAKE_DL_LIBS} global ${TCMALLOC_LIBS} boost_thread)
+target_link_libraries(ceph-mds mds osdc ${CMAKE_DL_LIBS} global ${TCMALLOC_LIBS} boost_thread ${LTTNG_LIBS})
 
 # admin tools
 
@@ -144,7 +144,7 @@ set(librados_config_srcs
 )
 
 add_executable(librados-config ${librados_config_srcs})
-target_link_libraries(librados-config librados global)
+target_link_libraries(librados-config librados global ${LTTNG_LIBS})
 
 
 #ceph-fuse

@@ -53,10 +53,15 @@ DEPENDS check_version ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
 
 if (HAVE_XIO)
 
+if (HAVE_LTTNG)
+  set (xio_trace_cc ../msg/XioTrace.cc)
+endif (HAVE_LTTNG)
+
 set(xio_messenger_cc
   ../msg/XioConnection.cc
   ../msg/XioMsg.cc
   ../msg/XioMessenger.cc
+  ${xio_trace_cc}
   )
 
 endif(HAVE_XIO)

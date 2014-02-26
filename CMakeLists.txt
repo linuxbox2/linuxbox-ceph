@@ -75,6 +75,7 @@ CHECK_INCLUDE_FILES("snappy.h" HAVE_SNAPPY_H)
 CHECK_INCLUDE_FILES("uuid/uuid.h" HAVE_UUID_H)
 CHECK_INCLUDE_FILES("atomic_ops.h" HAVE_ATOMIC_OPS)
 CHECK_INCLUDE_FILES("keyutils.h" HAVE_KEYUTILS_H)
+CHECK_INCLUDE_FILES("lttng/tracepoint-event.h" HAVE_LTTNG)
 
 option(WITH_AIO "AIO is here ON" ON)
 if(${WITH_AIO})
@@ -179,6 +180,11 @@ find_package(Boost COMPONENTS thread system REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(Threads REQUIRED)
+
+if (HAVE_LTTNG)
+  add_definitions(-DHAVE_LTTNG)
+  set (LTTNG_LIBS lttng-ust dl)
+endif (HAVE_LTTNG)
 
 # find out which platform we are building on
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")

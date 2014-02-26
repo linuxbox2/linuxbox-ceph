@@ -21,6 +21,9 @@
 #include "XioMsg.h"
 #include "XioMessenger.h"
 
+#define TRACEPOINT_DEFINE
+#include "XioTrace.h"
+
 Mutex mtx("XioMessenger Package Lock");
 atomic_t initialized;
 
@@ -389,6 +392,7 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
 	iov->mr = mp->mr;
       } else {
 	/* register it */
+	
 	iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
 	if (! iov->mr)
 	  abort();

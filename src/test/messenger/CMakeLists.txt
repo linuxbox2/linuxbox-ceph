@@ -45,7 +45,7 @@ set(xio_server_srcs
 )
 add_executable(xio_server ${xio_server_srcs})
 target_link_libraries(xio_server os global common boost_regex ${TCMALLOC_LIBS}
-  ${Xio_LIBRARY} ibverbs rdmacm pthread rt)
+  ${Xio_LIBRARY} ibverbs rdmacm ${LTTNG_LIBS} pthread rt)
 
 set(xio_client_srcs
 	xio_client.cc
@@ -54,6 +54,6 @@ set(xio_client_srcs
 )
 add_executable(xio_client ${xio_client_srcs})
 target_link_libraries(xio_client os global common boost_regex ${TCMALLOC_LIBS}
-  ${Xio_LIBRARY} ibverbs rdmacm pthread rt)
+  ${Xio_LIBRARY} ibverbs rdmacm ${LTTNG_LIBS} pthread rt)
 
 endif(HAVE_XIO)

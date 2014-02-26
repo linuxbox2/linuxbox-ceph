@@ -33,7 +33,7 @@ set(librgw_a_srcs
 
 add_library(librgw_a ${librgw_a_srcs})
 
-target_link_libraries(librgw_a cls_log cls_statelog cls_refcount cls_replica_log cls_rgw cls_version)
+target_link_libraries(librgw_a cls_log cls_statelog cls_refcount cls_replica_log cls_rgw cls_version ${LTTNG_LIBS})
 
 set(radosgw_srcs
 	rgw_http_client.cc 
