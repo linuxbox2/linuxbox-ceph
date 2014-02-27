@@ -47,7 +47,12 @@ int main(int argc, const char **argv)
 	std::string addr = "localhost";
 	std::string port = "1234";
 
-	cout << "Xio Server starting..." << endl;
+#if defined(HAVE_LTTNG)
+	cout << "Waiting 5s for tracing start" << std::endl;
+	sleep(5);
+#endif
+
+	cout << "xio_server starting..." << endl;
 
 	argv_to_vec(argc, argv, args);
 	env_to_vec(args);

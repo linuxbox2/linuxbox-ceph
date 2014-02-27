@@ -70,6 +70,13 @@ int main(int argc, const char **argv)
 	  }
 	};
 
+#if defined(HAVE_LTTNG)
+	cout << "Waiting 5s for tracing start" << std::endl;
+	sleep(5);
+#endif
+
+	cout << "xio_client starting" << std::endl;
+
 	messenger = new XioMessenger(g_ceph_context,
 				     entity_name_t::GENERIC(),
 				     "xio_client",

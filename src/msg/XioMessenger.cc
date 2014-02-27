@@ -21,8 +21,10 @@
 #include "XioMsg.h"
 #include "XioMessenger.h"
 
+#if defined(HAVE_LTTNG)
 #define TRACEPOINT_DEFINE
 #include "XioTrace.h"
+#endif
 
 Mutex mtx("XioMessenger Package Lock");
 atomic_t initialized;
@@ -174,7 +176,13 @@ static int get_dma_buffers(struct xio_msg *msg, void *conn_user_context)
   for (ix = 0; ix < iov_len; ++ix) {
     iov = &msg->in.data_iov[ix];
     mp = (struct xio_rdma_mp_mem *) malloc(sizeof(struct xio_rdma_mp_mem));
+#if defined(HAVE_LTTNG)
+    tracepoint(xio_trace, message, "before xio_rdma_mempool_alloc");
+#endif
     (void) xio_rdma_mempool_alloc(xio_msgr_mpool, iov->iov_len, mp);
+#if defined(HAVE_LTTNG)
+    tracepoint(xio_trace, message, "after xio_rdma_mempool_alloc");
+#endif
     iov->iov_base = mp->addr;
     iov->mr = mp->mr;
     iov->user_context = mp;
