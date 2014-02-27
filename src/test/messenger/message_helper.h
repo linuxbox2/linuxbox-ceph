@@ -44,12 +44,39 @@ static inline Message* new_ping_monstyle(const char *tag, int mult)
 
 extern struct xio_rdma_mempool *xio_msgr_mpool;
 
-void hook_func(struct xio_rdma_mp_mem *mp)
+void xio_hook_func(struct xio_rdma_mp_mem *mp)
 {
   xio_rdma_mempool_free(mp);
 }
 
 static inline Message* new_ping_with_data(const char *tag, uint32_t size)
+{
+  static uint32_t counter;
+
+  MDataPing *m = new MDataPing();
+  m->counter = counter++;
+  m->tag = tag;
+
+  bufferlist bl;
+  void *p;
+
+  struct xio_rdma_mp_mem *mp = m->get_mp();
+  (void) xio_rdma_mempool_alloc(xio_msgr_mpool, size, mp);
+  p = mp->addr;
+  m->set_rdma_hook(xio_hook_func);
+
+  strcpy((char*) p, tag);
+  uint32_t* t = (uint32_t* ) (((char*) p) + size - 32);
+  *t = counter;
+
+  bl.append(buffer::create_static(size, (char*) p));
+  m->set_data(bl);
+
+  return static_cast<Message*>(m);
+}
+
+static inline Message* new_simple_ping_with_data(const char *tag,
+						 uint32_t size)
 {
   static size_t pagesize = sysconf(_SC_PAGESIZE);
   static uint32_t counter;
@@ -61,17 +88,10 @@ static inline Message* new_ping_with_data(const char *tag, uint32_t size)
   bufferlist bl;
   void *p;
 
-#if 0
   size = (size + pagesize - 1) & ~(pagesize - 1);
   if (posix_memalign(&p, pagesize, size))
     p = NULL;
   m->free_data = true;
-#else
-  struct xio_rdma_mp_mem *mp = m->get_mp();
-  (void) xio_rdma_mempool_alloc(xio_msgr_mpool, size, mp);
-  p = mp->addr;
-  m->set_rdma_hook(hook_func);
-#endif
 
   strcpy((char*) p, tag);
   uint32_t* t = (uint32_t* ) (((char*) p) + size - 32);
@@ -82,5 +102,6 @@ static inline Message* new_ping_with_data(const char *tag, uint32_t size)
 
   return static_cast<Message*>(m);
 }
+
 
 #endif /* MESSAGE_HELPER_H_ */
