@@ -17,11 +17,15 @@
 #include "XioConnection.h"
 #include "XioMsg.h"
 
+extern struct xio_rdma_mempool *xio_msgr_mpool;
+extern struct xio_rdma_mempool *xio_msgr_noreg_mpool;
 
 void XioCompletionHook::finish(int r)
 {
   struct xio_msg *msg, *rsp;
   list <struct xio_msg *>::iterator iter;
+
+  nrefs.inc();
 
   for (iter = msg_seq.begin(); iter != msg_seq.end(); ++iter) {
     msg = *iter;
@@ -30,9 +34,14 @@ void XioCompletionHook::finish(int r)
     {
       ConnectionRef conn = m->get_connection();
       XioConnection *xcon = static_cast<XioConnection*>(conn.get());
+
       /* XXX ack it (Eyal:  we'd like an xio_ack_response) */
-      rsp = (struct xio_msg *) calloc(1, sizeof(struct xio_msg));
+      (void) xio_rdma_mempool_alloc(xio_msgr_noreg_mpool,
+				    sizeof(struct xio_msg), &mp_rsp);
+      rsp = (struct xio_msg *) mp_rsp.addr;
+      rsp->user_context = &mp_rsp;
       rsp->request = msg;
+      this->rsp = true;
 
       unsigned int ix;
       struct xio_iovec_ex *iov;
@@ -43,7 +52,6 @@ void XioCompletionHook::finish(int r)
 	iov = &msg->in.data_iov[ix];
 	mp = (struct xio_rdma_mp_mem *) iov->user_context;
 	xio_rdma_mempool_free(mp);
-	free(mp); /* XXX tcmalloc'd */
       }
 
       pthread_spin_lock(&xcon->sp);
@@ -58,6 +66,8 @@ void XioCompletionHook::finish(int r)
       break;
     }
   }
+
+  this->put();
 }
 
 void XioCompletionHook::on_err_finalize(XioConnection *xcon)

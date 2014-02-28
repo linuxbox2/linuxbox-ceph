@@ -18,6 +18,9 @@
 #include "XioMessenger.h"
 #include "messages/MDataPing.h"
 
+extern struct xio_rdma_mempool *xio_msgr_mpool;
+extern struct xio_rdma_mempool *xio_msgr_noreg_mpool;
+
 void print_xio_msg_hdr(XioMsgHdr &hdr)
 {
 
@@ -102,6 +105,17 @@ int XioConnection::passive_setup()
 
 static uint64_t rcount;
 
+static inline XioCompletionHook* pool_alloc_xio_completion_hook(
+  Message *_m, list <struct xio_msg *>& _msg_seq)
+{
+  struct xio_rdma_mp_mem mp_mem;
+  (void) xio_rdma_mempool_alloc(xio_msgr_noreg_mpool,
+				sizeof(XioCompletionHook), &mp_mem);
+  XioCompletionHook *xhook = (XioCompletionHook*) mp_mem.addr;
+  new (xhook) XioCompletionHook(_m, _msg_seq, mp_mem);
+  return xhook;
+}
+
 int XioConnection::on_msg_req(struct xio_session *session,
 			      struct xio_msg *req,
 			      int more_in_batch,
@@ -159,7 +173,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
   XioCompletionHook *completion_hook =
-    new XioCompletionHook(NULL, in_seq.seq);
+    pool_alloc_xio_completion_hook(NULL, in_seq.seq);
   list<struct xio_msg *>& msg_seq = completion_hook->msg_seq;
   in_seq.seq.clear();
 

@@ -140,13 +140,14 @@ public:
   struct xio_msg* req_arr;
   XioConnection *xcon;
   bi::list_member_hook<> submit_list;
+  struct xio_rdma_mp_mem mp_this;
   int nbuffers;
   int nref;
 
 public:
-  XioMsg(Message *_m, XioConnection *_xcon) :
+  XioMsg(Message *_m, XioConnection *_xcon, struct xio_rdma_mp_mem& _mp) :
     m(_m), hdr(m->get_header(), m->get_footer()),
-    req_arr(NULL), xcon(_xcon)
+    req_arr(NULL), xcon(_xcon), mp_this(_mp)
     {
       nref = 1;
       const entity_inst_t &inst = xcon->get_messenger()->get_myinst();
@@ -164,8 +165,9 @@ public:
   void put() {
     --nref;
     if (nref == 0) {
+      struct xio_rdma_mp_mem *mp = &this->mp_this;
       this->~XioMsg();
-      free(this);
+      xio_rdma_mempool_free(mp);
     }
   }
 
@@ -173,7 +175,7 @@ public:
 
   ~XioMsg()
     {
-      free(req_arr);
+      free(req_arr); /* normally a no-op */
 #if 0
       m->put();
 #else
@@ -212,25 +214,47 @@ static inline void dereg_xio_req(struct xio_msg *rreq)
 #endif
 }
 
-static inline void finalize_response_msg(struct xio_msg *rsp)
-{
-  /* currently, there is no user context */
-  free(rsp);
-}
-
 class XioCompletionHook : public Message::CompletionHook
 {
 private:
   list <struct xio_msg *> msg_seq;
+  atomic_t nrefs;
+  bool rsp;
   friend class XioConnection;
   friend class XioMessenger;
 public:
-  XioCompletionHook(Message *_m, list <struct xio_msg *>& _msg_seq) :
-    CompletionHook(_m), msg_seq(_msg_seq)
+  struct xio_rdma_mp_mem mp_this;
+  struct xio_rdma_mp_mem mp_rsp;
+
+  XioCompletionHook(Message *_m, list <struct xio_msg *>& _msg_seq,
+		    struct xio_rdma_mp_mem& _mp) :
+    CompletionHook(_m), msg_seq(_msg_seq), nrefs(1), rsp(false), mp_this(_mp)
     {}
   virtual void finish(int r);
+  virtual void complete(int r) {
+    finish(r);
+  }
+
+  void put() {
+    if (nrefs.dec() == 0) {
+      if (rsp) {
+	xio_rdma_mempool_free(&mp_rsp);
+      }
+      struct xio_rdma_mp_mem *mp = &this->mp_this;
+      this->~XioCompletionHook();
+      xio_rdma_mempool_free(mp);
+    }
+  }
+
   void on_err_finalize(XioConnection *xcon);
   virtual ~XioCompletionHook() { }
 };
+
+static inline void finalize_response_msg(struct xio_msg *rsp)
+{
+  XioCompletionHook *xhook =
+    static_cast<XioCompletionHook*>(rsp->user_context);
+  xhook->put();
+}
 
 #endif /* XIO_MSG_H */
