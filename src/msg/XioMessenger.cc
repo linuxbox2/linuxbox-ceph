@@ -263,7 +263,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_msgr_ops.on_msg_error = on_msg_error;
       xio_msgr_ops.on_cancel = on_cancel;
       xio_msgr_ops.on_cancel_request = on_cancel_request;
-      xio_msgr_ops.assign_data_in_buf = get_dma_buffers;
+//      xio_msgr_ops.assign_data_in_buf = get_dma_buffers;
 
       /* mark initialized */
       initialized.set(1);
