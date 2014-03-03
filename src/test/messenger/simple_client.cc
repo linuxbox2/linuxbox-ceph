@@ -47,6 +47,9 @@ int main(int argc, const char **argv)
 	std::string addr = "localhost";
 	std::string port = "1234";
 
+	int n_msgs = 50;
+	int n_dsize = 0;
+
 	struct timespec ts;
 	ts.tv_sec = 1;
 	ts.tv_nsec = 0;
@@ -64,10 +67,22 @@ int main(int argc, const char **argv)
 	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--port",
 				    (char*) NULL)) {
 	    port = val;
+	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--msgs",
+				    (char*) NULL)) {
+	    n_msgs = atoi(val.c_str());;
+	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--dsize",
+				    (char*) NULL)) {
+	    n_dsize = atoi(val.c_str());;
 	  } else {
 	    ++arg_iter;
 	  }
 	};
+
+	cout  << "simple_client starting " <<
+	  "dest addr " << addr << " " <<
+	  "dest port " << port << " " <<
+	  "initial msgs (pipe depth) " << n_msgs << " " <<
+	  "data buffer size " << n_dsize << std::endl;
 
 	messenger = Messenger::create(g_ceph_context,
 				      entity_name_t::GENERIC(),
@@ -88,8 +103,6 @@ int main(int argc, const char **argv)
 
 	dispatcher->set_active(); // this side is the pinger
 
-	int n_msgs = 50;
-
 	r = messenger->start();
 	if (r < 0)
 		goto out;
@@ -103,13 +116,14 @@ int main(int argc, const char **argv)
 
 	int msg_ix;
 	for (msg_ix = 0; msg_ix < n_msgs; ++msg_ix) {
-#if 0
+	  /* add a data payload if asked */
+	  if (! n_dsize) {
+	    messenger->send_message(
+	      new MPing(), conn);
+	  } else {
 	  messenger->send_message(
-	    new MPing(), conn);
-#else
-	  messenger->send_message(
-	    new_simple_ping_with_data("xio_client", 65536), conn);
-#endif
+	    new_simple_ping_with_data("xio_client", n_dsize), conn);
+	  }
 	}
 
 	// do stuff
@@ -118,7 +132,7 @@ int main(int argc, const char **argv)
 	}
 
 	t2 = time(NULL);
-	cout << "Processed " << dispatcher->get_dcount() + 256
+	cout << "Processed " << dispatcher->get_dcount() + n_msgs
 	     << " round-trip messages in " << t2-t1 << "s"
 	     << std::endl;
 out:

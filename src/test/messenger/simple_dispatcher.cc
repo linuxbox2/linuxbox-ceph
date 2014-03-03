@@ -45,16 +45,6 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 
   switch (m->get_type()) {
   case CEPH_MSG_PING:
-    if (active) {
-#if 0
-      cout << "pong!" << std::endl;
-#endif
-    } else {
-#if 0
-      cout << "ping! " << dc << std::endl;
-#endif
-    }
-    break;
   case MSG_DATA_PING:
   {
     //MDataPing* mdp = static_cast<MDataPing*>(m);
