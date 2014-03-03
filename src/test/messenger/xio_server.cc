@@ -27,7 +27,7 @@ using namespace std;
 #include "global/signal_handler.h"
 #include "perfglue/heap_profiler.h"
 #include "common/address_helper.h"
-#include "simple_dispatcher.h"
+#include "xio_dispatcher.h"
 
 #define dout_subsys ceph_subsys_simple_server
 
@@ -89,7 +89,7 @@ int main(int argc, const char **argv)
 	//global_init_daemonize(g_ceph_context, 0);
 	common_init_finish(g_ceph_context);
 
-	dispatcher = new SimpleDispatcher(messenger);
+	dispatcher = new XioDispatcher(messenger);
 
 	messenger->add_dispatcher_head(dispatcher); // should reach ready()
 	messenger->start();

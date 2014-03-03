@@ -30,7 +30,7 @@ using namespace std;
 #include "perfglue/heap_profiler.h"
 #include "common/address_helper.h"
 #include "message_helper.h"
-#include "simple_dispatcher.h"
+#include "xio_dispatcher.h"
 
 #define dout_subsys ceph_subsys_xio_client
 
@@ -38,7 +38,7 @@ int main(int argc, const char **argv)
 {
 	vector<const char*> args;
 	Messenger* messenger;
-	SimpleDispatcher *dispatcher;
+	XioDispatcher *dispatcher;
 	std::vector<const char*>::iterator arg_iter;
 	std::string val;
 	entity_addr_t dest_addr;
@@ -47,6 +47,9 @@ int main(int argc, const char **argv)
 
 	std::string addr = "localhost";
 	std::string port = "1234";
+
+	int n_msgs = 50;
+	int n_dsize = 0;
 
 	struct timespec ts;
 	ts.tv_sec = 5;
@@ -65,6 +68,12 @@ int main(int argc, const char **argv)
 	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--port",
 				    (char*) NULL)) {
 	    port = val;
+	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--msgs",
+				    (char*) NULL)) {
+	    n_msgs = atoi(val.c_str());;
+	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--dsize",
+				    (char*) NULL)) {
+	    n_dsize = atoi(val.c_str());;
 	  } else {
 	    ++arg_iter;
 	  }
@@ -85,12 +94,10 @@ int main(int argc, const char **argv)
 	entity_addr_from_url(&dest_addr, dest_str.c_str());
 	entity_inst_t dest_server(entity_name_t::GENERIC(), dest_addr);
 
-	dispatcher = new SimpleDispatcher(messenger);
+	dispatcher = new XioDispatcher(messenger);
 	messenger->add_dispatcher_head(dispatcher);
 
 	dispatcher->set_active(); // this side is the pinger
-
-	int n_msgs = 256;
 
 	r = messenger->start();
 	if (r < 0)
@@ -104,13 +111,14 @@ int main(int argc, const char **argv)
 
 	int msg_ix;
 	for (msg_ix = 0; msg_ix < n_msgs; ++msg_ix) {
-#if 0
+	  /* add a data payload if asked */
+	  if (! n_dsize) {
+	    messenger->send_message(
+	      new MPing(), conn);
+	  } else {
 	  messenger->send_message(
-	    new MPing(), conn);
-#else
-	  messenger->send_message(
-	    new_ping_with_data("xio_client", 65536), conn);
-#endif
+	    new_simple_ping_with_data("xio_client", n_dsize), conn);
+	  }
 	}
 
 	// do stuff
@@ -119,7 +127,7 @@ int main(int argc, const char **argv)
 	}
 
 	t2 = time(NULL);
-	cout << "Processed " << n_msgs
+	cout << "Processed " << dispatcher->get_dcount() + n_msgs
 	     << " round-trip messages in " << t2-t1 << "s"
 	     << std::endl;
 

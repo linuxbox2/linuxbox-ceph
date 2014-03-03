@@ -40,7 +40,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${Xio_INCLUDE_DIR}")
 
 set(xio_server_srcs
 	xio_server.cc
-	simple_dispatcher.cc
+	xio_dispatcher.cc
 	${TCMALLOC_srcs}
 )
 add_executable(xio_server ${xio_server_srcs})
@@ -49,7 +49,7 @@ target_link_libraries(xio_server os global common boost_regex ${TCMALLOC_LIBS}
 
 set(xio_client_srcs
 	xio_client.cc
-	simple_dispatcher.cc
+	xio_dispatcher.cc
 	${TCMALLOC_srcs}
 )
 add_executable(xio_client ${xio_client_srcs})
