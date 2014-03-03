@@ -154,7 +154,7 @@ public:
       hdr.hdr->src.type = inst.name.type();
       hdr.hdr->src.num = inst.name.num();
       memset(&req_0, 0, sizeof(struct xio_msg));
-      /* XXX needed/wanted? on the last rather than first xio_msg? */
+      req_0.type = XIO_MSG_TYPE_REQ;
       req_0.flags = 0; /* XIO_MSG_FLAG_REQUEST_READ_RECEIPT; */
       req_0.user_context = this;
     }
