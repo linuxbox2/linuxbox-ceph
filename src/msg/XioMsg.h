@@ -192,6 +192,7 @@ public:
 
 static inline void dereg_xio_req(struct xio_msg *rreq)
 {
+#if 0
   int code;
   struct xio_iovec_ex *iov;
 
@@ -208,6 +209,7 @@ static inline void dereg_xio_req(struct xio_msg *rreq)
       }
     }
   }
+#endif
 }
 
 static inline void finalize_response_msg(struct xio_msg *rsp)

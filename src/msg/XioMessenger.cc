@@ -387,11 +387,6 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
 	iov->user_context = mp;
 #endif
 	iov->mr = mp->mr;
-      } else {
-	/* register it */
-	iov->mr = xio_reg_mr(iov->iov_base, iov->iov_len);
-	if (! iov->mr)
-	  abort();
       }
     }
       break;
