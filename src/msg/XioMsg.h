@@ -236,7 +236,8 @@ public:
   }
 
   void put() {
-    if (nrefs.dec() == 0) {
+    int refs = nrefs.dec();
+    if (refs == 1) {
       if (rsp) {
 	xio_rdma_mempool_free(&mp_rsp);
       }
