@@ -109,8 +109,9 @@ static inline XioCompletionHook* pool_alloc_xio_completion_hook(
   Message *_m, list <struct xio_msg *>& _msg_seq)
 {
   struct xio_rdma_mp_mem mp_mem;
-  (void) xio_rdma_mempool_alloc(xio_msgr_noreg_mpool,
+  int e = xio_rdma_mempool_alloc(xio_msgr_noreg_mpool,
 				sizeof(XioCompletionHook), &mp_mem);
+  assert(e == 0);
   XioCompletionHook *xhook = (XioCompletionHook*) mp_mem.addr;
   new (xhook) XioCompletionHook(_m, _msg_seq, mp_mem);
   return xhook;

@@ -171,7 +171,8 @@ static int get_dma_buffers(struct xio_msg *msg, void *conn_user_context)
 
   for (ix = 0; ix < iov_len; ++ix) {
     iov = &msg->in.data_iov[ix];
-    (void) xio_rdma_mempool_alloc(xio_msgr_mpool, iov->iov_len, mp);
+    int e = xio_rdma_mempool_alloc(xio_msgr_mpool, iov->iov_len, mp);
+    assert(e == 0);
     iov->mp = *mp;
     iov->iov_base = mp->addr;
     iov->mr = mp->mr;
@@ -463,8 +464,10 @@ int XioMessenger::send_message(Message *m, const entity_inst_t& dest)
 static inline XioMsg* pool_alloc_xio_msg(Message *m, XioConnection *xcon)
 {
   struct xio_rdma_mp_mem mp_mem;
-  (void) xio_rdma_mempool_alloc(xio_msgr_noreg_mpool, sizeof(XioMsg), &mp_mem);
+  int e = xio_rdma_mempool_alloc(xio_msgr_noreg_mpool, sizeof(XioMsg), &mp_mem);
+  assert(e == 0);
   XioMsg *xmsg = (XioMsg*) mp_mem.addr;
+  assert(!!xmsg);
   new (xmsg) XioMsg(m, xcon, mp_mem);
   return xmsg;
 }

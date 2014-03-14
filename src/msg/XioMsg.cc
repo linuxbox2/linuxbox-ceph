@@ -36,8 +36,9 @@ void XioCompletionHook::finish(int r)
       XioConnection *xcon = static_cast<XioConnection*>(conn.get());
 
       /* XXX ack it (Eyal:  we'd like an xio_ack_response) */
-      (void) xio_rdma_mempool_alloc(xio_msgr_noreg_mpool,
+      int e = xio_rdma_mempool_alloc(xio_msgr_noreg_mpool,
 				    sizeof(struct xio_msg), &mp_rsp);
+      assert(e == 0);
       rsp = (struct xio_msg *) mp_rsp.addr;
       rsp->user_context = &mp_rsp;
       rsp->request = msg;
