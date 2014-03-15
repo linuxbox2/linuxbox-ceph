@@ -273,6 +273,14 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 					    sizeof(struct xio_msg), 0,
 					    XMSG_MEMPOOL_MAX,
 					    XMSG_MEMPOOL_MIN);
+for (int i = max(sizeof(XioCompletionHook),max(sizeof(struct xio_msg),sizeof(XioMsg)));;) {
+i = (i*8119)/5741;
+if (i >= 131072) break;
+int j = (i+15)&~15;
+printf ("SET %lx %d\n", (long)xio_msgr_noreg_mpool, i);
+(void) xio_rdma_mempool_add_allocator(xio_msgr_noreg_mpool,
+i, 0, XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+}
 
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
