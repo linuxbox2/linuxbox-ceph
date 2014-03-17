@@ -252,9 +252,9 @@ public:
       xio_context_stop_loop(ctx, false);
       _shutdown = true;
 #if 0
-	pthread_spin_lock(&sp);
+	pthread_spin_unlock(&sp);
 #else
-	pthread_mutex_lock(&mtx);
+	pthread_mutex_unlock(&mtx);
 #endif
     }
 
