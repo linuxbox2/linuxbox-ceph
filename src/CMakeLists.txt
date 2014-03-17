@@ -41,6 +41,11 @@ ${CMAKE_BINARY_DIR}/init-ceph
 @ONLY
 )
 
+configure_file(
+${CMAKE_SOURCE_DIR}/src/ceph-crush-location.in
+${CMAKE_BINARY_DIR}/ceph-crush-location
+@ONLY
+)
 
 configure_file(
 ${CMAKE_SOURCE_DIR}/src/mkcephfs.in
@@ -180,6 +185,7 @@ DESTINATION bin
 ) 
 
 install(PROGRAMS
+  ${CMAKE_BINARY_DIR}/ceph-crush-location
   ${CMAKE_BINARY_DIR}/init-ceph
   ${CMAKE_BINARY_DIR}/mkcephfs
   ${CMAKE_SOURCE_DIR}/src/vstart.sh

@@ -22,7 +22,7 @@ if [ `dirname $0` = "." ] && [ $PWD != "/usr/bin" ]; then
 else
     BINDIR=@bindir@
     SBINDIR=@prefix@/sbin
-    LIBDIR=@libdir@/ceph
+    LIBDIR=@libdir@
     ETCDIR=@sysconfdir@/ceph
 fi
 
