@@ -35,11 +35,34 @@ endif (HAVE_XIO)
 
 set(GCOV_PREFIX_STRIP 4)
 
+# Python stuff
+find_package(PythonInterp 2 QUIET)
+if(NOT PYTHONINTERP_FOUND)
+  message(FATAL_ERROR "Python 2 interpreter not found.")
+endif(NOT PYTHONINTERP_FOUND)
+
+# if CMAKE_INSTALL_PREFIX is an empty string, must replace
+# it with "/" to make PYTHON_INSTALL_TEMPLATE an absolute path to be
+# consistent with all other installation paths.
+if(CMAKE_INSTALL_PREFIX)
+  set(PYTHON_INSTALL_TEMPLATE "${CMAKE_INSTALL_PREFIX}")
+else(CMAKE_INSTALL_PREFIX)
+  set(PYTHON_INSTALL_TEMPLATE "/")
+endif(CMAKE_INSTALL_PREFIX)
+
+execute_process(
+  COMMAND
+  ${PYTHON_EXECUTABLE} -c "from distutils import sysconfig; print sysconfig.get_python_lib(1,0,prefix='${PYTHON_INSTALL_TEMPLATE}')"
+  OUTPUT_VARIABLE PYTHON_INSTDIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
 configure_file(
-${CMAKE_SOURCE_DIR}/src/init-ceph.in
-${CMAKE_BINARY_DIR}/init-ceph
+${CMAKE_SOURCE_DIR}/src/ceph.in.cmake
+${CMAKE_BINARY_DIR}/ceph
 @ONLY
 )
+
 
 configure_file(
 ${CMAKE_SOURCE_DIR}/src/ceph-crush-location.in
@@ -164,11 +187,6 @@ target_link_libraries(ceph-fuse fuse client global)
 set(ceph_fuse_bin "ceph-fuse")
 endif(WITH_FUSE)
 
-add_custom_target(ceph ALL
-COMMAND ${CMAKE_SOURCE_DIR}/src/ceph_script_version.sh ${CMAKE_SOURCE_DIR}/src/ceph.in ${CMAKE_BINARY_DIR}/ceph ${CMAKE_SOURCE_DIR}/src/ceph_ver.h
-DEPENDS ${CMAKE_SOURCE_DIR}/src/ceph.in ceph_ver
-)
-
 # add the install targets
 install(TARGETS
   ceph-mon
@@ -192,3 +210,8 @@ install(PROGRAMS
   ${CMAKE_SOURCE_DIR}/src/ceph_common.sh
   ${CMAKE_BINARY_DIR}/ceph
   DESTINATION bin)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/pybind/
+  DESTINATION ${PYTHON_INSTDIR})
+
+
