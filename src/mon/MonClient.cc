@@ -107,6 +107,9 @@ int MonClient::get_monmap()
 int MonClient::get_monmap_privately()
 {
   ldout(cct, 10) << "get_monmap_privately" << dendl;
+
+  cout << "get_monmap_privately (** conflict with XIO)" << std::endl;
+
   Mutex::Locker l(monc_lock);
 
   bool temp_msgr = false;
@@ -350,8 +353,8 @@ void MonClient::handle_monmap(MMonMap *m)
     _finish_hunting();
   }
 
-  map_cond.Signal();
   want_monmap = false;
+  map_cond.Signal();
 
   m->put();
 }
