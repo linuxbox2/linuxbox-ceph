@@ -215,9 +215,8 @@ public:
 	      code = xio_send_response(req);
 	    }
 
-	    if (code) {
-	      abort();
-	    }
+	    if (code)
+	      continue; /* XXX messages will be queued for cleanup */
 
 	    if (timestamp)
 	      xcon->send.set(timestamp);
