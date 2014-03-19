@@ -216,7 +216,12 @@ public:
 	    }
 
 	    if (code)
+{ // XXX cleanup or discard
+cerr << "IGNORING THIS FAILURE: xio_send_" << ((long)(req))<< " "
+<< (!req->request ? "request" : "response") << " failed, code="
+<< code << std::endl;
 	      continue; /* XXX messages will be queued for cleanup */
+}
 
 	    if (timestamp)
 	      xcon->send.set(timestamp);
