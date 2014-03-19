@@ -502,8 +502,10 @@ int XioMessenger::send_message(Message *m, Connection *con)
 	 << " features: " << xcon->get_features() << std::endl;
 
     /* XXXX verify */
-    if (m->get_type() == 43) {
-      cout << "stop 43 " << *m << std::endl;
+    switch (m->get_type()) {
+    case 43:
+    // case 15:
+      cout << "stop 43 " << m->get_type() << " " << *m << std::endl;
       buffer::list &payload = m->get_payload();
       cout << "payload dump:" << std::endl;
       payload.hexdump(cout);
