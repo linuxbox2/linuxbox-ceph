@@ -273,13 +273,14 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 					    sizeof(struct xio_msg), 0,
 					    XMSG_MEMPOOL_MAX,
 					    XMSG_MEMPOOL_MIN);
+// XXX cleanup or discard.  But almost certainly something here for ceph-osd.
 for (int i = max(sizeof(XioCompletionHook),max(sizeof(struct xio_msg),sizeof(XioMsg)));;) {
 i = (i*8119)/5741;
 if (i >= 131072) break;
 int j = (i+15)&~15;
-printf ("SET %lx %d\n", (long)xio_msgr_noreg_mpool, i);
+// printf ("SET %lx %d\n", (long)xio_msgr_noreg_mpool, j);
 (void) xio_rdma_mempool_add_allocator(xio_msgr_noreg_mpool,
-i, 0, XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+j, 0, XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
 }
 
       /* initialize ops singleton */
