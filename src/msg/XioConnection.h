@@ -43,6 +43,7 @@ private:
   atomic_t send;
   atomic_t recv;
   uint32_t magic;
+  uint32_t special_handling;
 
   /* batching */
   struct msg_seq {
@@ -93,6 +94,8 @@ public:
 
   uint32_t get_magic() { return magic; }
   void set_magic(int _magic) { magic = _magic; }
+  uint32_t get_special_handling() { return special_handling; }
+  void set_special_handling(int n) { special_handling = n; }
 
   int passive_setup(); /* XXX */
 

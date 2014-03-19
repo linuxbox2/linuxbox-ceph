@@ -171,6 +171,8 @@
 #define MSG_MAGIC_TRACE_XIO    0x0020
 #define MSG_MAGIC_TRACE_XMSGR    0x0040
 
+#define MSG_SPECIAL_HANDLING_REDUPE	1
+
 class Message : public RefCountedObject {
 protected:
   ceph_msg_header  header;      // headerelope
@@ -193,6 +195,7 @@ protected:
   ConnectionRef connection;
 
   uint32_t magic;
+  uint32_t special_handling;
 
 public:
   class CompletionHook : public Context {
@@ -229,6 +232,7 @@ public:
   Message()
     : connection(NULL),
       magic(0),
+      special_handling(0),
       completion_hook(NULL),
       byte_throttler(NULL),
       msg_throttler(NULL),
@@ -239,6 +243,7 @@ public:
   Message(int t, int version=1, int compat_version=0)
     : connection(NULL),
       magic(0),
+      special_handling(0),
       completion_hook(NULL),
       byte_throttler(NULL),
       msg_throttler(NULL),
@@ -289,6 +294,8 @@ public:
 
   uint32_t get_magic() { return magic; }
   void set_magic(int _magic) { magic = _magic; }
+  uint32_t get_special_handling() { return special_handling; }
+  void set_special_handling(int n) { special_handling = n; }
 
   /*
    * If you use get_[data, middle, payload] you shouldn't
@@ -411,7 +418,7 @@ public:
   virtual void encode_payload(uint64_t features) = 0;
   virtual const char *get_type_name() const = 0;
   virtual void print(ostream& out) const {
-    out << get_type_name() << " magic: " << magic;
+    out << get_type_name() << " magic: " << magic << " special_handling: " << special_handling;
   }
 
   virtual void dump(Formatter *f) const;

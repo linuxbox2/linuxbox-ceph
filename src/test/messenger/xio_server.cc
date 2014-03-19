@@ -78,6 +78,8 @@ int main(int argc, const char **argv)
 				     "xio_server",
 				     0 /* nonce */,
 				     2 /* portals */);
+	static_cast<XioMessenger*>(messenger)->set_special_handling(MSG_SPECIAL_HANDLING_REDUPE);
+
 	messenger->set_default_policy(
 	  Messenger::Policy::stateless_server(CEPH_FEATURES_ALL, 0));
 

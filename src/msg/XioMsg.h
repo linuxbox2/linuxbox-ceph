@@ -176,12 +176,13 @@ public:
   ~XioMsg()
     {
       free(req_arr); /* normally a no-op */
-#if 0
-      m->put();
-#else
-      /* and requeue it */
-      xcon->get_messenger()->send_message(m, xcon);
-#endif
+      if (m->get_special_handling() & MSG_SPECIAL_HANDLING_REDUPE) {
+	  /* testing only! server's ready, resubmit request */
+	  xcon->get_messenger()->send_message(m, xcon);
+      } else {
+	  /* the normal case: done with message */
+	  m->put();
+      }
     }
 
   typedef bi::list< XioMsg,

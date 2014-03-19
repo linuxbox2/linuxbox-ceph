@@ -37,6 +37,7 @@ private:
   XioPortals portals;
   int port_shift;
   uint32_t magic;
+  uint32_t special_handling;
 
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
@@ -50,6 +51,8 @@ public:
 
   uint32_t get_magic() { return magic; }
   void set_magic(int _magic) { magic = _magic; }
+  uint32_t get_special_handling() { return special_handling; }
+  void set_special_handling(int n) { special_handling = n; }
 
   /* xio hooks */
   int new_session(struct xio_session *session,

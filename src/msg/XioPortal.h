@@ -124,6 +124,7 @@ private:
   bool _shutdown;
   bool drained;
   uint32_t magic;
+  uint32_t special_handling;
 
   friend class XioPortals;
   friend class XioMessenger;
@@ -132,7 +133,8 @@ public:
   XioPortal(XioMessenger *_msgr) :
   msgr(_msgr), ctx(NULL), server(NULL), submit_q(), xio_uri(""),
   portal_id(NULL), _shutdown(false), drained(false),
-  magic(0)
+  magic(0),
+  special_handling(0)
     {
       pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
       pthread_mutex_init(&mtx, NULL);

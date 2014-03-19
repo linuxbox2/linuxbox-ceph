@@ -85,6 +85,8 @@ int main(int argc, const char **argv)
 				     0 /* nonce */,
 				     0 /* portals */);
 
+	static_cast<XioMessenger*>(messenger)->set_special_handling(MSG_SPECIAL_HANDLING_REDUPE);
+
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 
 	string dest_str = "tcp://";

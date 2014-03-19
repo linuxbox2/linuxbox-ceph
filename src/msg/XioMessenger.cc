@@ -220,7 +220,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     conns_lock("XioMessenger::conns_lock"),
     portals(this, nportals),
     port_shift(0),
-    magic(0)
+    magic(0),
+    special_handling(0)
 {
   /* package init */
   if (! initialized.read()) {
@@ -492,6 +493,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   /* trace flag */
   m->set_magic(magic);
+  m->set_special_handling(special_handling);
 
   /* get an XioMsg frame */
   XioMsg *xmsg = pool_alloc_xio_msg(m, xcon);
