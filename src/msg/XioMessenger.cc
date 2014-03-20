@@ -162,26 +162,6 @@ static int on_cancel_request(struct xio_session *session,
   return 0;
 }
 
-static int get_dma_buffers(struct xio_msg *msg, void *conn_user_context)
-{
-  unsigned int ix;
-  struct xio_iovec_ex *iov;
-  size_t iov_len = msg->in.data_iovlen;
-  struct xio_rdma_mp_mem mp[1];
-
-  for (ix = 0; ix < iov_len; ++ix) {
-    iov = &msg->in.data_iov[ix];
-    int e = xio_rdma_mempool_alloc(xio_msgr_mpool, iov->iov_len, mp);
-    assert(e == 0);
-    iov->mp = *mp;
-    iov->iov_base = mp->addr;
-    iov->mr = mp->mr;
-    iov->user_context = &iov->mp;
-  }
-
-  return 0;
-}
-
 /* free functions */
 static string xio_uri_from_entity(const entity_addr_t& addr, bool want_port)
 {
@@ -294,7 +274,6 @@ j, 0, XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
       xio_msgr_ops.on_msg_error = on_msg_error;
       xio_msgr_ops.on_cancel = on_cancel;
       xio_msgr_ops.on_cancel_request = on_cancel_request;
-//      xio_msgr_ops.assign_data_in_buf = get_dma_buffers;
 
       /* mark initialized */
       initialized.set(1);
