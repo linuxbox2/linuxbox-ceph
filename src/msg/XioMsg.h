@@ -147,9 +147,8 @@ public:
 public:
   XioMsg(Message *_m, XioConnection *_xcon, struct xio_rdma_mp_mem& _mp) :
     m(_m), hdr(m->get_header(), m->get_footer()),
-    req_arr(NULL), xcon(_xcon), mp_this(_mp)
+    req_arr(NULL), xcon(_xcon), mp_this(_mp), nref(1)
     {
-      nref = 1;
       const entity_inst_t &inst = xcon->get_messenger()->get_myinst();
       hdr.peer_type = inst.name.type();
       hdr.hdr->src.type = inst.name.type();
