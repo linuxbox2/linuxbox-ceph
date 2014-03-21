@@ -66,9 +66,6 @@ void usage()
   generic_server_usage();
 }
 
-void hack_fix_addr(char, entity_addr_t *);
-
-
 int main(int argc, const char **argv) 
 {
   vector<const char*> args;
@@ -424,16 +421,14 @@ int main(int argc, const char **argv)
     exit(1);
 
   entity_addr_t ms_xio_public_addr = ms_public->get_myaddr();
-hack_fix_addr('p', &ms_xio_public_addr);
   ms_xio_public_addr.set_port(
     ms_xio_public_addr.get_port() + 111 /* XXXX shift */);
-  r = ms_xio_public->bind(ms_xio_public_addr);	// YYY
+  r = ms_xio_public->bind(ms_xio_public_addr);
   if (r < 0)
     exit(1);
 
   // hb back should bind to same ip as cluster_addr (if specified)
   entity_addr_t hb_back_addr = g_conf->osd_heartbeat_addr;
-hack_fix_addr('b', &hb_back_addr);
   if (hb_back_addr.is_blank_ip()) {
     hb_back_addr = g_conf->cluster_addr;
     if (hb_back_addr.is_ip())
@@ -445,7 +440,6 @@ hack_fix_addr('b', &hb_back_addr);
 
   // hb front should bind to same ip as public_addr
   entity_addr_t hb_front_addr = g_conf->public_addr;
-hack_fix_addr('f', &hb_front_addr);
   if (hb_front_addr.is_ip())
     hb_front_addr.set_port(0);
   r = ms_hb_front_server->bind(hb_front_addr);
@@ -455,10 +449,9 @@ hack_fix_addr('f', &hb_front_addr);
   ms_objecter->bind(g_conf->public_addr);
 
   entity_addr_t ms_xio_objecter_addr = ms_objecter->get_myaddr();
-hack_fix_addr('o', &ms_xio_objecter_addr);
   ms_xio_objecter_addr.set_port(
     ms_xio_objecter_addr.get_port() + 111 /* XXXX shift */);
-  r = ms_xio_objecter->bind(ms_xio_objecter_addr);	// YYY
+  r = ms_xio_objecter->bind(ms_xio_objecter_addr);
   if (r < 0)
     exit(1);
 
@@ -567,18 +560,4 @@ hack_fix_addr('o', &ms_xio_objecter_addr);
   }
 
   return 0;
-}
-
-void hack_fix_addr(char ch, entity_addr_t *addr)
-{
-    char *t, *ep;
-
-    t = getenv("HACK_ADDRESS");
-    if (!t) return;
-    a = new entity_name_t();
-    if (a->parse(t, &ep))!  {
-	fprintf(stderr,"Can't grok %s\n", t);
-	return;
-    }
-    *addr = *a;
 }
