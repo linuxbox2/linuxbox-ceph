@@ -35,7 +35,7 @@ public:
   ~XioPool()
     {
       struct xio_piece *p;
-      while (p = first) {
+      while ((p = first)) {
 	first = p->next;
 	xio_rdma_mempool_free(p->mp);
       }

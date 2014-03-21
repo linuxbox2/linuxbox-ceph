@@ -23,6 +23,7 @@ extern "C" {
 #include "XioConnection.h"
 #include "msg/msg_types.h"
 #include <boost/intrusive/list.hpp>
+#include "XioPool.h"
 
 namespace bi = boost::intrusive;
 
@@ -214,33 +215,36 @@ static inline void dereg_xio_req(struct xio_msg *rreq)
 #endif
 }
 
+extern struct xio_rdma_mempool *xio_msgr_noreg_mpool;
+
 class XioCompletionHook : public Message::CompletionHook
 {
 private:
   list <struct xio_msg *> msg_seq;
+  XioPool rsp_pool;
   atomic_t nrefs;
-  bool rsp;
   friend class XioConnection;
   friend class XioMessenger;
 public:
   struct xio_rdma_mp_mem mp_this;
-  struct xio_rdma_mp_mem mp_rsp;
 
   XioCompletionHook(Message *_m, list <struct xio_msg *>& _msg_seq,
 		    struct xio_rdma_mp_mem& _mp) :
-    CompletionHook(_m), msg_seq(_msg_seq), nrefs(1), rsp(false), mp_this(_mp)
+    CompletionHook(_m), msg_seq(_msg_seq), rsp_pool(xio_msgr_noreg_mpool),
+    nrefs(1), mp_this(_mp)
     {}
   virtual void finish(int r);
   virtual void complete(int r) {
     finish(r);
   }
 
+  XioCompletionHook * get() {
+    nrefs.inc(); return this;
+  }
+
   void put() {
     int refs = nrefs.dec();
-    if (refs == 1) {
-      if (rsp) {
-	xio_rdma_mempool_free(&mp_rsp);
-      }
+    if (refs == 1) { /* XXXX refs 1?  why not 0? */
       struct xio_rdma_mp_mem *mp = &this->mp_this;
       this->~XioCompletionHook();
       xio_rdma_mempool_free(mp);

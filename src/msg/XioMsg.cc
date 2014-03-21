@@ -17,8 +17,7 @@
 #include "XioConnection.h"
 #include "XioMsg.h"
 
-extern struct xio_rdma_mempool *xio_msgr_mpool;
-extern struct xio_rdma_mempool *xio_msgr_noreg_mpool;
+extern XioPool *xrp_pool;
 
 void XioCompletionHook::finish(int r)
 {
@@ -36,28 +35,18 @@ void XioCompletionHook::finish(int r)
       XioConnection *xcon = static_cast<XioConnection*>(conn.get());
 
       /* XXX ack it (Eyal:  we'd like an xio_ack_response) */
-      int e = xio_rdma_mempool_alloc(xio_msgr_noreg_mpool,
-				    sizeof(struct xio_msg), &mp_rsp);
-      assert(e == 0);
-      rsp = (struct xio_msg *) mp_rsp.addr;
-      rsp->user_context = &mp_rsp;
+      rsp = (struct xio_msg *) rsp_pool.alloc(sizeof(struct xio_msg));
+      memset(&rsp->out, 0, sizeof(struct xio_vmsg));
+      rsp->flags = 0;
+      rsp->type = XIO_MSG_TYPE_RSP;
+      rsp->user_context = this->get();
       rsp->request = msg;
-      this->rsp = true;
 
-      unsigned int ix;
-      struct xio_iovec_ex *iov;
-      size_t iov_len = msg->in.data_iovlen;
-      struct xio_rdma_mp_mem *mp;
-
-      for (ix = 0; ix < iov_len; ++ix) {
-	iov = &msg->in.data_iov[ix];
-	mp = (struct xio_rdma_mp_mem *) iov->user_context;
-	xio_rdma_mempool_free(mp);
-      }
-
+      /* XXX not MP correct */
       pthread_spin_lock(&xcon->sp);
       (void) xio_send_response(rsp); /* XXX can now chain */
       pthread_spin_unlock(&xcon->sp);
+
     }
       break;
     case XIO_MSG_TYPE_RSP:

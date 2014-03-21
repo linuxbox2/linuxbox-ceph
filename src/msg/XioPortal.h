@@ -210,11 +210,14 @@ public:
 	    req = &xmsg->req_0;
 
 	    /* handle response traffic */
-	    if (! req->request) {
+	    switch (req->type) {
+	    case XIO_MSG_TYPE_REQ:
 	      code = xio_send_request(xcon->conn, req);
 	      timestamp = req->timestamp;
-	    } else {
+	      break;
+	    default:
 	      code = xio_send_response(req);
+	      break;
 	    }
 
 	    if (code)
