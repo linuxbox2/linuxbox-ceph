@@ -21,6 +21,7 @@ extern XioPool *xrp_pool;
 
 void XioCompletionHook::finish(int r)
 {
+  XioRsp *xrsp;
   struct xio_msg *msg, *rsp;
   list <struct xio_msg *>::iterator iter;
 
@@ -35,18 +36,14 @@ void XioCompletionHook::finish(int r)
       XioConnection *xcon = static_cast<XioConnection*>(conn.get());
 
       /* XXX ack it (Eyal:  we'd like an xio_ack_response) */
-      rsp = (struct xio_msg *) rsp_pool.alloc(sizeof(struct xio_msg));
-      memset(&rsp->out, 0, sizeof(struct xio_vmsg));
-      rsp->flags = 0;
-      rsp->type = XIO_MSG_TYPE_RSP;
+      xrsp = (XioRsp *) rsp_pool.alloc(sizeof(XioRsp));
+      new (xrsp) XioRsp(xcon);
+      rsp = &xrsp->rsp;
       rsp->user_context = this->get();
       rsp->request = msg;
 
-      /* XXX not MP correct */
-      pthread_spin_lock(&xcon->sp);
-      (void) xio_send_response(rsp); /* XXX can now chain */
-      pthread_spin_unlock(&xcon->sp);
-
+      /* merge with portal traffic */
+      xcon->portal->enqueue_for_send(xrsp);
     }
       break;
     case XIO_MSG_TYPE_RSP:

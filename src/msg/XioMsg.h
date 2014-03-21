@@ -132,23 +132,40 @@ public:
 
 WRITE_CLASS_ENCODER(XioMsgHdr);
 
-struct XioMsg
+struct XioSubmit
+{
+public:
+  enum xio_msg_type type;
+  bi::list_member_hook<> submit_list;
+  XioConnection *xcon;
+
+  XioSubmit(enum xio_msg_type _type, XioConnection *_xcon) :
+    type(_type), xcon(_xcon)
+    {}
+
+  typedef bi::list< XioSubmit,
+		    bi::member_hook< XioSubmit,
+				     bi::list_member_hook<>,
+				     &XioSubmit::submit_list >
+		    > Queue;
+};
+
+struct XioMsg : public XioSubmit
 {
 public:
   Message* m;
   XioMsgHdr hdr;
   struct xio_msg req_0;
   struct xio_msg* req_arr;
-  XioConnection *xcon;
-  bi::list_member_hook<> submit_list;
   struct xio_rdma_mp_mem mp_this;
   int nbuffers;
   int nref;
 
 public:
   XioMsg(Message *_m, XioConnection *_xcon, struct xio_rdma_mp_mem& _mp) :
+    XioSubmit(XIO_MSG_TYPE_REQ, _xcon),
     m(_m), hdr(m->get_header(), m->get_footer()),
-    req_arr(NULL), xcon(_xcon), mp_this(_mp), nref(1)
+    req_arr(NULL), mp_this(_mp), nref(1)
     {
       const entity_inst_t &inst = xcon->get_messenger()->get_myinst();
       hdr.peer_type = inst.name.type();
@@ -184,13 +201,6 @@ public:
 	  m->put();
       }
     }
-
-  typedef bi::list< XioMsg,
-		    bi::member_hook< XioMsg,
-				     bi::list_member_hook<>,
-				     &XioMsg::submit_list >
-		    > Queue;
-
 };
 
 static inline void dereg_xio_req(struct xio_msg *rreq)
@@ -214,6 +224,19 @@ static inline void dereg_xio_req(struct xio_msg *rreq)
   }
 #endif
 }
+
+struct XioRsp : public XioSubmit
+{
+public:
+  struct xio_msg rsp;
+
+  XioRsp(XioConnection *_xcon) : XioSubmit(XIO_MSG_TYPE_RSP, _xcon)
+    {
+      memset(&rsp.out, 0, sizeof(struct xio_vmsg));
+      rsp.flags = 0;
+      rsp.type = XIO_MSG_TYPE_RSP;
+    };
+};
 
 extern struct xio_rdma_mempool *xio_msgr_noreg_mpool;
 

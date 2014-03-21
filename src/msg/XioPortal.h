@@ -68,7 +68,7 @@ private:
 	return &qlane[((uint64_t) pthread_self()) % nlanes];
       }
 
-    void enq(XioMsg* xmsg)
+    void enq(XioSubmit* xs)
       {
 	Lane* lane = get_lane();
 #if 0
@@ -76,7 +76,7 @@ private:
 #else
 	pthread_mutex_lock(&lane->mtx);
 #endif
-	lane->q.push_back(*xmsg);
+	lane->q.push_back(*xs);
 	++(lane->size);
 #if 0
 	pthread_spin_unlock(&lane->sp);
@@ -85,7 +85,7 @@ private:
 #endif
       }
 
-    void deq(XioMsg::Queue &send_q)
+    void deq(XioSubmit::Queue &send_q)
       {
 	int ix;
 	Lane* lane;
@@ -98,7 +98,7 @@ private:
 	pthread_mutex_lock(&lane->mtx);
 #endif
 	  if (lane->size > 0) {
-	    XioMsg::Queue::const_iterator i1 = send_q.end();
+	    XioSubmit::Queue::const_iterator i1 = send_q.end();
 	    send_q.splice(i1, lane->q);
 	    lane->size = 0;
 	  }
@@ -166,10 +166,10 @@ public:
       return (!!server);
     }
 
-  void enqueue_for_send(XioMsg *xmsg)
+  void enqueue_for_send(XioSubmit *xs)
     {
       if (! _shutdown) {
-	submit_q.enq(xmsg);
+	submit_q.enq(xs);
 	xio_context_stop_loop(ctx, false);
       }
     }
@@ -177,12 +177,12 @@ public:
   void *entry()
     {
       int ix, size, code;
-      XioMsg::Queue send_q;
-      XioMsg::Queue::iterator q_iter;
-      XioConnection *xcon;
-      struct xio_msg *req;
-      uint64_t timestamp;
+      XioSubmit::Queue send_q;
+      XioSubmit::Queue::iterator q_iter;
+      struct xio_msg *msg;
+      XioSubmit *xs;
       XioMsg *xmsg;
+      XioRsp *xrsp;
 
       do {
 	submit_q.deq(send_q);
@@ -201,35 +201,32 @@ public:
 
 	if (size > 0) {
 	  /* XXX look out, no flow control */
-	  timestamp = 0;
 	  for (ix = 0; ix < size; ++ix) {
 	    q_iter = send_q.begin();
-	    xmsg = &(*q_iter);
+	    xs = &(*q_iter);
 	    send_q.erase(q_iter);
-	    xcon = xmsg->xcon;
-	    req = &xmsg->req_0;
 
-	    /* handle response traffic */
-	    switch (req->type) {
+	    switch(xs->type) {
 	    case XIO_MSG_TYPE_REQ:
-	      code = xio_send_request(xcon->conn, req);
-	      timestamp = req->timestamp;
+	      xmsg = static_cast<XioMsg*>(xs);
+	      msg = &xmsg->req_0;
+	      code = xio_send_request(xs->xcon->conn, msg);
+	      xs->xcon->send.set(msg->timestamp); /* XXX atomic? */
 	      break;
 	    default:
-	      code = xio_send_response(req);
+	      /* XIO_MSG_TYPE_RSP */
+	      xrsp = static_cast<XioRsp*>(xs);
+	      msg = &xrsp->rsp;
+	      code = xio_send_response(msg);
 	      break;
-	    }
+	    };
 
-	    if (code)
-{ // XXX cleanup or discard
-cerr << "IGNORING THIS FAILURE: xio_send_" << ((long)(req))<< " "
-<< (!req->request ? "request" : "response") << " failed, code="
-<< code << std::endl;
+	    if (code) { // XXX cleanup or discard
+	      cerr << "IGNORING THIS FAILURE: xio_send_" << ((long)(msg))<< " "
+		   << (!msg->request ? "request" : "response") <<
+		" failed, code=" << code << std::endl;
 	      continue; /* XXX messages will be queued for cleanup */
-}
-
-	    if (timestamp)
-	      xcon->send.set(timestamp);
+	    }
 	  }
 	}
 
