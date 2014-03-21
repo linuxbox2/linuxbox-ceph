@@ -187,7 +187,7 @@ int librados::RadosClient::connect()
     XioMessenger *xmsgr
       = new XioMessenger(cct, entity_name_t::CLIENT(-1), "radosclient",
 			 nonce, 0 /* portals */);
-    xmsgr->set_magic(MSG_MAGIC_TRACE_XCON);
+//    xmsgr->set_magic(MSG_MAGIC_TRACE_XCON);
     xmsgr->set_port_shift(111) /* XXX */;
     messenger = xmsgr;
   }
