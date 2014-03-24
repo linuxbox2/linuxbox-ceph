@@ -157,10 +157,10 @@ else()
 endif(CRYPTOPP_FOUND)
 
 option(WITH_XIO "Enable XIO messaging" ON)
-if(${WITH_XIO})
+if(WITH_XIO)
 find_package(xio)
 set(HAVE_XIO ${Xio_FOUND})
-endif(${WITH_XIO})
+endif(WITH_XIO)
 
 #option for RGW
 option(WITH_RADOSGW "Rados Gateway is enabled" ON)
