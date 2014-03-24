@@ -16,13 +16,13 @@
 #ifndef XIO_PORTAL_H
 #define XIO_PORTAL_H
 
-#include "SimplePolicyMessenger.h"
 extern "C" {
 #include "libxio.h"
 }
+#include <boost/lexical_cast.hpp>
+#include "SimplePolicyMessenger.h"
 #include "XioConnection.h"
 #include "XioMsg.h"
-#include <boost/lexical_cast.hpp>
 
 #ifndef CACHE_LINE_SIZE
 #define CACHE_LINE_SIZE 64 /* XXX arch-specific define */
@@ -154,17 +154,7 @@ public:
       }
     }
 
-  int bind(struct xio_session_ops *ops, const string &_uri)
-    {
-      xio_uri = _uri;
-      portal_id = strdup(xio_uri.c_str());
-      server = xio_bind(ctx, ops, portal_id, NULL, 0, msgr);
-      if (magic & (MSG_MAGIC_XIO)) {
-	printf("xio_bind: portal %p %s returned server %p\n",
-	       this, xio_uri.c_str(), server);
-      }
-      return (!!server);
-    }
+  int bind(struct xio_session_ops *ops, const string &_uri);
 
   void enqueue_for_send(XioSubmit *xs)
     {
@@ -305,27 +295,7 @@ public:
     }
 
   int bind(struct xio_session_ops *ops, const string& base_uri,
-	   const int base_port)
-    {
-      /* a server needs at least 1 portal */
-      if (n < 1)
-	return EINVAL;
-
-      XioPortal *portal;
-      int bind_size = portals.size();
-
-      /* bind a consecutive range of ports */
-      for (int bind_ix = 1, bind_port = base_port;
-	   bind_ix < bind_size; ++bind_ix, ++bind_port) {
-	string xio_uri = base_uri;
-	xio_uri += ":";
-	xio_uri += boost::lexical_cast<std::string>(bind_port);
-	portal = portals[bind_ix];
-	(void) portal->bind(ops, xio_uri);
-      }
-
-      return 0;
-    }
+	   const int base_port);
 
     int accept(struct xio_session *session,
 		 struct xio_new_session_req *req,

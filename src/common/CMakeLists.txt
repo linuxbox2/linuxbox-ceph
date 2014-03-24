@@ -57,6 +57,7 @@ set(xio_messenger_cc
   ../msg/XioConnection.cc
   ../msg/XioMsg.cc
   ../msg/XioMessenger.cc
+  ../msg/XioPortal.cc
   )
 
 endif(HAVE_XIO)
