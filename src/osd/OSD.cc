@@ -3850,9 +3850,11 @@ void OSD::handle_command(MMonCommand *m)
 void OSD::handle_command(MCommand *m)
 {
   ConnectionRef con = m->get_connection();
+  Messenger *msgr = con->get_messenger();
+
   Session *session = static_cast<Session *>(con->get_priv());
   if (!session) {
-    client_messenger->send_message(new MCommandReply(m, -EPERM), con);
+    msgr->send_message(new MCommandReply(m, -EPERM), con);
     m->put();
     return;
   }
@@ -3861,7 +3863,7 @@ void OSD::handle_command(MCommand *m)
   session->put();
 
   if (!caps.allow_all() || m->get_source().is_mon()) {
-    client_messenger->send_message(new MCommandReply(m, -EPERM), con);
+    msgr->send_message(new MCommandReply(m, -EPERM), con);
     m->put();
     return;
   }
@@ -5588,9 +5590,7 @@ MOSDMap *OSD::build_incremental_map_msg(epoch_t since, epoch_t to)
 
 void OSD::send_map(MOSDMap *m, Connection *con)
 {
-  Messenger *msgr = client_messenger;
-  if (entity_name_t::TYPE_OSD == con->get_peer_type())
-    msgr = cluster_messenger;
+  Messenger *msgr = con->get_messenger();
   msgr->send_message(m, con);
 }
 

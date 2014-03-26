@@ -360,10 +360,12 @@ public:
   pair<ConnectionRef,ConnectionRef> get_con_osd_hb(int peer, epoch_t from_epoch);  // (back, front)
   void send_message_osd_cluster(int peer, Message *m, epoch_t from_epoch);
   void send_message_osd_cluster(Message *m, Connection *con) {
-    cluster_messenger->send_message(m, con);
+    Messenger *messenger = con->get_messenger();
+    messenger->send_message(m, con);
   }
   void send_message_osd_cluster(Message *m, const ConnectionRef& con) {
-    cluster_messenger->send_message(m, con.get());
+    Messenger *messenger = con->get_messenger();
+    messenger->send_message(m, con.get());
   }
   void send_message_osd_client(Message *m, Connection *con) {
     Messenger *messenger = con->get_messenger();
