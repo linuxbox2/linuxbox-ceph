@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.7)
+cmake_minimum_required(VERSION 2.8.11)
 
 project(Ceph)
 
@@ -11,17 +11,17 @@ include_directories(
 #Check Includes
 
 include(CheckIncludeFiles)
+include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 
 CHECK_FUNCTION_EXISTS(fallocate CEPH_HAVE_FALLOCATE)
 CHECK_FUNCTION_EXISTS(syncfs HAVE_SYS_SYNCFS) 
 CHECK_FUNCTION_EXISTS(sync_file_range HAVE_SYNC_FILE_RANGE)
 CHECK_INCLUDE_FILES("arpa/inet.h" HAVE_ARPA_INET_H)
-CHECK_INCLUDE_FILES("boost/random/discrete_distribution.hpp" HAVE_BOOST_RANDOM_DISCRETE_DISTRIBUTION)
 CHECK_INCLUDE_FILES("dirent.h" HAVE_DIRENT_H)
 CHECK_INCLUDE_FILES("dlfcn.h" HAVE_DLFCN_H)
 CHECK_INCLUDE_FILES("inttypes.h" HAVE_INTTYPES_H)
-CHECK_INCLUDE_FILES("leveldb/filter_policy.h" HAVE_LEVELDB_FILTER_POLICY)
+CHECK_INCLUDE_FILE_CXX("leveldb/filter_policy.h" HAVE_LEVELDB_FILTER_POLICY)
 CHECK_INCLUDE_FILES("memory.h" HAVE_MEMORY_H)
 CHECK_INCLUDE_FILES("ndir.h" HAVE_NDIR_H)
 CHECK_INCLUDE_FILES("netdb.h" HAVE_NETDB_H)
@@ -48,7 +48,8 @@ CHECK_INCLUDE_FILES("sys/wait.h" HAVE_SYS_WAIT_H)
 CHECK_INCLUDE_FILES("sys/xattr.h" HAVE_SYS_XATTR_H)
 CHECK_INCLUDE_FILES("unistd.h" HAVE_UNISTD_H)
 CHECK_INCLUDE_FILES("utime.h" HAVE_UTIME_H)
-CHECK_INCLUDE_FILES("${CMAKE_SOURCE_DIR}/src/include/fiemap.h" HAVE_FIEMAP_H)
+CHECK_INCLUDE_FILES("linux/fiemap.h" HAVE_FIEMAP_H)
+CHECK_INCLUDE_FILES("leveldb/filter_policy.h" HAVE_LEVELDB_FILTER_POLICY)
 CHECK_INCLUDE_FILES("expat.h" HAVE_EXPAT_H)
 CHECK_INCLUDE_FILES("fuse/fuse_lowlevel.h" HAVE_FUSE_LOWLEVEL_H)
 CHECK_INCLUDE_FILES("curl/curl.h" HAVE_FUSE_LOWLEVEL_H)
@@ -68,6 +69,17 @@ CHECK_INCLUDE_FILES("uuid/uuid.h" HAVE_UUID_H)
 CHECK_INCLUDE_FILES("atomic_ops.h" HAVE_ATOMIC_OPS)
 CHECK_INCLUDE_FILES("keyutils.h" HAVE_KEYUTILS_H)
 
+set(DEBUG_GATHER ON)
+
+set(CEPH_MAN_DIR "share/man" CACHE STRING "Install location for man pages (relative to prefix).")
+
+option(ENABLE_SHARED "build shared libraries" ON)
+if(${ENABLE_SHARED})
+ set(CEPH_SHARED SHARED)
+else(${ENABLE_SHARED})
+ set(CEPH_SHARED STATIC)
+endif(${ENABLE_SHARED})
+
 option(WITH_AIO "AIO is here ON" ON)
 if(${WITH_AIO})
 find_package(aio)
@@ -81,6 +93,17 @@ find_package(fuse)
 set(HAVE_LIBFUSE ${FUSE_FOUND})
 CHECK_FUNCTION_EXISTS(fuse_getgroups HAVE_FUSE_GETGROUPS)
 endif(${WITH_FUSE})
+
+# probably fuse etc need this -- how to check? XXX
+option(WITH_MDS "MDS is here" ON)
+# needs mds and? XXX
+option(WITH_CLIENT "Client is here" ON)
+
+# key-value store
+option(WITH_KVS "Key value store is here" ON)
+
+# remote block storage
+option(WITH_RBD "Remote block storage is here" ON)
 
 option(WITH_LEVELDB "LevelDB is here" ON)
 if(${WITH_LEVELDB})
@@ -137,7 +160,11 @@ configure_file(
 
 add_definitions(-D__linux__)
 
-set(Boost_USE_STATIC_LIBS   ON)
+if(${ENABLE_SHARED})
+  set(Boost_USE_STATIC_LIBS   OFF)
+else(${ENABLE_SHARED})
+  set(Boost_USE_STATIC_LIBS   ON)
+endif(${ENABLE_SHARED})
 set(Boost_USE_MULTITHREADED ON)
 find_package(Boost COMPONENTS thread system REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
@@ -156,5 +183,5 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 set(OperatingSystem "Mac OS X")  
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
-
 add_subdirectory(src)
+add_subdirectory(man)

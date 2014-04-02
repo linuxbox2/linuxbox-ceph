@@ -31,4 +31,6 @@ set(mds_srcs
 	${CMAKE_SOURCE_DIR}/src/osdc/Journaler.cc
 )
 
+include_directories("..")
+
 add_library(mds ${mds_srcs})

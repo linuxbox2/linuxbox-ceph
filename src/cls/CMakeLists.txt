@@ -1,4 +1,4 @@
-add_subdirectory(lock)
+#add_subdirectory(lock)
 add_subdirectory(log)
 add_subdirectory(refcount)
 add_subdirectory(replica_log)

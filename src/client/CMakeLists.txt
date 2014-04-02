@@ -11,6 +11,8 @@ set(libclient_srcs
 	Trace.cc
 )
 
+include_directories("..")
+
 add_library(client ${libclient_srcs})
 
 target_link_libraries(client osdc ${LIBEDIT_LIBS})
