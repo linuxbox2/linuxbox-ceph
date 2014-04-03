@@ -563,7 +563,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
       tail = req;
      }
   }
-  xcon->portal->enqueue_for_send(xmsg);
+  xcon->portal->enqueue_for_send(xcon, xmsg);
 
   return code;
 } /* send_message(Message *, Connection *) */

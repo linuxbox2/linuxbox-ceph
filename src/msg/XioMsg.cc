@@ -43,7 +43,7 @@ void XioCompletionHook::finish(int r)
       rsp->request = msg;
 
       /* merge with portal traffic */
-      xcon->portal->enqueue_for_send(xrsp);
+      xcon->portal->enqueue_for_send(xcon, xrsp);
     }
       break;
     case XIO_MSG_TYPE_RSP:

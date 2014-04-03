@@ -63,14 +63,14 @@ private:
 	}
       }
 
-    inline Lane* get_lane()
+    inline Lane* get_lane(XioConnection *xcon)
       {
-	return &qlane[((uint64_t) pthread_self()) % nlanes];
+	return &qlane[((uint64_t) xcon) % nlanes];
       }
 
-    void enq(XioSubmit* xs)
+    void enq(XioConnection *xcon, XioSubmit* xs)
       {
-	Lane* lane = get_lane();
+	Lane* lane = get_lane(xcon);
 #if 0
 	pthread_spin_lock(&lane->sp);
 #else
@@ -156,10 +156,10 @@ public:
 
   int bind(struct xio_session_ops *ops, const string &_uri);
 
-  void enqueue_for_send(XioSubmit *xs)
+  void enqueue_for_send(XioConnection *xcon, XioSubmit *xs)
     {
       if (! _shutdown) {
-	submit_q.enq(xs);
+	submit_q.enq(xcon, xs);
 	xio_context_stop_loop(ctx, false);
       }
     }
