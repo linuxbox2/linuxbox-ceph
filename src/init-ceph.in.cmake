@@ -1,0 +1,440 @@
+#!/bin/sh
+# Start/stop ceph daemons
+# chkconfig: 2345 60 80
+
+### BEGIN INIT INFO
+# Provides:          ceph
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Required-Start:    $remote_fs $named $network $time
+# Required-Stop:     $remote_fs $named $network $time
+# Short-Description: Start Ceph distributed file system daemons at boot time
+# Description:       Enable Ceph distributed file system services.
+### END INIT INFO
+
+# if we start up as ./mkcephfs, assume everything else is in the
+# current directory too.
+if [ `dirname $0` = "." ] && [ $PWD != "/etc/init.d" ]; then
+    BINDIR=.
+    SBINDIR=.
+    LIBDIR=.
+    ETCDIR=.
+else
+    BINDIR=@bindir@
+    SBINDIR=@prefix@/sbin
+    LIBDIR=@libdir@/ceph
+    ETCDIR=@sysconfdir@/ceph
+fi
+
+usage_exit() {
+    echo "usage: $0 [options] {start|stop|restart} [mon|osd|mds]..."
+    printf "\t-c ceph.conf\n"
+    printf "\t--valgrind\trun via valgrind\n"
+    printf "\t--hostname [hostname]\toverride hostname lookup\n"
+    exit
+}
+
+. $LIBDIR/ceph_common.sh
+
+EXIT_STATUS=0
+
+signal_daemon() {
+    name=$1
+    daemon=$2
+    pidfile=$3
+    signal=$4
+    action=$5
+    [ -z "$action" ] && action="Stopping"
+    echo -n "$action Ceph $name on $host..."
+    do_cmd "if [ -e $pidfile ]; then
+        pid=`cat $pidfile`
+        if [ -e /proc/\$pid ] && grep -q $daemon /proc/\$pid/cmdline ; then
+	    cmd=\"kill $signal \$pid\"
+	    echo -n \$cmd...
+	    \$cmd
+        fi
+    fi"
+    echo done
+}
+
+daemon_is_running() {
+    name=$1
+    daemon=$2
+    daemon_id=$3
+    pidfile=$4
+    do_cmd "[ -e $pidfile ] || exit 1   # no pid, presumably not running
+	pid=\`cat $pidfile\`
+	[ -e /proc/\$pid ] && grep -q $daemon /proc/\$pid/cmdline && grep -qwe -i.$daemon_id /proc/\$pid/cmdline && exit 0 # running
+        exit 1  # pid is something else" "" "okfail"
+}
+
+stop_daemon() {
+    name=$1
+    daemon=$2
+    pidfile=$3
+    signal=$4
+    action=$5
+    [ -z "$action" ] && action="Stopping"
+    echo -n "$action Ceph $name on $host..."
+    do_cmd "while [ 1 ]; do 
+	[ -e $pidfile ] || break
+	pid=\`cat $pidfile\`
+	while [ -e /proc/\$pid ] && grep -q $daemon /proc/\$pid/cmdline ; do
+	    cmd=\"kill $signal \$pid\"
+	    echo -n \$cmd...
+	    \$cmd
+	    sleep 1
+	    continue
+	done
+	break
+    done"
+    echo done
+}
+
+## command line options
+options=
+
+version=0
+dovalgrind=
+docrun=
+allhosts=0
+debug=0
+monaddr=
+dofsmount=1
+dofsumount=0
+verbose=0
+
+while echo $1 | grep -q '^-'; do     # FIXME: why not '^-'?
+case $1 in
+    -v | --verbose)
+	    verbose=1
+	    ;;
+    --valgrind)
+	    dovalgrind=1
+	    ;;
+    --novalgrind)
+	    dovalgrind=0
+	    ;;
+    --allhosts | -a)
+	    allhosts=1;
+	    ;;
+    --restart)
+	    docrun=1
+	    ;;
+    --norestart)
+	    docrun=0
+	    ;;
+    -m )
+	    [ -z "$2" ] && usage_exit
+	    options="$options $1"
+	    shift
+	    MON_ADDR=$1
+	    ;;
+    --btrfs | --fsmount)
+	    dofsmount=1
+	    ;;
+    --nobtrfs | --nofsmount)
+	    dofsmount=0
+	    ;;
+    --btrfsumount | --fsumount)
+	    dofsumount=1
+	    ;;
+    --conf | -c)
+	    [ -z "$2" ] && usage_exit
+	    options="$options $1"
+	    shift
+	    conf=$1
+	    ;;
+    --hostname )
+	    [ -z "$2" ] && usage_exit
+	    options="$options $1"
+	    shift
+	    hostname=$1
+            ;;
+    *)
+	    echo unrecognized option \'$1\'
+	    usage_exit
+	    ;;
+esac
+options="$options $1"
+shift
+done
+
+verify_conf
+
+command=$1
+[ -n "$*" ] && shift
+
+get_local_name_list
+get_name_list "$@"
+
+for name in $what; do
+    type=`echo $name | cut -c 1-3`   # e.g. 'mon', if $item is 'mon1'
+    id=`echo $name | cut -c 4- | sed 's/^\\.//'`
+    num=$id
+    name="$type.$id"
+
+    check_host || continue
+
+    binary="$BINDIR/ceph-$type"
+    cmd="$binary -i $id"
+
+    get_conf run_dir "/var/run/ceph" "run dir"
+
+    get_conf pid_file "$run_dir/$type.$id.pid" "pid file"
+
+    if [ "$command" = "start" ]; then
+	if [ -n "$pid_file" ]; then
+	    do_cmd "mkdir -p "`dirname $pid_file`
+	    cmd="$cmd --pid-file $pid_file"
+	fi
+
+	get_conf log_dir "" "log dir"
+	[ -n "$log_dir" ] && do_cmd "mkdir -p $log_dir"
+
+        get_conf auto_start "" "auto start"
+        if [ "$auto_start" = "no" ] || [ "$auto_start" = "false" ] || [ "$auto_start" = "0" ]; then
+            if [ -z "$@" ]; then
+                echo "Skipping Ceph $name on $host... auto start is disabled"
+                continue
+            fi
+        fi
+
+	if daemon_is_running $name ceph-$type $id $pid_file; then
+	    echo "Starting Ceph $name on $host...already running"
+	    continue
+	fi
+
+	get_conf copy_executable_to "" "copy executable to"
+	if [ -n "$copy_executable_to" ]; then
+	    scp $binary "$host:$copy_executable_to"
+	    binary="$copy_executable_to"
+	fi
+    fi
+
+    # conf file
+    cmd="$cmd -c $conf"
+
+    if echo $name | grep -q ^osd; then
+	get_conf osd_data "/var/lib/ceph/osd/ceph-$id" "osd data"
+	get_conf fs_path "$osd_data" "fs path"  # mount point defaults so osd data
+        get_conf fs_devs "" "devs"
+	if [ -z "$fs_devs" ]; then
+	    # try to fallback to old keys
+	    get_conf tmp_btrfs_devs "" "btrfs devs"
+	    if [ -n "$tmp_btrfs_devs" ]; then
+		fs_devs="$tmp_btrfs_devs"
+	    fi
+	fi
+        first_dev=`echo $fs_devs | cut '-d ' -f 1`
+    fi
+
+    # do lockfile, if RH
+    get_conf lockfile "/var/lock/subsys/ceph" "lock file"
+    lockdir=`dirname $lockfile`
+    if [ ! -d "$lockdir" ]; then
+	lockfile=""
+    fi
+
+    get_conf asok "$run_dir/ceph-$type.$id.asok" "admin socket"
+
+    case "$command" in
+	start)
+            # Increase max_open_files, if the configuration calls for it.
+            get_conf max_open_files "8192" "max open files"
+
+            # build final command
+	    wrap=""
+	    runmode=""
+	    runarg=""
+	    
+	    [ -z "$docrun" ] && get_conf_bool docrun "0" "restart on core dump"
+	    [ "$docrun" -eq 1 ] && wrap="$BINDIR/ceph-run"
+	    
+	    [ -z "$dovalgrind" ] && get_conf_bool valgrind "" "valgrind"
+	    [ -n "$valgrind" ] && wrap="$wrap valgrind $valgrind"
+	    
+	    [ -n "$wrap" ] && runmode="-f &" && runarg="-f"
+	    [ -n "$max_open_files" ] && files="ulimit -n $max_open_files;"
+
+	    cmd="$files $wrap $cmd $runmode"
+	    
+	    if [ $dofsmount -eq 1 ] && [ -n "$fs_devs" ]; then
+		get_conf pre_mount "true" "pre mount command"
+		get_conf fs_type "" "osd mkfs type"
+
+		if [ -z "$fs_type" ]; then
+		    # try to fallback to to old keys
+		    get_conf tmp_devs "" "btrfs devs"
+		    if [ -n "$tmp_devs" ]; then
+			fs_type="btrfs"
+		    else
+		        echo No filesystem type defined!
+		        exit 0
+                    fi
+		fi
+
+		get_conf fs_opt "" "osd mount options $fs_type"
+		if [ -z "$fs_opt" ]; then
+		    if [ "$fs_type" = "btrfs" ]; then
+		        #try to fallback to old keys
+			get_conf fs_opt "" "btrfs options"
+		    fi
+
+		    if [ -z "$fs_opt" ]; then
+			if [ "$fs_type" = "xfs" ]; then
+			    fs_opt="rw,noatime,inode64"
+			else
+		            #fallback to use at least noatime
+		            fs_opt="rw,noatime"
+			fi
+		    fi
+		fi
+
+		[ -n "$fs_opt" ] && fs_opt="-o $fs_opt"
+		[ -n "$pre_mount" ] && do_cmd "$pre_mount"
+
+		if [ "$fs_type" = "btrfs" ]; then
+		    echo Mounting Btrfs on $host:$fs_path
+		    do_root_cmd "modprobe btrfs ; btrfs device scan || btrfsctl -a ; egrep -q '^[^ ]+ $fs_path' /proc/mounts || mount -t btrfs $fs_opt $first_dev $fs_path"
+		else
+		    echo Mounting $fs_type on $host:$fs_path
+		    do_root_cmd "modprobe $fs_type ; egrep -q '^[^ ]+ $fs_path' /proc/mounts || mount -t $fs_type $fs_opt $first_dev $fs_path"
+		fi
+	    fi
+
+	    if [ "$type" = "osd" ]; then
+		get_conf update_crush "" "osd crush update on start"
+		if [ "${update_crush:-1}" = "1" -o "{$update_crush:-1}" = "true" ]; then
+		    # update location in crush; put in some suitable defaults on the
+                    # command line, ceph.conf can override what it wants
+		    get_conf osd_location "" "osd crush location"
+		    get_conf osd_weight "" "osd crush initial weight"
+		    defaultweight="$(do_cmd "df $osd_data/. | tail -1 | awk '{ d= \$2/1073741824 ; r = sprintf(\"%.2f\", d); print r }'")"
+		    get_conf osd_keyring "$osd_data/keyring" "keyring"
+		    do_cmd "$BINDIR/ceph \
+			--name=osd.$id \
+			--keyring=$osd_keyring \
+			osd crush create-or-move \
+			-- \
+			$id \
+			${osd_weight:-${defaultweight:-1}} \
+			root=default \
+			host=$host \
+			$osd_location \
+			|| :"
+		fi
+	    fi
+
+	    echo Starting Ceph $name on $host...
+	    mkdir -p $run_dir
+	    get_conf pre_start_eval "" "pre start eval"
+	    [ -n "$pre_start_eval" ] && $pre_start_eval
+	    get_conf pre_start "" "pre start command"
+	    get_conf post_start "" "post start command"
+	    [ -n "$pre_start" ] && do_cmd "$pre_start"
+	    do_cmd_okfail "$cmd" $runarg
+	    if [ "$ERR" != "0" ]; then
+		EXIT_STATUS=$ERR
+	    fi
+
+	    if [ "$type" = "mon" ]; then
+		# this will only work if we are using default paths
+		# for the mon data and admin socket.  if so, run
+		# ceph-create-keys.  this is the case for (normal)
+		# chef and ceph-deploy clusters, which is who needs
+		# these keys.  it's also true for default installs
+		# via mkcephfs, which is fine too; there is no harm
+		# in creating these keys.
+		get_conf mon_data "/var/lib/ceph/mon/ceph-$id" "mon data"
+		if [ "$mon_data" = "/var/lib/ceph/mon/ceph-$id" -a "$asok" = "/var/run/ceph/ceph-mon.$id.asok" ]; then
+		    echo Starting ceph-create-keys on $host...
+		    cmd2="$SBINDIR/ceph-create-keys -i $id 2> /dev/null &"
+		    do_cmd "$cmd2"
+		fi
+	    fi
+
+	    [ -n "$post_start" ] && do_cmd "$post_start"
+	    [ -n "$lockfile" ] && [ "$?" -eq 0 ] && touch $lockfile
+	    ;;
+	
+	stop)
+	    get_conf pre_stop "" "pre stop command"
+	    get_conf post_stop "" "post stop command"
+	    [ -n "$pre_stop" ] && do_cmd "$pre_stop"
+	    stop_daemon $name ceph-$type $pid_file
+	    [ -n "$post_stop" ] && do_cmd "$post_stop"
+	    [ -n "$lockfile" ] && [ "$?" -eq 0 ] && rm -f $lockfile
+	    if [ $dofsumount -eq 1 ] && [ -n "$fs_devs" ]; then
+		echo Unmounting OSD volume on $host:$fs_path
+		do_root_cmd "umount $fs_path || true"
+	    fi
+	    ;;
+
+	status)
+	    if daemon_is_running $name ceph-$type $id $pid_file; then
+		echo -n "$name: running "
+		do_cmd "$BINDIR/ceph --admin-daemon $asok version 2>/dev/null" || echo unknown
+            elif [ -e "$pid_file" ]; then
+                # daemon is dead, but pid file still exists
+                echo "$name: dead."
+                EXIT_STATUS=1
+            else
+                # daemon is dead, and pid file is gone
+                echo "$name: not running."
+                EXIT_STATUS=3
+            fi
+	    ;;
+
+	ssh)
+	    $ssh
+	    ;;
+
+	forcestop)
+	    get_conf pre_forcestop "" "pre forcestop command"
+	    get_conf post_forcestop "" "post forcestop command"
+	    [ -n "$pre_forcestop" ] && do_cmd "$pre_forcestop"
+	    stop_daemon $name ceph-$type $pid_file -9
+	    [ -n "$post_forcestop" ] && do_cmd "$post_forcestop"
+	    [ -n "$lockfile" ] && [ "$?" -eq 0 ] && rm -f $lockfile
+	    ;;
+	    
+	killall)
+	    echo "killall ceph-$type on $host"
+	    do_cmd "pkill ^ceph-$type || true"
+	    [ -n "$lockfile" ] && [ "$?" -eq 0 ] && rm -f $lockfile
+	    ;;
+	
+	force-reload | reload)
+	    signal_daemon $name ceph-$type $pid_file -1 "Reloading"
+	    ;;
+
+	restart)
+	    $0 $options stop $name
+	    $0 $options start $name
+	    ;;
+
+	cleanlogs)
+	    echo removing logs
+	    [ -n "$log_dir" ] && do_cmd "rm -f $log_dir/$type.$id.*"
+	    ;;
+
+	cleanalllogs)
+	    echo removing all logs
+	    [ -n "$log_dir" ] && do_cmd "rm -f $log_dir/* || true"
+	    ;;
+
+	*)
+	    usage_exit
+	    ;;
+    esac
+done
+
+# activate latent osds?
+if [ "$command" = "start" ]; then
+    if [ "$*" = "" ] || echo $* | grep -q ^osd\$ ; then
+    "$SBINDIR/ceph-disk" activate-all
+    fi
+fi
+
+exit $EXIT_STATUS
