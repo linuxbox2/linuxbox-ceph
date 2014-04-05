@@ -16,13 +16,13 @@
 #ifndef XIO_CONNECTION_H
 #define XIO_CONNECTION_H
 
+#include <boost/intrusive/avl_set.hpp>
 extern "C" {
 #include "libxio.h"
 }
 #include "Connection.h"
 #include "Messenger.h"
 #include "include/atomic.h"
-#include <boost/intrusive/avl_set.hpp>
 
 namespace bi = boost::intrusive;
 

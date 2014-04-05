@@ -16,13 +16,13 @@
 #ifndef XIO_MSG_H
 #define XIO_MSG_H
 
+#include <boost/intrusive/list.hpp>
 #include "SimplePolicyMessenger.h"
 extern "C" {
 #include "libxio.h"
 }
 #include "XioConnection.h"
 #include "msg/msg_types.h"
-#include <boost/intrusive/list.hpp>
 #include "XioPool.h"
 
 namespace bi = boost::intrusive;
