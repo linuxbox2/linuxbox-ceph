@@ -70,6 +70,13 @@ ${CMAKE_BINARY_DIR}/ceph-crush-location
 @ONLY
 )
 
+
+configure_file(
+${CMAKE_SOURCE_DIR}/src/init-ceph.in
+${CMAKE_BINARY_DIR}/init-ceph
+@ONLY
+)
+
 configure_file(
 ${CMAKE_SOURCE_DIR}/src/mkcephfs.in
 ${CMAKE_BINARY_DIR}/mkcephfs
