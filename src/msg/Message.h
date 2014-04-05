@@ -350,7 +350,7 @@ public:
     if (byte_throttler)
       byte_throttler->put(data.length());
     if (completion_hook)
-      completion_hook->claim(data.length());
+      completion_hook->claim(data.buffers().size());
     bl.claim(data);
   }
   off_t get_data_len() { return data.length(); }
