@@ -22,6 +22,7 @@ extern "C" {
 }
 #include "XioConnection.h"
 #include "XioPortal.h"
+#include "DispatchStrategy.h"
 #include "include/atomic.h"
 #include "common/Thread.h"
 #include "common/Mutex.h"
@@ -35,13 +36,15 @@ private:
   Mutex conns_lock;
   XioConnection::EntitySet conns_entity_map;
   XioPortals portals;
+  DispatchStrategy* dispatch_strategy;
   int port_shift;
   uint32_t magic;
   uint32_t special_handling;
 
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
-	       string mname, uint64_t nonce, int nportals);
+	       string mname, uint64_t nonce, int nportals,
+	       DispatchStrategy* ds);
 
   virtual ~XioMessenger();
 
@@ -118,6 +121,9 @@ public:
 
   virtual void mark_down_all()
     { }
+
+  void ds_dispatch(Message *m)
+    { dispatch_strategy->ds_dispatch(m); }
 
 protected:
   virtual void ready()

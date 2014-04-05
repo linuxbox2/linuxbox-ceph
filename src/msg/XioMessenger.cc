@@ -181,10 +181,12 @@ static string xio_uri_from_entity(const entity_addr_t& addr, bool want_port)
 
 /* XioMessenger */
 XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
-			   string mname, uint64_t nonce, int nportals)
+			   string mname, uint64_t nonce, int nportals,
+			   DispatchStrategy *ds)
   : SimplePolicyMessenger(cct, name, mname, nonce),
     conns_lock("XioMessenger::conns_lock"),
     portals(this, nportals),
+    dispatch_strategy(ds),
     port_shift(0),
     magic(0),
     special_handling(0)
@@ -265,6 +267,8 @@ j, 0, XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
     }
     mtx.Unlock();
   }
+
+  dispatch_strategy->set_messenger(this);
 
   /* update class instance count */
   nInstances.inc();
@@ -372,7 +376,7 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
       struct xio_rdma_mp_mem *mp = get_xio_mp(*pb);
       if (mp) {
 #if 0
-// XXX disable for delivery receipt experiment 
+// XXX disable for delivery receipt experiment
 	iov->user_context = mp;
 #endif
 	iov->mr = mp->mr;
@@ -436,6 +440,7 @@ int XioMessenger::bind(const entity_addr_t& addr)
 int XioMessenger::start()
 {
   portals.start();
+  dispatch_strategy->start();
   started = true;
   return 0;
 }
@@ -630,5 +635,6 @@ ConnectionRef XioMessenger::get_loopback_connection()
 
 XioMessenger::~XioMessenger()
 {
+  delete dispatch_strategy;
   nInstances.dec();
 } /* dtor */

@@ -30,6 +30,7 @@ using namespace std;
 
 #include "msg/Messenger.h"
 #include "msg/XioMessenger.h"
+#include "msg/QueueStrategy.h"
 
 #include "include/CompatSet.h"
 
@@ -564,7 +565,8 @@ int main(int argc, const char **argv)
 					 entity_name_t::GENERIC(),
 					 "xio mon",
 					 0 /* nonce */,
-					 2 /* portals */);
+					 2 /* portals */,
+					 new QueueStrategy(4 /* n_threads */));
 
   xmsgr->set_cluster_protocol(CEPH_MON_PROTOCOL);
   xmsgr->set_default_send_priority(CEPH_MSG_PRIO_HIGH);

@@ -173,6 +173,8 @@
 
 #define MSG_SPECIAL_HANDLING_REDUPE	1
 
+namespace bi = boost::intrusive;
+
 class Message : public RefCountedObject {
 protected:
   ceph_msg_header  header;      // headerelope
@@ -197,6 +199,8 @@ protected:
   uint32_t magic;
   uint32_t special_handling;
 
+  bi::list_member_hook<> dispatch_q;
+
 public:
   class CompletionHook : public Context {
   protected:
@@ -210,6 +214,11 @@ public:
     virtual void finish(int r) = 0;
     virtual ~CompletionHook() {}
   };
+
+  typedef bi::list< Message,
+		    bi::member_hook< Message,
+				     bi::list_member_hook<>,
+				     &Message::dispatch_q > > Queue;
 
 protected:
   CompletionHook* completion_hook; // owned by Messenger
@@ -235,6 +244,7 @@ public:
     : connection(NULL),
       magic(0),
       special_handling(0),
+      dispatch_q(),
       completion_hook(NULL),
       byte_throttler(NULL),
       msg_throttler(NULL),
@@ -350,7 +360,7 @@ public:
     if (byte_throttler)
       byte_throttler->put(data.length());
     if (completion_hook)
-      completion_hook->claim(data.length());
+      completion_hook->claim(data.buffers().size());
     bl.claim(data);
   }
   off_t get_data_len() { return data.length(); }
@@ -429,6 +439,7 @@ public:
 
   void encode(uint64_t features, bool datacrc);
 };
+
 typedef boost::intrusive_ptr<Message> MessageRef;
 
 extern Message *decode_message(CephContext *cct, ceph_msg_header &header,

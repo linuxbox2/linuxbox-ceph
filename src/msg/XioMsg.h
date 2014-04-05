@@ -283,7 +283,7 @@ public:
   }
 
   void put_xmsg_ref() {
-    if (xmsg_refs.dec() > XMSG_REFS_BASELINE)
+    if (xmsg_refs.dec() >= XMSG_REFS_BASELINE)
       get_message()->put();
   }
 

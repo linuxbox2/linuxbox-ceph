@@ -33,6 +33,7 @@ using namespace std;
 
 #include "msg/Messenger.h"
 #include "msg/XioMessenger.h"
+#include "msg/QueueStrategy.h"
 
 #include "common/Timer.h"
 #include "common/ceph_argparse.h"
@@ -342,12 +343,14 @@ int main(int argc, const char **argv)
   Messenger *ms_xio_public = new XioMessenger(g_ceph_context,
 					      entity_name_t::OSD(whoami), "xio client",
 					      getpid(),
-					      2 /* portals */);
+					      2 /* portals */,
+					      new QueueStrategy(4));
 
   Messenger *ms_xio_objecter = new XioMessenger(g_ceph_context,
 						entity_name_t::OSD(whoami), "xio objecter",
 						getpid(),
-						2 /* portals */);
+						2 /* portals */,
+						new QueueStrategy(4));
 
   cout << "starting osd." << whoami
        << " at " << ms_public->get_myaddr()

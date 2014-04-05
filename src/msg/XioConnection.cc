@@ -313,9 +313,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
     this->get(); /* XXX getting underrun */
     m->set_connection(this);
 
-    /* adjust  m refcnt */
-    m->add(payload.length() + middle.length() + data.length());
-
     /* reply hook */
     m_hook->set_message(m);
     m->set_completion_hook(m_hook);
@@ -362,7 +359,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
     }
 
     /* dispatch it */
-    msgr->ms_deliver_dispatch(m);
+    msgr->ds_dispatch(m);
   } else {
     /* responds for undecoded messages and frees hook */
     cout << "decode m failed" << std::endl;

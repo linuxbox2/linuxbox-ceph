@@ -32,6 +32,7 @@
 #include "messages/MLog.h"
 #include "msg/SimpleMessenger.h"
 #include "msg/XioMessenger.h"
+#include "msg/QueueStrategy.h"
 
 // needed for static_cast
 #include "messages/PaxosServiceMessage.h"
@@ -186,7 +187,8 @@ int librados::RadosClient::connect()
   {
     XioMessenger *xmsgr
       = new XioMessenger(cct, entity_name_t::CLIENT(-1), "radosclient",
-			 nonce, 0 /* portals */);
+			 nonce, 0 /* portals */,
+			 new QueueStrategy(2 /* n_threads */));
 //    xmsgr->set_magic(MSG_MAGIC_TRACE_XCON);
     xmsgr->set_port_shift(111) /* XXX */;
     messenger = xmsgr;

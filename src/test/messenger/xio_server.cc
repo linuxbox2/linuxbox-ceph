@@ -21,6 +21,7 @@ using namespace std;
 
 #include "common/config.h"
 #include "msg/XioMessenger.h"
+#include "msg/QueueStrategy.h"
 #include "common/Timer.h"
 #include "common/ceph_argparse.h"
 #include "global/global_init.h"
@@ -77,7 +78,8 @@ int main(int argc, const char **argv)
 				     entity_name_t::GENERIC(),
 				     "xio_server",
 				     0 /* nonce */,
-				     2 /* portals */);
+				     2 /* portals */,
+				     new QueueStrategy(2));
 	static_cast<XioMessenger*>(messenger)->set_special_handling(MSG_SPECIAL_HANDLING_REDUPE);
 
 	messenger->set_default_policy(
