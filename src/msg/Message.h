@@ -204,6 +204,7 @@ public:
     friend class Message;
   public:
     CompletionHook(Message *_m) : m(_m) {}
+    virtual Message* get_message() { return m; }
     virtual void set_message(Message *_m) { m = _m; }
     virtual void finish(int r) = 0;
     virtual ~CompletionHook() {}
@@ -430,6 +431,7 @@ typedef boost::intrusive_ptr<Message> MessageRef;
 extern Message *decode_message(CephContext *cct, ceph_msg_header &header,
 			       ceph_msg_footer& footer, bufferlist& front,
 			       bufferlist& middle, bufferlist& data);
+
 inline ostream& operator<<(ostream& out, Message& m) {
   m.print(out);
   if (m.get_header().version)

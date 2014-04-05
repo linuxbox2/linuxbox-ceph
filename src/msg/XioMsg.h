@@ -274,6 +274,8 @@ public:
     }
   }
 
+  XioPool& get_pool() { return rsp_pool; }
+
   void on_err_finalize(XioConnection *xcon);
   virtual ~XioCompletionHook() { }
 };

@@ -277,7 +277,7 @@ Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_foot
 	return 0;
       }
     }
-  } 
+  }
 
   // make message
   Message *m = 0;
@@ -478,7 +478,7 @@ Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_foot
 
   case MSG_MON_GLOBAL_ID:
     m = new MMonGlobalID;
-    break; 
+    break;
 
     // clients
   case CEPH_MSG_MON_SUBSCRIBE:

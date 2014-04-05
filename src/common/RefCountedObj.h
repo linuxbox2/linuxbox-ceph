@@ -30,13 +30,18 @@ struct RefCountedObject {
     nref.inc();
     return this;
   }
+  RefCountedObject *add(int n) {
+    //generic_dout(0) << "RefCountedObject::add " << this << " " << nref.read() << " -> " << (nref.read() + n) << dendl;
+    nref.add(n);
+    return this;
+  }
   void put() {
     //generic_dout(0) << "RefCountedObject::put " << this << " " << nref.read() << " -> " << (nref.read() - 1) << dendl;
     if (nref.dec() == 0)
       delete this;
   }
   bool safe_put() {
-    //generic_dout(0) << "RefCountedObject::put " << this << " " << nref.read() << " -> " << (nref.read() - 1) << dendl;
+    //generic_dout(0) << "RefCountedObject::safe_put " << this << " " << nref.read() << " -> " << (nref.read() - 1) << dendl;
     if (nref.dec() == 0) {
       delete this;
       return true;

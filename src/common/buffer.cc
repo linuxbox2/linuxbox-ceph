@@ -22,6 +22,7 @@
 #include "include/types.h"
 #include "include/compat.h"
 #include "include/Spinlock.h"
+#include "msg/XioMsg.h"
 
 #include <errno.h>
 #include <fstream>
@@ -265,6 +266,20 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
   };
 
 #if defined(HAVE_XIO)
+
+  class buffer::xio_msg_buffer : public buffer::raw {
+  private:
+    XioCompletionHook* m_hook;
+  public:
+    xio_msg_buffer(XioCompletionHook* _m_hook, const char *d, unsigned l) :
+      raw((char*)d, l), m_hook(_m_hook) {}
+    ~xio_msg_buffer() { m_hook->get_message()->put(); }
+    void operator delete(void*) {} // do nothing (pool allocated)
+    raw* clone_empty() {
+      return new buffer::raw_char(len);
+    }
+  };
+
   class buffer::xio_mempool : public buffer::raw {
   public:
     struct xio_rdma_mp_mem *mp;
@@ -284,6 +299,15 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
       return mb->mp;
     }
     return NULL;
+  }
+
+  buffer::raw* buffer::create_msg(
+    unsigned len, char *buf, XioCompletionHook *m_hook) {
+    XioPool& pool = m_hook->get_pool();
+    buffer::raw* bp =
+      static_cast<buffer::raw*>(pool.alloc(sizeof(xio_msg_buffer)));
+    new (bp) xio_msg_buffer(m_hook, buf, len);
+    return bp;
   }
 
 #endif /* HAVE_XIO */

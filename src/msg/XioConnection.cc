@@ -173,9 +173,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
   //pthread_spin_unlock(&sp);
 
   XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
-  XioCompletionHook *completion_hook =
-    pool_alloc_xio_completion_hook(NULL, in_seq.seq);
-  list<struct xio_msg *>& msg_seq = completion_hook->msg_seq;
+  XioCompletionHook *m_hook = pool_alloc_xio_completion_hook(NULL, in_seq.seq);
+  list<struct xio_msg *>& msg_seq = m_hook->msg_seq;
   in_seq.seq.clear();
 
   ceph_msg_header header;
@@ -219,8 +218,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
       take_len = MIN(blen, msg_iov->iov_len);
       payload.append(
-	buffer::create_static(
-	  take_len, (char*) msg_iov->iov_base));
+	buffer::create_msg(
+	  take_len, (char*) msg_iov->iov_base, m_hook));
       blen -= take_len;
       if (! blen) {
 	left_len = msg_iov->iov_len - take_len;
@@ -248,7 +247,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (blen && left_len) {
     middle.append(
-      buffer::create_static(left_len, left_base));
+      buffer::create_msg(left_len, left_base, m_hook));
     left_len = 0;
   }
 
@@ -260,8 +259,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
       take_len = MIN(blen, msg_iov->iov_len);
       middle.append(
-	buffer::create_static(
-	  take_len, (char*) msg_iov->iov_base));
+	buffer::create_msg(
+	  take_len, (char*) msg_iov->iov_base, m_hook));
       blen -= take_len;
       if (! blen) {
 	left_len = msg_iov->iov_len - take_len;
@@ -280,7 +279,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (blen && left_len) {
     data.append(
-      buffer::create_static(left_len, left_base));
+      buffer::create_msg(left_len, left_base, m_hook));
     left_len = 0;
   }
 
@@ -290,8 +289,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &treq->in.data_iov[ix];
       data.append(
-	buffer::create_static(
-	  msg_iov->iov_len, (char*) msg_iov->iov_base));
+	buffer::create_msg(
+	  msg_iov->iov_len, (char*) msg_iov->iov_base, m_hook));
       blen -= msg_iov->iov_len;
     }
     if (ix == iov_len) {
@@ -314,9 +313,12 @@ int XioConnection::on_msg_req(struct xio_session *session,
     this->get(); /* XXX getting underrun */
     m->set_connection(this);
 
+    /* adjust  m refcnt */
+    m->add(payload.length() + middle.length() + data.length());
+
     /* reply hook */
-    completion_hook->set_message(m);
-    m->set_completion_hook(completion_hook);
+    m_hook->set_message(m);
+    m->set_completion_hook(m_hook);
 
     /* trace flag */
     m->set_magic(magic);
@@ -364,7 +366,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   } else {
     /* responds for undecoded messages and frees hook */
     cout << "decode m failed" << std::endl;
-    completion_hook->on_err_finalize(this);
+    m_hook->on_err_finalize(this);
   }
 
   return 0;

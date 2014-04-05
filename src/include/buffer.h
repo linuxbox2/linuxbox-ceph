@@ -74,6 +74,8 @@ extern "C" {
 # include <assert.h>
 #endif
 
+class XioCompletionHook;
+
 namespace ceph {
 
 class buffer {
@@ -141,6 +143,7 @@ private:
 
 public:
   class xio_mempool;
+  class xio_msg_buffer;
 
 private:
   friend std::ostream& operator<<(std::ostream& out, const raw &r);
@@ -159,7 +162,7 @@ public:
   static raw* create_page_aligned(unsigned len);
 
 #if defined(HAVE_XIO)
-  static raw* create_xio_mempool(struct xio_rdma_mp_mem *mp);
+ static raw* create_msg(unsigned len, char *buf, XioCompletionHook *m_hook);
 #endif
 
   /*
@@ -474,7 +477,6 @@ public:
 typedef buffer::ptr bufferptr;
 typedef buffer::list bufferlist;
 typedef buffer::hash bufferhash;
-
 
 inline bool operator>(bufferlist& l, bufferlist& r) {
   for (unsigned p = 0; ; p++) {
