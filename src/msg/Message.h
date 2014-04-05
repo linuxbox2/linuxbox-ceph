@@ -206,6 +206,7 @@ public:
     CompletionHook(Message *_m) : m(_m) {}
     virtual Message* get_message() { return m; }
     virtual void set_message(Message *_m) { m = _m; }
+    virtual void claim(int r) = 0;
     virtual void finish(int r) = 0;
     virtual ~CompletionHook() {}
   };
@@ -348,6 +349,8 @@ public:
   void claim_data(bufferlist& bl) {
     if (byte_throttler)
       byte_throttler->put(data.length());
+    if (completion_hook)
+      completion_hook->claim(data.length());
     bl.claim(data);
   }
   off_t get_data_len() { return data.length(); }

@@ -240,12 +240,15 @@ public:
 
 extern struct xio_rdma_mempool *xio_msgr_noreg_mpool;
 
+#define XMSG_REFS_BASELINE 9999999
+
 class XioCompletionHook : public Message::CompletionHook
 {
 private:
   list <struct xio_msg *> msg_seq;
   XioPool rsp_pool;
   atomic_t nrefs;
+  atomic_t xmsg_refs;
   friend class XioConnection;
   friend class XioMessenger;
 public:
@@ -254,7 +257,7 @@ public:
   XioCompletionHook(Message *_m, list <struct xio_msg *>& _msg_seq,
 		    struct xio_rdma_mp_mem& _mp) :
     CompletionHook(_m), msg_seq(_msg_seq), rsp_pool(xio_msgr_noreg_mpool),
-    nrefs(1), mp_this(_mp)
+    nrefs(1), xmsg_refs(XMSG_REFS_BASELINE), mp_this(_mp)
     {}
   virtual void finish(int r);
   virtual void complete(int r) {
@@ -267,11 +270,21 @@ public:
 
   void put() {
     int refs = nrefs.dec();
-    if (refs == 1) { /* XXXX refs 1?  why not 0? */
+    if (refs == 1) {
       struct xio_rdma_mp_mem *mp = &this->mp_this;
       this->~XioCompletionHook();
       xio_rdma_mempool_free(mp);
     }
+  }
+
+  void claim(int r) {
+    xmsg_refs.add(r);
+    get_message()->add(r);
+  }
+
+  void put_xmsg_ref() {
+    if (xmsg_refs.dec() > XMSG_REFS_BASELINE)
+      get_message()->put();
   }
 
   XioPool& get_pool() { return rsp_pool; }

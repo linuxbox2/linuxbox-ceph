@@ -273,7 +273,7 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
   public:
     xio_msg_buffer(XioCompletionHook* _m_hook, const char *d, unsigned l) :
       raw((char*)d, l), m_hook(_m_hook) {}
-    ~xio_msg_buffer() { m_hook->get_message()->put(); }
+    ~xio_msg_buffer() { m_hook->put_xmsg_ref(); }
     void operator delete(void*) {} // do nothing (pool allocated)
     raw* clone_empty() {
       return new buffer::raw_char(len);
