@@ -313,9 +313,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
     this->get(); /* XXX getting underrun */
     m->set_connection(this);
 
-    /* adjust  m refcnt */
-    m->add(payload.length() + middle.length() + data.length());
-
     /* reply hook */
     m_hook->set_message(m);
     m->set_completion_hook(m_hook);
