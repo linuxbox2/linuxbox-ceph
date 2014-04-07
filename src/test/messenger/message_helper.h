@@ -42,11 +42,11 @@ static inline Message* new_ping_monstyle(const char *tag, int mult)
   return m;
 }
 
-extern struct xio_rdma_mempool *xio_msgr_mpool;
+extern struct xio_mempool *xio_msgr_mpool;
 
-void xio_hook_func(struct xio_rdma_mp_mem *mp)
+void xio_hook_func(struct xio_mempool_obj *mp)
 {
-  xio_rdma_mempool_free(mp);
+  xio_mempool_free(mp);
 }
 
 static inline Message* new_ping_with_data(const char *tag, uint32_t size)
@@ -60,8 +60,8 @@ static inline Message* new_ping_with_data(const char *tag, uint32_t size)
   bufferlist bl;
   void *p;
 
-  struct xio_rdma_mp_mem *mp = m->get_mp();
-  int e = xio_rdma_mempool_alloc(xio_msgr_mpool, size, mp);
+  struct xio_mempool_obj *mp = m->get_mp();
+  int e = xio_mempool_alloc(xio_msgr_mpool, size, mp);
   assert(e == 0);
   p = mp->addr;
   m->set_rdma_hook(xio_hook_func);

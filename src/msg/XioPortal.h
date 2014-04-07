@@ -140,10 +140,9 @@ public:
       pthread_mutex_init(&mtx, NULL);
 
       /* a portal is an xio_context and event loop */
-      ctx = xio_context_create(NULL, 0);
+      ctx = xio_context_create(NULL, 0 /* poll timeout */, -1 /* cpu hint */);
 
-      /* associate this XioPortal object with the xio_context
-       * handle */
+      /* associate this XioPortal object with the xio_context handle */
       struct xio_context_params params;
       params.user_context = this;
       xio_context_set_params(ctx, &params);

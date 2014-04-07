@@ -18,8 +18,8 @@
 #include "XioMessenger.h"
 #include "messages/MDataPing.h"
 
-extern struct xio_rdma_mempool *xio_msgr_mpool;
-extern struct xio_rdma_mempool *xio_msgr_noreg_mpool;
+extern struct xio_mempool *xio_msgr_mpool;
+extern struct xio_mempool *xio_msgr_noreg_mpool;
 
 void print_xio_msg_hdr(XioMsgHdr &hdr)
 {
@@ -108,9 +108,9 @@ static uint64_t rcount;
 static inline XioCompletionHook* pool_alloc_xio_completion_hook(
   Message *_m, list <struct xio_msg *>& _msg_seq)
 {
-  struct xio_rdma_mp_mem mp_mem;
-  int e = xio_rdma_mempool_alloc(xio_msgr_noreg_mpool,
-				sizeof(XioCompletionHook), &mp_mem);
+  struct xio_mempool_obj mp_mem;
+  int e = xio_mempool_alloc(xio_msgr_noreg_mpool,
+			    sizeof(XioCompletionHook), &mp_mem);
   assert(e == 0);
   XioCompletionHook *xhook = (XioCompletionHook*) mp_mem.addr;
   new (xhook) XioCompletionHook(_m, _msg_seq, mp_mem);

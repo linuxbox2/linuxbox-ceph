@@ -471,7 +471,7 @@ public:
 };
 
 #if defined(HAVE_XIO)
-  struct xio_rdma_mp_mem* get_xio_mp(const buffer::ptr& bp);
+  struct xio_mempool_obj* get_xio_mp(const buffer::ptr& bp);
 #endif
 
 typedef buffer::ptr bufferptr;

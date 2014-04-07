@@ -157,12 +157,12 @@ public:
   XioMsgHdr hdr;
   struct xio_msg req_0;
   struct xio_msg* req_arr;
-  struct xio_rdma_mp_mem mp_this;
+  struct xio_mempool_obj mp_this;
   int nbuffers;
   int nref;
 
 public:
-  XioMsg(Message *_m, XioConnection *_xcon, struct xio_rdma_mp_mem& _mp) :
+  XioMsg(Message *_m, XioConnection *_xcon, struct xio_mempool_obj& _mp) :
     XioSubmit(XIO_MSG_TYPE_REQ, _xcon),
     m(_m), hdr(m->get_header(), m->get_footer()),
     req_arr(NULL), mp_this(_mp), nref(1)
@@ -182,9 +182,9 @@ public:
   void put() {
     --nref;
     if (nref == 0) {
-      struct xio_rdma_mp_mem *mp = &this->mp_this;
+      struct xio_mempool_obj *mp = &this->mp_this;
       this->~XioMsg();
-      xio_rdma_mempool_free(mp);
+      xio_mempool_free(mp);
     }
   }
 
@@ -238,7 +238,7 @@ public:
     };
 };
 
-extern struct xio_rdma_mempool *xio_msgr_noreg_mpool;
+extern struct xio_mempool *xio_msgr_noreg_mpool;
 
 #define XMSG_REFS_BASELINE 9999999
 
@@ -252,10 +252,10 @@ private:
   friend class XioConnection;
   friend class XioMessenger;
 public:
-  struct xio_rdma_mp_mem mp_this;
+  struct xio_mempool_obj mp_this;
 
   XioCompletionHook(Message *_m, list <struct xio_msg *>& _msg_seq,
-		    struct xio_rdma_mp_mem& _mp) :
+		    struct xio_mempool_obj& _mp) :
     CompletionHook(_m), msg_seq(_msg_seq), rsp_pool(xio_msgr_noreg_mpool),
     nrefs(1), xmsg_refs(XMSG_REFS_BASELINE), mp_this(_mp)
     {}
@@ -271,9 +271,9 @@ public:
   void put() {
     int refs = nrefs.dec();
     if (refs == 1) {
-      struct xio_rdma_mp_mem *mp = &this->mp_this;
+      struct xio_mempool_obj *mp = &this->mp_this;
       this->~XioCompletionHook();
-      xio_rdma_mempool_free(mp);
+      xio_mempool_free(mp);
     }
   }
 
