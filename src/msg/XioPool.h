@@ -23,12 +23,12 @@ extern "C" {
 class XioPool
 {
 public:
-  struct xio_rdma_mempool *handle;
+  struct xio_mempool *handle;
   struct xio_piece {
     struct xio_piece *next;
-    struct xio_rdma_mp_mem mp[1];
+    struct xio_mempool_obj mp[1];
   } *first;
-  XioPool(struct xio_rdma_mempool *_handle) :
+  XioPool(struct xio_mempool *_handle) :
     handle(_handle), first(0)
     {
     }
@@ -37,7 +37,7 @@ public:
       struct xio_piece *p;
       while ((p = first)) {
 	first = p->next;
-	xio_rdma_mempool_free(p->mp);
+	xio_mempool_free(p->mp);
       }
     }
   void *alloc(size_t _s)
@@ -45,7 +45,7 @@ public:
 	void *r;
 	struct xio_piece *x = static_cast<struct xio_piece *>(malloc(sizeof *x));
 	if (!x) return 0;
-	int e = xio_rdma_mempool_alloc(handle, _s, x->mp);
+	int e = xio_mempool_alloc(handle, _s, x->mp);
 	if (e) {
 	  free(x);
 	  r = 0;

@@ -28,8 +28,8 @@ atomic_t initialized;
 
 atomic_t XioMessenger::nInstances;
 
-struct xio_rdma_mempool *xio_msgr_mpool;
-struct xio_rdma_mempool *xio_msgr_noreg_mpool;
+struct xio_mempool *xio_msgr_mpool;
+struct xio_mempool *xio_msgr_noreg_mpool;
 
 static struct xio_session_ops xio_msgr_ops;
 
@@ -210,16 +210,17 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 		  &xopt, sizeof(unsigned));
 
       /* set up registered mempool */
-      xio_msgr_mpool = xio_rdma_mempool_create_ex(XIO_RDMA_MEMPOOL_DEFAULTS);
-      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 512, 0, 4096, 128);
-      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 4096, 0, 4096, 128);
-      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 32768, 0, 4096,
+      xio_msgr_mpool = xio_mempool_create_ex(-1 /* nodeid */,
+					     XIO_MEMPOOL_FLAG_REG_MR);
+      (void) xio_mempool_add_allocator(xio_msgr_mpool, 512, 0, 4096, 128);
+      (void) xio_mempool_add_allocator(xio_msgr_mpool, 4096, 0, 4096, 128);
+      (void) xio_mempool_add_allocator(xio_msgr_mpool, 32768, 0, 4096,
 					    32768);
-      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 65536, 0, 4096,
+      (void) xio_mempool_add_allocator(xio_msgr_mpool, 65536, 0, 4096,
 					    32768);
-      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, 131072, 0, 4096,
+      (void) xio_mempool_add_allocator(xio_msgr_mpool, 131072, 0, 4096,
 					    65536);
-      (void) xio_rdma_mempool_add_allocator(xio_msgr_mpool, (1024*1024), 0,
+      (void) xio_mempool_add_allocator(xio_msgr_mpool, (1024*1024), 0,
 					    4096, 128);
 
       /* and unregisterd one */
@@ -227,16 +228,16 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 #define XMSG_MEMPOOL_MAX 4096
 
       xio_msgr_noreg_mpool =
-	xio_rdma_mempool_create_ex(XIO_RDMA_MEMPOOL_FLAG_NONE);
-      (void) xio_rdma_mempool_add_allocator(xio_msgr_noreg_mpool,
+	xio_mempool_create_ex(-1 /* nodeid */, XIO_MEMPOOL_FLAG_NONE);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool,
 					    sizeof(XioMsg), 0,
 					    XMSG_MEMPOOL_MAX,
 					    XMSG_MEMPOOL_MIN);
-      (void) xio_rdma_mempool_add_allocator(xio_msgr_noreg_mpool,
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool,
 					    sizeof(XioCompletionHook), 0,
 					    XMSG_MEMPOOL_MAX,
 					    XMSG_MEMPOOL_MIN);
-      (void) xio_rdma_mempool_add_allocator(xio_msgr_noreg_mpool,
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool,
 					    sizeof(struct xio_msg), 0,
 					    XMSG_MEMPOOL_MAX,
 					    XMSG_MEMPOOL_MIN);
@@ -245,7 +246,7 @@ for (int i = max(sizeof(XioCompletionHook),max(sizeof(struct xio_msg),sizeof(Xio
 i = (i*8119)/5741;
 if (i >= 131072) break;
 int j = (i+15)&~15;
-(void) xio_rdma_mempool_add_allocator(xio_msgr_noreg_mpool,
+(void) xio_mempool_add_allocator(xio_msgr_noreg_mpool,
 j, 0, XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
 }
 
@@ -369,7 +370,7 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
       //break;
     default:
     {
-      struct xio_rdma_mp_mem *mp = get_xio_mp(*pb);
+      struct xio_mempool_obj *mp = get_xio_mp(*pb);
       if (mp) {
 #if 0
 // XXX disable for delivery receipt experiment 
@@ -456,8 +457,8 @@ int XioMessenger::send_message(Message *m, const entity_inst_t& dest)
 
 static inline XioMsg* pool_alloc_xio_msg(Message *m, XioConnection *xcon)
 {
-  struct xio_rdma_mp_mem mp_mem;
-  int e = xio_rdma_mempool_alloc(xio_msgr_noreg_mpool, sizeof(XioMsg), &mp_mem);
+  struct xio_mempool_obj mp_mem;
+  int e = xio_mempool_alloc(xio_msgr_noreg_mpool, sizeof(XioMsg), &mp_mem);
   assert(e == 0);
   XioMsg *xmsg = (XioMsg*) mp_mem.addr;
   assert(!!xmsg);
