@@ -296,15 +296,18 @@ int XioMessenger::session_event(struct xio_session *session,
     xcon->session = session;
 
     struct xio_connection *conn = event_data->conn;
-    struct xio_context *ctx = xio_get_connection_context(conn);
+    struct xio_connection_attr xcona;
+
+    (void) xio_query_connection(conn, &xcona, XIO_CONNECTION_ATTR_CTX);
+
+    struct xio_context_attr xctxa;
+    (void) xio_query_context(xcona.ctx, &xctxa, XIO_CONTEXT_ATTR_USER_CTX);
+
     xcon->conn = conn;
+    xcon->portal = static_cast<XioPortal*>(xctxa.user_context);
 
-    struct xio_context_params *ctx_params = xio_context_get_params(ctx);
-    xcon->portal = static_cast<XioPortal*>(ctx_params->user_context);
-
-    struct xio_connection_params conn_params;
-    conn_params.user_context = xcon;
-    xio_set_connection_params(event_data->conn, &conn_params);
+    xcona.user_context = xcon;
+    (void) xio_modify_connection(conn, &xcona, XIO_CONNECTION_ATTR_USER_CTX);
 
     dout(4) << dout_format("new connection session %p xcon %p", session, xcon) << dendl;
   }

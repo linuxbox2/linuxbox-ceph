@@ -143,9 +143,9 @@ public:
       ctx = xio_context_create(NULL, 0 /* poll timeout */, -1 /* cpu hint */);
 
       /* associate this XioPortal object with the xio_context handle */
-      struct xio_context_params params;
-      params.user_context = this;
-      xio_context_set_params(ctx, &params);
+      struct xio_context_attr xca;
+      xca.user_context = this;
+      xio_modify_context(ctx, &xca, XIO_CONTEXT_ATTR_USER_CTX);
 
       if (magic & (MSG_MAGIC_XIO)) {
 	printf("XioPortal %p created ev_loop %p ctx %p\n",
