@@ -103,8 +103,6 @@ int XioConnection::passive_setup()
 
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
 
-static uint64_t rcount;
-
 static inline XioCompletionHook* pool_alloc_xio_completion_hook(
   Message *_m, list <struct xio_msg *>& _msg_seq)
 {
@@ -122,33 +120,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
 			      int more_in_batch,
 			      void *cb_user_context)
 {
-  struct xio_msg *treq;
-  XioMsg *xmsg;
-
-  uint64_t rc;
-
-  /* XXX this is an asymmetry Eyal plans to fix, at some point */
-  switch (req->type) {
-  case XIO_MSG_TYPE_RSP:
-    /* XXX piggy-backed data is in req->request */
-    dereg_xio_req(req);
-    xmsg = static_cast<XioMsg*>(req->user_context);
-    xio_release_response(req);
-    rc = ++rcount;
-    if ((rc % 1000000) == 0)
-      cout << "xio finished " << rc << " " << time(0) << std::endl;
-    if (xmsg)
-      xmsg->put();
-    return 0;
-    break;
-  default:
-    treq = req;
-    break;
-  }
+  struct xio_msg *treq = req;
 
   /* XXX Accelio guarantees message ordering at
    * xio_session */
-  //pthread_spin_lock(&sp);
+
   if (! in_seq.p) {
 #if 0 /* XXX */
     printf("receive req %p treq %p iov_base %p iov_len %d data_iovlen %d\n",
@@ -164,13 +140,10 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
   in_seq.append(req);
   if (in_seq.cnt > 0) {
-    //pthread_spin_unlock(&sp);
     return 0;
   }
   else
     in_seq.p = false;
-
-  //pthread_spin_unlock(&sp);
 
   XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
   XioCompletionHook *m_hook = pool_alloc_xio_completion_hook(NULL, in_seq.seq);
@@ -373,27 +346,36 @@ int XioConnection::on_msg_send_complete(struct xio_session *session,
 					struct xio_msg *rsp,
 					void *conn_user_context)
 {
-  /* responder side cleanup */
-  finalize_response_msg(rsp);
-  return 0;
+  abort(); /* XXX */
 } /* on_msg_send_complete */
+
+static uint64_t rcount;
 
 int XioConnection::on_msg_delivered(struct xio_session *session,
 				    struct xio_msg *req,
 				    int more_in_batch,
 				    void *conn_user_context)
 {
-  /* requester delivery receipt */
+  /* requester send complete (one-way) */
+  uint64_t rc = ++rcount;
 
-#if 0
-  /* HACK HACK */
   XioMsg* xmsg = static_cast<XioMsg*>(req->user_context);
-  MDataPing* md = dynamic_cast<MDataPing *>(xmsg->get_message());
-  if (md) {
-    md->mdata_hook(&md->mp);
-    md->mdata_hook = NULL;
-  }
-#endif
+  if ((rc % 1000000) == 0)
+    cout << "xio finished " << rc << " " << time(0) << std::endl;
+  if (xmsg)
+    xmsg->put();
 
   return 0;
 }  /* on_msg_delivered */
+
+int XioConnection::on_msg_error(struct xio_session *session,
+				enum xio_status error,
+				struct xio_msg  *msg,
+				void *conn_user_context)
+{
+  XioMsg *xmsg = static_cast<XioMsg*>(msg->user_context);
+  if (xmsg)
+    xmsg->put();
+
+  return 0;
+} /* on_msg_error */

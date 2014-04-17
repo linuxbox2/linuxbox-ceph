@@ -172,8 +172,8 @@ public:
       hdr.hdr->src.type = inst.name.type();
       hdr.hdr->src.num = inst.name.num();
       memset(&req_0, 0, sizeof(struct xio_msg));
-      req_0.type = XIO_MSG_TYPE_REQ;
-      req_0.flags = 0; /* XIO_MSG_FLAG_REQUEST_READ_RECEIPT; */
+      req_0.type = XIO_MSG_TYPE_ONE_WAY;
+      req_0.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
       req_0.user_context = this;
     }
 
@@ -201,41 +201,6 @@ public:
 	  m->put();
       }
     }
-};
-
-static inline void dereg_xio_req(struct xio_msg *rreq)
-{
-#if 0
-  int code;
-  struct xio_iovec_ex *iov;
-
-  for (unsigned int ix = 0; ix < rreq->out.data_iovlen; ++ix) {
-    iov = &rreq->out.data_iov[ix];
-    /* XXX currently, user_context MUST be a mempool handle */
-    if (! iov->user_context) {
-      if (iov->mr) {
-	code = xio_dereg_mr(&iov->mr);
-	if (code != 0) {
-	  printf("%s xio_dereg_mr failed (%s)\n",
-		 __func__, xio_strerror(code));
-	}
-      }
-    }
-  }
-#endif
-}
-
-struct XioRsp : public XioSubmit
-{
-public:
-  struct xio_msg rsp;
-
-  XioRsp(XioConnection *_xcon) : XioSubmit(XIO_MSG_TYPE_RSP, _xcon)
-    {
-      memset(&rsp.out, 0, sizeof(struct xio_vmsg));
-      rsp.flags = 0;
-      rsp.type = XIO_MSG_TYPE_RSP;
-    };
 };
 
 extern struct xio_mempool *xio_msgr_noreg_mpool;
@@ -293,11 +258,21 @@ public:
   virtual ~XioCompletionHook() { }
 };
 
-static inline void finalize_response_msg(struct xio_msg *rsp)
+struct XioRsp : public XioSubmit
 {
-  XioCompletionHook *xhook =
-    static_cast<XioCompletionHook*>(rsp->user_context);
-  xhook->put();
-}
+  XioCompletionHook *xhook;
+  struct xio_msg *msg;
+public:
+  XioRsp(XioConnection *_xcon, XioCompletionHook *_xhook, struct xio_msg *_msg)
+    : XioSubmit(XIO_MSG_TYPE_RSP, _xcon), xhook(_xhook->get()), msg(_msg)
+    {};
+
+  struct xio_msg* get_msg() { return msg; }
+
+  void finalize()
+    {
+      xhook->put();
+    }
+};
 
 #endif /* XIO_MSG_H */

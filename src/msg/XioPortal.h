@@ -171,7 +171,6 @@ public:
       struct xio_msg *msg;
       XioSubmit *xs;
       XioMsg *xmsg;
-      XioRsp *xrsp;
 
       do {
 	submit_q.deq(send_q);
@@ -196,17 +195,19 @@ public:
 	    send_q.erase(q_iter);
 
 	    switch(xs->type) {
-	    case XIO_MSG_TYPE_REQ:
+	    case XIO_MSG_TYPE_REQ: /* it was an outgoing 1-way */
 	      xmsg = static_cast<XioMsg*>(xs);
 	      msg = &xmsg->req_0;
-	      code = xio_send_request(xs->xcon->conn, msg);
+	      code = xio_send_msg(xs->xcon->conn, msg);
 	      xs->xcon->send.set(msg->timestamp); /* XXX atomic? */
 	      break;
 	    default:
 	      /* XIO_MSG_TYPE_RSP */
-	      xrsp = static_cast<XioRsp*>(xs);
-	      msg = &xrsp->rsp;
-	      code = xio_send_response(msg);
+	    {
+	      XioRsp* xrsp = static_cast<XioRsp*>(xs);
+	      code = xio_release_msg(xrsp->get_msg());
+	      xrsp->finalize();
+	    }
 	      break;
 	    };
 

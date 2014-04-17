@@ -22,7 +22,7 @@ extern XioPool *xrp_pool;
 void XioCompletionHook::finish(int r)
 {
   XioRsp *xrsp;
-  struct xio_msg *msg, *rsp;
+  struct xio_msg *msg;
   list <struct xio_msg *>::iterator iter;
 
   nrefs.inc();
@@ -30,24 +30,21 @@ void XioCompletionHook::finish(int r)
   for (iter = msg_seq.begin(); iter != msg_seq.end(); ++iter) {
     msg = *iter;
     switch (msg->type) {
-    case XIO_MSG_TYPE_REQ:
+    case XIO_MSG_TYPE_ONE_WAY:
     {
       ConnectionRef conn = m->get_connection();
       XioConnection *xcon = static_cast<XioConnection*>(conn.get());
 
-      /* XXX ack it (Eyal:  we'd like an xio_ack_response) */
+      /* queue for release */
       xrsp = (XioRsp *) rsp_pool.alloc(sizeof(XioRsp));
-      new (xrsp) XioRsp(xcon);
-      rsp = &xrsp->rsp;
-      rsp->user_context = this->get();
-      rsp->request = msg;
+      new (xrsp) XioRsp(xcon, this, msg);
 
       /* merge with portal traffic */
       xcon->portal->enqueue_for_send(xcon, xrsp);
     }
       break;
+    case XIO_MSG_TYPE_REQ:
     case XIO_MSG_TYPE_RSP:
-    case XIO_MSG_TYPE_ONE_WAY:
     default:
       abort();
       break;
@@ -59,27 +56,5 @@ void XioCompletionHook::finish(int r)
 
 void XioCompletionHook::on_err_finalize(XioConnection *xcon)
 {
-  struct xio_msg *msg, *rsp;
-  list <struct xio_msg *>::iterator iter;
-
-  for (iter = msg_seq.begin(); iter != msg_seq.end(); ++iter) {
-    msg = *iter;
-    switch (msg->type) {
-    case XIO_MSG_TYPE_REQ:
-    {
-      /* XXX ack it (Eyal:  we'd like an xio_ack_response) */
-      rsp = (struct xio_msg *) calloc(1, sizeof(struct xio_msg));
-      rsp->request = msg;
-      pthread_spin_lock(&xcon->sp);
-      (void) xio_send_response(rsp); /* XXX can now chain */
-      pthread_spin_unlock(&xcon->sp);
-    }
-      break;
-    case XIO_MSG_TYPE_RSP:
-    case XIO_MSG_TYPE_ONE_WAY:
-    default:
-      abort();
-      break;
-    }
-  }
+  /* with one-way this is now a no-op */
 }
