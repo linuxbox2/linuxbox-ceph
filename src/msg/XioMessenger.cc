@@ -93,12 +93,13 @@ static int on_msg_delivered(struct xio_session *session,
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
 
-  dout(4) << dout_format("msg delivered session: %p msg: %p more: %d conn_user_context %p",
-	 session, msg, more_in_batch, conn_user_context) << dendl;
+  dout(4) <<
+    dout_format(
+      "msg delivered session: %p msg: %p more: %d conn_user_context %p",
+      session, msg, more_in_batch, conn_user_context) << dendl;
 
-  return xcon->on_msg_delivered(session, msg, more_in_batch, conn_user_context);
-
-  return 0;
+  return xcon->on_msg_delivered(session, msg, more_in_batch,
+				conn_user_context);
 }
 
 static int on_msg_error(struct xio_session *session,
@@ -106,19 +107,14 @@ static int on_msg_error(struct xio_session *session,
 			struct xio_msg  *msg,
 			void *conn_user_context)
 {
+  /* XIO promises to flush back undelivered messages */
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
 
   dout(4) << dout_format("msg error session: %p error: %s msg: %p conn_user_context %p",
 	 session, xio_strerror(error), msg, conn_user_context) << dendl;
 
-  /* XIO promises to flush back undelivered messags */
-    dereg_xio_req(msg);
-    XioMsg *xmsg = static_cast<XioMsg*>(msg->user_context);
-    if (xmsg)
-      xmsg->put();
-
-  return 0;
+  return xcon->on_msg_error(session, error, msg, conn_user_context);
 }
 
 static int on_cancel(struct xio_session *session,
@@ -126,11 +122,13 @@ static int on_cancel(struct xio_session *session,
 		     enum xio_status result,
 		     void *conn_user_context)
 {
+#if 0
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
 
   dout(4) << dout_format("on cancel: session: %p msg: %p conn_user_context %p",
 	 session, msg, conn_user_context) << dendl;
+#endif
 
   return 0;
 }
@@ -139,11 +137,14 @@ static int on_cancel_request(struct xio_session *session,
 			     struct xio_msg  *msg,
 			     void *conn_user_context)
 {
+#if 0
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
 
-  dout(4) << dout_format("on cancel request: session: %p msg: %p conn_user_context %p",
-	 session, msg, conn_user_context) << dendl;
+  dout(4) << dout_format(
+    "on cancel request: session: %p msg: %p conn_user_context %p",
+    session, msg, conn_user_context) << dendl;
+#endif
 
   return 0;
 }
