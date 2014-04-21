@@ -61,4 +61,24 @@ if FREEBSD
 libmsg_la_SOURCES += msg/async/EventKqueue.h
 endif
 
+if ENABLE_XIO
+libmsg_la_SOURCES += \
+	msg/QueueStrategy.cc \
+	msg/XioConnection.cc \
+	msg/XioMessenger.cc \
+	msg/XioMsg.cc \
+	msg/XioPortal.cc
+
+noinst_HEADERS += \
+	msg/DispatchStrategy.h \
+	msg/FastStrategy.h \
+	msg/QueueStrategy.h \
+	msg/XioConnection.h \
+	msg/XioInSeq.h \
+	msg/XioMessenger.h \
+	msg/XioMsg.h \
+	msg/XioPool.h \
+	msg/XioPortal.h
+endif
+
 noinst_LTLIBRARIES += libmsg.la
