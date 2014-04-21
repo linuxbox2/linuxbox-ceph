@@ -15,6 +15,22 @@
 #ifndef CEPH_CONNECTION_H
 #define CEPH_CONNECTION_H
 
+#include <stdlib.h>
+#include <ostream>
+
+#include <boost/intrusive_ptr.hpp>
+// Because intusive_ptr clobbers our assert...
+#include "include/assert.h"
+
+#include "include/types.h"
+#include "include/buffer.h"
+
+#include "common/RefCountedObj.h"
+
+#include "common/debug.h"
+#include "common/config.h"
+
+
 // ======================================================
 
 // abstract Connection, for keeping per-connection state
@@ -27,14 +43,17 @@ struct Connection : public RefCountedObject {
   RefCountedObject *priv;
   int peer_type;
   entity_addr_t peer_addr;
+  utime_t last_keepalive_ack;
+private:
   uint64_t features;
+public:
   bool failed; // true if we are a lossy connection that has failed.
 
   int rx_buffers_version;
-  map<tid_t,pair<bufferlist,int> > rx_buffers;
+  map<ceph_tid_t,pair<bufferlist,int> > rx_buffers;
 
   friend class boost::intrusive_ptr<Connection>;
-  friend class PipeConnection; // XXX
+  friend class PipeConnection;
 
 public:
   Connection(Messenger *m)
@@ -94,15 +113,19 @@ public:
   void set_features(uint64_t f) { features = f; }
   void set_feature(uint64_t f) { features |= f; }
 
-  void post_rx_buffer(tid_t tid, bufferlist& bl) {
+  void post_rx_buffer(ceph_tid_t tid, bufferlist& bl) {
     Mutex::Locker l(lock);
     ++rx_buffers_version;
     rx_buffers[tid] = pair<bufferlist,int>(bl, rx_buffers_version);
   }
 
-  void revoke_rx_buffer(tid_t tid) {
+  void revoke_rx_buffer(ceph_tid_t tid) {
     Mutex::Locker l(lock);
     rx_buffers.erase(tid);
+  }
+
+  utime_t get_last_keepalive_ack() const {
+    return last_keepalive_ack;
   }
 };
 
