@@ -164,6 +164,9 @@
 #define MSG_TIMECHECK             0x600
 #define MSG_MON_HEALTH            0x601
 
+// testing/flexible ping
+#define MSG_DATA_PING		  0x602
+
 
 // ======================================================
 
