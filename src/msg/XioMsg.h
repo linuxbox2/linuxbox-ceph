@@ -239,9 +239,6 @@ public:
   XioCompletionHook* get() {
     nrefs.inc(); return this;
   }
-  virtual void set_message(Message *_m) {
-    m = _m;
-  }
 
   void put() {
     int refs = nrefs.dec();
