@@ -3,11 +3,14 @@ set(libos_srcs
 	FileStore.cc 
 	chain_xattr.cc 
 	ObjectStore.cc 
-	JournalingObjectStore.cc 
+	JournalingObjectStore.cc
+	KeyValueStore.cc
+	MemStore.cc
 	LFNIndex.cc 
 	HashIndex.cc 
 	IndexManager.cc 
-	FlatIndex.cc 
+	FlatIndex.cc
+	GenericObjectMap.cc
 	DBObjectMap.cc 
 	LevelDBStore.cc 
 	WBThrottle.cc

@@ -17,11 +17,11 @@ link_directories(
 )
 
 #Check Includes
-
 include(CheckIncludeFiles)
 include(CheckFunctionExists)
 
 CHECK_FUNCTION_EXISTS(fallocate CEPH_HAVE_FALLOCATE)
+CHECK_FUNCTION_EXISTS(posix_fallocate HAVE_POSIX_FALLOCATE)
 CHECK_FUNCTION_EXISTS(syncfs HAVE_SYS_SYNCFS) 
 CHECK_FUNCTION_EXISTS(sync_file_range HAVE_SYNC_FILE_RANGE)
 CHECK_INCLUDE_FILES("arpa/inet.h" HAVE_ARPA_INET_H)
@@ -29,6 +29,7 @@ CHECK_INCLUDE_FILES("boost/random/discrete_distribution.hpp" HAVE_BOOST_RANDOM_D
 CHECK_INCLUDE_FILES("dirent.h" HAVE_DIRENT_H)
 CHECK_INCLUDE_FILES("dlfcn.h" HAVE_DLFCN_H)
 CHECK_INCLUDE_FILES("inttypes.h" HAVE_INTTYPES_H)
+CHECK_INCLUDE_FILES("linux/types.h" HAVE_LINUX_TYPES_H)
 CHECK_INCLUDE_FILES("leveldb/filter_policy.h" HAVE_LEVELDB_FILTER_POLICY)
 CHECK_INCLUDE_FILES("memory.h" HAVE_MEMORY_H)
 CHECK_INCLUDE_FILES("ndir.h" HAVE_NDIR_H)
@@ -75,6 +76,11 @@ CHECK_INCLUDE_FILES("snappy.h" HAVE_SNAPPY_H)
 CHECK_INCLUDE_FILES("uuid/uuid.h" HAVE_UUID_H)
 CHECK_INCLUDE_FILES("atomic_ops.h" HAVE_ATOMIC_OPS)
 CHECK_INCLUDE_FILES("keyutils.h" HAVE_KEYUTILS_H)
+
+include(CheckSymbolExists)
+CHECK_SYMBOL_EXISTS(__u8 "sys/types.h;linux/types.h" HAVE___U8)
+CHECK_SYMBOL_EXISTS(__u64 "sys/types.h;linux/types.h" HAVE___U64)
+CHECK_SYMBOL_EXISTS(__s64 "sys/types.h;linux/types.h" HAVE___S64)
 
 option(WITH_AIO "AIO is here ON" ON)
 if(${WITH_AIO})

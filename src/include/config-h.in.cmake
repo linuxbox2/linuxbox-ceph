@@ -6,6 +6,9 @@
 /* fallocate(2) is supported */
 #cmakedefine CEPH_HAVE_FALLOCATE 
 
+/* posix_fallocate is supported */
+#cmakedefine HAVE_POSIX_FALLOCATE 
+
 /* Define if darwin/osx */
 #cmakedefine DARWIN 
 
@@ -36,6 +39,9 @@
 
 /* Define to 1 if you have the `fuse_getgroups' function. */
 #cmakedefine HAVE_FUSE_GETGROUPS 1
+
+/* Define to 1 if you have the <linux/types.h> header file. */
+#cmakedefine HAVE_LINUX_TYPES_H 1
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #cmakedefine HAVE_INTTYPES_H 1

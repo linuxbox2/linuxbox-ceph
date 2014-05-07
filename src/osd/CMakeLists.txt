@@ -1,10 +1,16 @@
 set(osd_srcs
 	Ager.cc 
-	ClassHandler.cc 
+	ClassHandler.cc
+	ECBackend.cc
+	ECMsgTypes.cc
+	ECTransaction.cc
+	ECUtil.cc
+	HitSet.cc 
 	OpRequest.cc 
 	OSD.cc 
 	OSDCap.cc 
-	PG.cc 
+	PG.cc
+	PGBackend.cc
 	PGLog.cc 
 	ReplicatedBackend.cc 
 	ReplicatedPG.cc 

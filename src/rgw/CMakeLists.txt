@@ -33,8 +33,8 @@ set(librgw_a_srcs
 
 add_library(librgw_a ${librgw_a_srcs})
 
-target_link_libraries(librgw_a cls_log cls_statelog cls_refcount cls_replica_log cls_rgw cls_version)
-
+target_link_libraries(librgw_a cls_log cls_statelog cls_refcount cls_replica_log cls_rgw cls_user cls_version)
+ 
 set(radosgw_srcs
 	rgw_http_client.cc 
 	rgw_main.cc
@@ -53,7 +53,10 @@ set(radosgw_srcs
 	rgw_rest_usage.cc 
 	rgw_rest_user.cc 
 	rgw_swift.cc 
-	rgw_swift_auth.cc 
+	rgw_swift_auth.cc
+	rgw_loadgen.cc
+	rgw_civetweb.cc
+	${CMAKE_SOURCE_DIR}/src/civetweb/src/civetweb.c
 )
 
 add_executable(radosgw ${radosgw_srcs})
@@ -62,7 +65,7 @@ target_link_libraries(radosgw librgw_a librados curl expat global fcgi resolv)
 install(TARGETS radosgw DESTINATION bin)
 
 set_target_properties(radosgw 
-PROPERTIES COMPILE_FLAGS -Woverloaded-virtual)
+PROPERTIES COMPILE_FLAGS "-Woverloaded-virtual -I${CMAKE_SOURCE_DIR}/src/civetweb/include")
 
 set_target_properties(librgw_a 
 PROPERTIES COMPILE_FLAGS -Woverloaded-virtual)

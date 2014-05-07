@@ -1,4 +1,5 @@
 add_definitions("-DCEPH_LIBDIR=${LIBRARY_OUTPUT_PATH}")
+add_definitions("-DCEPH_PKGLIBDIR=${LIBRARY_OUTPUT_PATH}")
 
 set(AM_COMMON_FLAGS "-DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE -rdynamic -Wall -Wtype-limits -Wignored-qualifiers -Winit-self -Wpointer-arith -Werror=format-security -fno-strict-aliasing -fsigned-char -fPIC")
 
@@ -107,6 +108,7 @@ add_subdirectory(global)
 add_subdirectory(osd)
 add_subdirectory(mds)
 add_subdirectory(client)
+add_subdirectory(erasure-code)
 add_subdirectory(tools)
 add_subdirectory(test)
 
