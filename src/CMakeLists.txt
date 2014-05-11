@@ -144,7 +144,7 @@ set(ceph_osd_srcs
 
 add_executable(ceph-osd ${ceph_osd_srcs})
 
-target_link_libraries(ceph-osd osd os global ${TCMALLOC_LIBS})
+target_link_libraries(ceph-osd osd boost_regex os global ${TCMALLOC_LIBS})
 
 #mds
 set(ceph_mds_srcs
@@ -181,7 +181,7 @@ set(librados_config_srcs
 )
 
 add_executable(librados-config ${librados_config_srcs})
-target_link_libraries(librados-config librados global)
+target_link_libraries(librados-config librados boost_regex global)
 
 
 #ceph-fuse
