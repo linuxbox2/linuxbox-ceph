@@ -322,7 +322,7 @@ static int fio_ceph_filestore_io_u_init(struct thread_data *td, struct io_u *io_
 extern "C" {
 void get_ioengine(struct ioengine_ops **ioengine_ptr) {
 	struct ioengine_ops *ioengine;
-	*ioengine_ptr = (struct ioengine_ops *) malloc(sizeof(struct ioengine_ops));
+	*ioengine_ptr = (struct ioengine_ops *) calloc(sizeof(struct ioengine_ops), 1);
 	ioengine = *ioengine_ptr;
 
 	strcpy(ioengine->name, "ceph_filestore");
