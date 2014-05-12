@@ -180,18 +180,18 @@ static int fio_ceph_filestore_queue(struct thread_data *td, struct io_u *io_u)
 	fio_ro_check(td, io_u);
 
 
-	ObjectStore::Transaction *t = new ObjectStore::Transaction;
-	if (!t) {
-
-		cout << "ObjectStore Transcation allocation failed." << std::endl;
-		goto failed;
-	}
-
-
         if (io_u->ddir == DDIR_WRITE) {
+		ObjectStore::Transaction *t = new ObjectStore::Transaction;
+		if (!t) {
+			cout << "ObjectStore Transcation allocation failed." << std::endl;
+			goto failed;
+		}
 		t->write(coll_t(), hobject_t(poid), off, len, data);
 		//cout << "QUEUING transaction " << io_u << std::endl;
 		fs->queue_transaction(NULL, t, new OnApplied(io_u, t), new OnCommitted(io_u));
+	} else if (io_u->ddir == DDIR_READ) {
+		fs->read(coll_t(), hobject_t(poid), off, len, data);
+		return FIO_Q_COMPLETED;
 	} else {
 		cout << "WARNING: No DDIR beside DDIR_WRITE supported!" << std::endl;
 		return FIO_Q_COMPLETED;
