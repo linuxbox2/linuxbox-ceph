@@ -153,7 +153,7 @@ set(ceph_mds_srcs
 )
 add_executable(ceph-mds ${ceph_mds_srcs})
 
-target_link_libraries(ceph-mds mds osdc ${CMAKE_DL_LIBS} global ${TCMALLOC_LIBS} boost_thread)
+target_link_libraries(ceph-mds mds osdc ${CMAKE_DL_LIBS} boost_regex global ${TCMALLOC_LIBS} boost_thread)
 
 # admin tools
 
