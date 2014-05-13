@@ -247,6 +247,11 @@ static void fio_ceph_filestore_cleanup(struct thread_data *td)
 	struct ceph_filestore_data *ceph_filestore_data = (struct ceph_filestore_data *) td->io_ops->data;
 
 	if (ceph_filestore_data) {
+		if (ceph_filestore_data->fs) {
+			// clean up ObjectStore
+			ceph_filestore_data->fs->umount();
+			delete ceph_filestore_data->fs;
+		}
 		free(ceph_filestore_data->aio_events);
 		free(ceph_filestore_data);
 	}
