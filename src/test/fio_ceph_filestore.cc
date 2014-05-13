@@ -6,7 +6,7 @@
  *
  */
 
-#include "os/FileStore.h"
+#include "os/ObjectStore.h"
 #include "global/global_init.h"
 
 #include <fio.h>
@@ -23,6 +23,7 @@ struct ceph_filestore_data {
 
 struct ceph_filestore_options {
 	struct thread_data *td;
+	char *objectstore;
 	char *osd_path;
 	char *journal_path;
 };
@@ -30,10 +31,10 @@ struct ceph_filestore_options {
 // initialize the options in a function because g++ reports:
 // sorry, unimplemented: non-trivial designated initializers not supported
 static struct fio_option* init_options() {
-	static struct fio_option options[] = {{},{},{}};
+	static struct fio_option options[] = {{},{},{},{}};
 
 	options[0].name = "osdpath";
-	options[0].lname = "ceph filestore engine osd path";
+	options[0].lname = "ceph objectstore osd path";
 	options[0].type = FIO_OPT_STR_STORE;
 	options[0].help = "Path for a temporary osd directory";
 	options[0].off1 = offsetof(struct ceph_filestore_options, osd_path);
@@ -41,12 +42,20 @@ static struct fio_option* init_options() {
 	options[0].group = FIO_OPT_G_RBD;
 
 	options[1].name     = "journalpath";
-	options[1].lname    = "ceph filestore engine journal path";
+	options[1].lname    = "ceph filestore journal path";
 	options[1].type     = FIO_OPT_STR_STORE;
 	options[1].help     = "Path for a temporary journal file";
 	options[1].off1     = offsetof(struct ceph_filestore_options, journal_path);
 	options[1].category = FIO_OPT_C_ENGINE;
 	options[1].group    = FIO_OPT_G_RBD;
+
+	options[2].name = "objectstore";
+	options[2].lname = "ceph objectstore type";
+	options[2].type = FIO_OPT_STR_STORE;
+	options[2].help = "Type of ObjectStore to create";
+	options[2].off1 = offsetof(struct ceph_filestore_options, objectstore);
+	options[2].category = FIO_OPT_C_ENGINE;
+	options[2].group = FIO_OPT_G_RBD;
 
 	return options;
 };
@@ -211,28 +220,26 @@ static int fio_ceph_filestore_init(struct thread_data *td)
 	}
 	//mktemp(o->journal_path); // NOSPC issue
 
- 	ObjectStore *fs = new FileStore(o->osd_path, o->journal_path);
-	ceph_filestore_data->fs = fs;
-
+  ObjectStore *fs = ObjectStore::create(g_ceph_context, o->objectstore,
+			o->osd_path, o->journal_path);
+	if (fs == NULL) {
+		cout << "bad objectstore type " << o->objectstore << std::endl;
+		return 1;
+	}
 	if (fs->mkfs() < 0) {
 		cout << "mkfs failed" << std::endl;
-		goto failed;
+		return 1;
 	}
-	
 	if (fs->mount() < 0) {
 		cout << "mount failed" << std::endl;
-		goto failed;
+		return 1;
 	}
 
 	ft.create_collection(coll_t());
 	fs->apply_transaction(ft);
 
-
+	ceph_filestore_data->fs = fs;
 	return 0;
-
-failed:
-	return 1;
-
 }
 
 static void fio_ceph_filestore_cleanup(struct thread_data *td)
@@ -310,7 +317,7 @@ void get_ioengine(struct ioengine_ops **ioengine_ptr) {
 	*ioengine_ptr = (struct ioengine_ops *) calloc(sizeof(struct ioengine_ops), 1);
 	ioengine = *ioengine_ptr;
 
-	strcpy(ioengine->name, "ceph_filestore");
+	strcpy(ioengine->name, "cephobjectstore");
 	ioengine->version        = FIO_IOOPS_VERSION;
 	ioengine->setup          = fio_ceph_filestore_setup;
 	ioengine->init           = fio_ceph_filestore_init;
