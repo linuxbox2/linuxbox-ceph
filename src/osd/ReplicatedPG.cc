@@ -2516,7 +2516,15 @@ ReplicatedPG::RepGather *ReplicatedPG::trim_object(const hobject_t &coid)
 
 void ReplicatedPG::snap_trimmer()
 {
-  lock();
+  if (g_conf->osd_snap_trim_sleep > 0) {
+    utime_t t;
+    t.set_from_double(g_conf->osd_snap_trim_sleep);
+    t.sleep();
+    lock();
+    dout(20) << __func__ << " slept for " << t << dendl;
+  } else {
+    lock();
+  }
   if (deleting) {
     unlock();
     return;
@@ -4611,8 +4619,8 @@ inline int ReplicatedPG::_delete_oid(OpContext *ctx, bool no_whiteout)
   }
   oi.size = 0;
 
-  // cache: writeback: set whiteout on delete?
-  if (pool.info.cache_mode == pg_pool_t::CACHEMODE_WRITEBACK && !no_whiteout) {
+  // cache: cache: set whiteout on delete?
+  if (pool.info.cache_mode != pg_pool_t::CACHEMODE_NONE && !no_whiteout) {
     dout(20) << __func__ << " setting whiteout on " << soid << dendl;
     oi.set_flag(object_info_t::FLAG_WHITEOUT);
     ctx->delta_stats.num_whiteouts++;
@@ -5080,7 +5088,7 @@ int ReplicatedPG::prepare_transaction(OpContext *ctx)
   }
 
   // cache: clear whiteout?
-  if (pool.info.cache_mode == pg_pool_t::CACHEMODE_WRITEBACK) {
+  if (pool.info.cache_mode != pg_pool_t::CACHEMODE_NONE) {
     if (ctx->user_modify &&
 	ctx->obc->obs.oi.is_whiteout()) {
       dout(10) << __func__ << " clearing whiteout on " << soid << dendl;
@@ -7431,9 +7439,6 @@ void ReplicatedPG::kick_object_context_blocked(ObjectContextRef obc)
   dout(10) << __func__ << " " << soid << " requeuing " << ls.size() << " requests" << dendl;
   requeue_ops(ls);
   waiting_for_blocked_object.erase(p);
-
-  if (obc->requeue_scrub_on_unblock)
-    osd->queue_for_scrub(this);
 }
 
 SnapSetContext *ReplicatedPG::create_snapset_context(const hobject_t& oid)
@@ -10930,15 +10935,11 @@ void ReplicatedPG::hit_set_trim(RepGather *repop, unsigned max)
       agent_state->remove_oldest_hit_set();
     updated_hit_set_hist.history.pop_front();
 
-    struct stat st;
-    int r = osd->store->stat(
-      coll,
-      ghobject_t(oid, ghobject_t::NO_GEN, pg_whoami.shard),
-      &st);
-    assert(r == 0);
+    ObjectContextRef obc = get_object_context(oid, false);
+    assert(obc);
     --repop->ctx->delta_stats.num_objects;
     --repop->ctx->delta_stats.num_objects_hit_set_archive;
-    repop->ctx->delta_stats.num_bytes -= st.st_size;
+    repop->ctx->delta_stats.num_bytes -= obc->obs.oi.size;
   }
 }
 
@@ -11578,23 +11579,6 @@ void ReplicatedPG::agent_estimate_atime_temp(const hobject_t& oid,
 // ==========================================================================================
 // SCRUB
 
-
-bool ReplicatedPG::_range_available_for_scrub(
-  const hobject_t &begin, const hobject_t &end)
-{
-  pair<hobject_t, ObjectContextRef> next;
-  next.second = object_contexts.lookup(begin);
-  next.first = begin;
-  bool more = true;
-  while (more && next.first < end) {
-    if (next.second && next.second->is_blocked()) {
-      next.second->requeue_scrub_on_unblock = true;
-      return true;
-    }
-    more = object_contexts.get_next(next.first, &next);
-  }
-  return false;
-}
 
 void ReplicatedPG::_scrub(ScrubMap& scrubmap)
 {

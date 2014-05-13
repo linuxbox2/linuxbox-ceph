@@ -349,9 +349,6 @@ void MonClient::handle_monmap(MMonMap *m)
     cout << "handle_monmap addr mismatch " << epoch << std::endl;
     ldout(cct, 10) << "mon." << cur_mon << " went away" << dendl;
     _reopen_session();  // can't find the mon we were talking to (above)
-  } else {
-    cout << "handle_monmap finish hunting " << epoch << std::endl;
-    _finish_hunting();
   }
 
   map_cond.Signal();
@@ -779,8 +776,6 @@ void MonClient::_renew_subs()
 
 void MonClient::handle_subscribe_ack(MMonSubscribeAck *m)
 {
-  _finish_hunting();
-
   if (sub_renew_sent != utime_t()) {
     sub_renew_after = sub_renew_sent;
     sub_renew_after += m->interval / 2.0;
