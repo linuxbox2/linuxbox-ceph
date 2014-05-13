@@ -18,52 +18,38 @@ struct fio_ceph_filestore_iou {
 
 struct ceph_filestore_data {
 	struct io_u **aio_events;
-	char *osd_path;
-	char *journal_path;
 	ObjectStore *fs;
 };
 
 struct ceph_filestore_options {
 	struct thread_data *td;
-	char *ceph_filestore_name;
-	char *pool_name;
-	char *client_name;
+	char *osd_path;
+	char *journal_path;
 };
 
-#if 0
-static struct fio_option options[] = {
-	{
-	 .name     = "ceph_filestorename",
-	 .lname    = "ceph_filestore engine ceph_filestorename",
-	 .type     = FIO_OPT_STR_STORE,
-	 .help     = "RBD name for RBD engine",
-	 .off1     = offsetof(struct ceph_filestore_options, ceph_filestore_name),
-	 .category = FIO_OPT_C_ENGINE,
-	 .group    = FIO_OPT_G_RBD,
-	 },
-	{
-	 .name     = "pool",
-	 .lname    = "ceph_filestore engine pool",
-	 .type     = FIO_OPT_STR_STORE,
-	 .help     = "Name of the pool hosting the RBD for the RBD engine",
-	 .off1     = offsetof(struct ceph_filestore_options, pool_name),
-	 .category = FIO_OPT_C_ENGINE,
-	 .group    = FIO_OPT_G_RBD,
-	 },
-	{
-	 .name     = "clientname",
-	 .lname    = "ceph_filestore engine clientname",
-	 .type     = FIO_OPT_STR_STORE,
-	 .help     = "Name of the ceph client to access the RBD for the RBD engine",
-	 .off1     = offsetof(struct ceph_filestore_options, client_name),
-	 .category = FIO_OPT_C_ENGINE,
-	 .group    = FIO_OPT_G_RBD,
-	 },
-	{
-	 .name = NULL,
-	 },
+// initialize the options in a function because g++ reports:
+// sorry, unimplemented: non-trivial designated initializers not supported
+static struct fio_option* init_options() {
+	static struct fio_option options[] = {{},{},{}};
+
+	options[0].name = "osdpath";
+	options[0].lname = "ceph filestore engine osd path";
+	options[0].type = FIO_OPT_STR_STORE;
+	options[0].help = "Path for a temporary osd directory";
+	options[0].off1 = offsetof(struct ceph_filestore_options, osd_path);
+	options[0].category = FIO_OPT_C_ENGINE;
+	options[0].group = FIO_OPT_G_RBD;
+
+	options[1].name     = "journalpath";
+	options[1].lname    = "ceph filestore engine journal path";
+	options[1].type     = FIO_OPT_STR_STORE;
+	options[1].help     = "Path for a temporary journal file";
+	options[1].off1     = offsetof(struct ceph_filestore_options, journal_path);
+	options[1].category = FIO_OPT_C_ENGINE;
+	options[1].group    = FIO_OPT_G_RBD;
+
+	return options;
 };
-#endif
 
 /////////////////////////////
 
@@ -209,6 +195,7 @@ static int fio_ceph_filestore_init(struct thread_data *td)
 {
 	vector<const char*> args;
 	struct ceph_filestore_data *ceph_filestore_data = (struct ceph_filestore_data *) td->io_ops->data;
+	struct ceph_filestore_options *o = (struct ceph_filestore_options *) td->eo;
 	ObjectStore::Transaction ft;
 
 	global_init(NULL, args, CEPH_ENTITY_TYPE_OSD, CODE_ENVIRONMENT_UTILITY, 0);
@@ -218,13 +205,13 @@ static int fio_ceph_filestore_init(struct thread_data *td)
 	//g_ceph_context->_conf->set_val("debug_throttle", "20");
 	g_ceph_context->_conf->apply_changes(NULL);
 
-	ceph_filestore_data->osd_path = strdup("/mnt/fio_ceph_filestore.XXXXXXX");
-	ceph_filestore_data->journal_path = strdup("/var/lib/ceph/osd/journal-ram/fio_ceph_filestore.XXXXXXX");
+	if (!mkdtemp(o->osd_path)) {
+		cout << "mkdtemp failed: " << strerror(errno) << std::endl;
+		return 1;
+	}
+	//mktemp(o->journal_path); // NOSPC issue
 
-	mkdtemp(ceph_filestore_data->osd_path);
-	//mktemp(ceph_filestore_data->journal_path); // NOSPC issue
-
-  	ObjectStore *fs = new FileStore(ceph_filestore_data->osd_path, ceph_filestore_data->journal_path);
+ 	ObjectStore *fs = new FileStore(o->osd_path, o->journal_path);
 	ceph_filestore_data->fs = fs;
 
 	if (fs->mkfs() < 0) {
@@ -254,8 +241,6 @@ static void fio_ceph_filestore_cleanup(struct thread_data *td)
 
 	if (ceph_filestore_data) {
 		free(ceph_filestore_data->aio_events);
-		free(ceph_filestore_data->osd_path);
-		free(ceph_filestore_data->journal_path);
 		free(ceph_filestore_data);
 	}
 
@@ -339,6 +324,8 @@ void get_ioengine(struct ioengine_ops **ioengine_ptr) {
 	//ioengine->close_file     = fio_ceph_filestore_close;
 	ioengine->io_u_init      = fio_ceph_filestore_io_u_init;
 	ioengine->io_u_free      = fio_ceph_filestore_io_u_free;
+	ioengine->options        = init_options();
+	ioengine->option_struct_size = sizeof(struct ceph_filestore_options);
 }
 }
 

@@ -1,0 +1,20 @@
+######################################################################
+# Example test for the external fio ioengine for FileStore.
+# 
+# Runs a 4k random write test against a FileStore configuration.
+#
+######################################################################
+[global]
+#logging
+#write_iops_log=write_iops_log
+#write_bw_log=write_bw_log
+#write_lat_log=write_lat_log
+ioengine=./.libs/libfio_ceph_filestore.so
+invalidate=0	# mandatory
+#rw=randwrite
+#bs=4k
+
+[filestore]
+iodepth=1
+osdpath=/mnt/fio_ceph_filestore.XXXXXXX
+journalpath=/var/lib/ceph/osd/journal-ram/fio_ceph_filestore.XXXXXXX
