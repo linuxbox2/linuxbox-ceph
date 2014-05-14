@@ -24,38 +24,38 @@ struct ceph_filestore_data {
 struct ceph_filestore_options {
 	struct thread_data *td;
 	char *objectstore;
-	char *osd_path;
-	char *journal_path;
+	char *filestore_debug;
+	char *filestore_journal;
 };
 
 // initialize the options in a function because g++ reports:
-// sorry, unimplemented: non-trivial designated initializers not supported
+//   sorry, unimplemented: non-trivial designated initializers not supported
 static struct fio_option* init_options() {
 	static struct fio_option options[] = {{},{},{},{}};
 
-	options[0].name = "osdpath";
-	options[0].lname = "ceph objectstore osd path";
-	options[0].type = FIO_OPT_STR_STORE;
-	options[0].help = "Path for a temporary osd directory";
-	options[0].off1 = offsetof(struct ceph_filestore_options, osd_path);
+	options[0].name     = "objectstore";
+	options[0].lname    = "ceph objectstore type";
+	options[0].type     = FIO_OPT_STR_STORE;
+	options[0].help     = "Type of ObjectStore to create";
+	options[0].off1     = offsetof(struct ceph_filestore_options, objectstore);
 	options[0].category = FIO_OPT_C_ENGINE;
-	options[0].group = FIO_OPT_G_RBD;
+	options[0].group    = FIO_OPT_G_RBD;
 
-	options[1].name     = "journalpath";
-	options[1].lname    = "ceph filestore journal path";
+	options[1].name     = "filestore_debug";
+	options[1].lname    = "ceph filestore debug level";
 	options[1].type     = FIO_OPT_STR_STORE;
-	options[1].help     = "Path for a temporary journal file";
-	options[1].off1     = offsetof(struct ceph_filestore_options, journal_path);
+	options[1].help     = "Debug level for ceph filestore log output";
+	options[1].off1     = offsetof(struct ceph_filestore_options, filestore_debug);
 	options[1].category = FIO_OPT_C_ENGINE;
 	options[1].group    = FIO_OPT_G_RBD;
 
-	options[2].name = "objectstore";
-	options[2].lname = "ceph objectstore type";
-	options[2].type = FIO_OPT_STR_STORE;
-	options[2].help = "Type of ObjectStore to create";
-	options[2].off1 = offsetof(struct ceph_filestore_options, objectstore);
+	options[2].name     = "filestore_journal";
+	options[2].lname    = "ceph filestore journal path";
+	options[2].type     = FIO_OPT_STR_STORE;
+	options[2].help     = "Path for a temporary journal file";
+	options[2].off1     = offsetof(struct ceph_filestore_options, filestore_journal);
 	options[2].category = FIO_OPT_C_ENGINE;
-	options[2].group = FIO_OPT_G_RBD;
+	options[2].group    = FIO_OPT_G_RBD;
 
 	return options;
 };
@@ -210,18 +210,14 @@ static int fio_ceph_filestore_init(struct thread_data *td)
 	global_init(NULL, args, CEPH_ENTITY_TYPE_OSD, CODE_ENVIRONMENT_UTILITY, 0);
 	//g_conf->journal_dio = false;
 	common_init_finish(g_ceph_context);
-	//g_ceph_context->_conf->set_val("debug_filestore", "20");
-	//g_ceph_context->_conf->set_val("debug_throttle", "20");
-	g_ceph_context->_conf->apply_changes(NULL);
-
-	if (!mkdtemp(o->osd_path)) {
-		cout << "mkdtemp failed: " << strerror(errno) << std::endl;
-		return 1;
+	if (o->filestore_debug) {
+		g_ceph_context->_conf->set_val("debug_filestore", o->filestore_debug);
+		g_ceph_context->_conf->apply_changes(NULL);
 	}
-	//mktemp(o->journal_path); // NOSPC issue
 
-  ObjectStore *fs = ObjectStore::create(g_ceph_context, o->objectstore,
-			o->osd_path, o->journal_path);
+  ObjectStore *fs = ObjectStore::create(g_ceph_context,
+			o->objectstore, td->o.directory,
+			o->filestore_journal ? o->filestore_journal : "");
 	if (fs == NULL) {
 		cout << "bad objectstore type " << o->objectstore << std::endl;
 		return 1;
