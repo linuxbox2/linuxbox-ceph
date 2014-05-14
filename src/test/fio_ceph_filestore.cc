@@ -167,13 +167,9 @@ static int fio_ceph_filestore_queue(struct thread_data *td, struct io_u *io_u)
 	uint64_t off = io_u->offset;
 	ObjectStore *fs = ceph_filestore_data->fs;
 	object_t poid(buf);
-
-	bufferlist data;
 	snprintf(buf, sizeof(buf), "XXX_%lu_%lu", io_u->start_time.tv_usec, io_u->start_time.tv_sec);
-	data.append((char *)io_u->xfer_buf, io_u->xfer_buflen);
 
 	fio_ro_check(td, io_u);
-
 
         if (io_u->ddir == DDIR_WRITE) {
 		ObjectStore::Transaction *t = new ObjectStore::Transaction;
@@ -181,11 +177,18 @@ static int fio_ceph_filestore_queue(struct thread_data *td, struct io_u *io_u)
 			cout << "ObjectStore Transcation allocation failed." << std::endl;
 			goto failed;
 		}
+		bufferlist data;
+		data.append((char *)io_u->xfer_buf, io_u->xfer_buflen);
 		t->write(coll_t(), hobject_t(poid), off, len, data);
 		//cout << "QUEUING transaction " << io_u << std::endl;
 		fs->queue_transaction(NULL, t, new OnApplied(io_u, t), new OnCommitted(io_u));
 	} else if (io_u->ddir == DDIR_READ) {
-		fs->read(coll_t(), hobject_t(poid), off, len, data);
+		bufferlist data;
+		data.push_back(buffer::create_static(len, (char *)io_u->xfer_buf));
+		r = fs->read(coll_t(), hobject_t(poid), off, len, data);
+		if (r < 0)
+			goto failed;
+		io_u->resid = len - r;
 		return FIO_Q_COMPLETED;
 	} else {
 		cout << "WARNING: No DDIR beside DDIR_WRITE supported!" << std::endl;
