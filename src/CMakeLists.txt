@@ -172,7 +172,7 @@ set(ceph_syn_srcs
 )
 
 add_executable(ceph-syn ${ceph_syn_srcs})
-target_link_libraries(ceph-syn client global)
+target_link_libraries(ceph-syn client boost_regex global)
 
 
 #librados_config_srcs
@@ -192,7 +192,7 @@ client/fuse_ll.cc
 )
 
 add_executable(ceph-fuse ${ceph_fuse_srcs})
-target_link_libraries(ceph-fuse fuse client global)
+target_link_libraries(ceph-fuse fuse client boost_regex global)
 set(ceph_fuse_bin "ceph-fuse")
 endif(WITH_FUSE)
 

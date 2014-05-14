@@ -13,7 +13,7 @@ set(libclient_srcs
 
 add_library(client ${libclient_srcs})
 
-target_link_libraries(client osdc ${LIBEDIT_LIBS})
+target_link_libraries(client osdc boost_regex ${LIBEDIT_LIBS})
 
 # libcephfs
 if (WITH_LIBCEPHFS)
