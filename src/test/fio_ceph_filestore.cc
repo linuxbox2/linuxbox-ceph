@@ -171,20 +171,19 @@ static int fio_ceph_filestore_queue(struct thread_data *td, struct io_u *io_u)
 
 	fio_ro_check(td, io_u);
 
+	bufferlist data;
+	data.push_back(buffer::create_static(len, (char *)io_u->xfer_buf));
+
         if (io_u->ddir == DDIR_WRITE) {
 		ObjectStore::Transaction *t = new ObjectStore::Transaction;
 		if (!t) {
 			cout << "ObjectStore Transcation allocation failed." << std::endl;
 			goto failed;
 		}
-		bufferlist data;
-		data.append((char *)io_u->xfer_buf, io_u->xfer_buflen);
 		t->write(coll_t(), hobject_t(poid), off, len, data);
 		//cout << "QUEUING transaction " << io_u << std::endl;
 		fs->queue_transaction(NULL, t, new OnApplied(io_u, t), new OnCommitted(io_u));
 	} else if (io_u->ddir == DDIR_READ) {
-		bufferlist data;
-		data.push_back(buffer::create_static(len, (char *)io_u->xfer_buf));
 		r = fs->read(coll_t(), hobject_t(poid), off, len, data);
 		if (r < 0)
 			goto failed;
