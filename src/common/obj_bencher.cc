@@ -107,7 +107,7 @@ void *ObjBencher::status_printer(void *_bencher) {
     else
       bandwidth = 0;
 
-    if (!isnan(bandwidth)) {
+    if (!std::isnan(bandwidth)) {
       if (bandwidth > data.idata.max_bandwidth)
         data.idata.max_bandwidth = bandwidth;
       if (bandwidth < data.idata.min_bandwidth)
