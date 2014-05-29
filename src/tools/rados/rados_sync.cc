@@ -39,7 +39,7 @@
 #include <unistd.h>
 
 using namespace librados;
-using std::auto_ptr;
+using std::unique_ptr;
 
 static const char * const XATTR_RADOS_SYNC_VER = "user.rados_sync_ver";
 static const char * const XATTR_FULLNAME = "user.rados_full_name";
@@ -356,14 +356,14 @@ bool Xattr::operator!=(const class Xattr &rhs) const {
 }
 
 int BackedUpObject::from_file(const char *file_name, const char *dir_name,
-			  std::auto_ptr<BackedUpObject> &obj)
+			  std::unique_ptr<BackedUpObject> &obj)
 {
   char obj_path[strlen(dir_name) + strlen(file_name) + 2];
   snprintf(obj_path, sizeof(obj_path), "%s/%s", dir_name, file_name);
   return BackedUpObject::from_path(obj_path, obj);
 }
 
-int BackedUpObject::from_path(const char *path, std::auto_ptr<BackedUpObject> &obj)
+int BackedUpObject::from_path(const char *path, std::unique_ptr<BackedUpObject> &obj)
 {
   int ret;
   FILE *fp = fopen(path, "r");
@@ -438,7 +438,7 @@ int BackedUpObject::from_path(const char *path, std::auto_ptr<BackedUpObject> &o
 }
 
 int BackedUpObject::from_rados(IoCtx& io_ctx, const char *rados_name_,
-		      auto_ptr<BackedUpObject> &obj)
+		      unique_ptr<BackedUpObject> &obj)
 {
   uint64_t rados_size_ = 0;
   time_t rados_time_ = 0;

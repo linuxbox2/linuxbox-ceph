@@ -48,8 +48,8 @@ private:
   void _process(std::string *s) {
     IoCtx &io_ctx(m_io_ctx_dist->get_ioctx());
     int flags = 0;
-    auto_ptr <BackedUpObject> sobj;
-    auto_ptr <BackedUpObject> dobj;
+    unique_ptr <BackedUpObject> sobj;
+    unique_ptr <BackedUpObject> dobj;
     const std::string &rados_name(*s);
     std::list < std::string > only_in_a;
     std::list < std::string > only_in_b;
@@ -144,7 +144,7 @@ public:
 private:
   void _process(std::string *s) {
     IoCtx &io_ctx(m_io_ctx_dist->get_ioctx());
-    auto_ptr <BackedUpObject> lobj;
+    unique_ptr <BackedUpObject> lobj;
     const std::string &local_name(*s);
     int ret = BackedUpObject::from_file(local_name.c_str(), m_dir_name, lobj);
     if (ret) {
@@ -152,7 +152,7 @@ private:
 	   << "got error " << ret << std::endl;
       _exit(ret);
     }
-    auto_ptr <BackedUpObject> robj;
+    unique_ptr <BackedUpObject> robj;
     ret = BackedUpObject::from_rados(io_ctx, lobj->get_rados_name(), robj);
     if (ret == -ENOENT) {
       // The entry doesn't exist on the remote server; delete it locally
@@ -181,7 +181,7 @@ int do_rados_export(ThreadPool *tp, IoCtx& io_ctx,
 {
   librados::ObjectIterator oi = io_ctx.objects_begin();
   librados::ObjectIterator oi_end = io_ctx.objects_end();
-  auto_ptr <ExportDir> export_dir;
+  unique_ptr <ExportDir> export_dir;
   export_dir.reset(ExportDir::create_for_writing(dir_name, 1, create));
   if (!export_dir.get())
     return -EIO;

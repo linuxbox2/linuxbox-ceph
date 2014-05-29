@@ -772,7 +772,7 @@ bool PG::all_unfound_are_queried_or_lost(const OSDMapRef osdmap) const
   return true;
 }
 
-void PG::build_prior(std::auto_ptr<PriorSet> &prior_set)
+void PG::build_prior(std::unique_ptr<PriorSet> &prior_set)
 {
   if (1) {
     // sanity check
@@ -6682,7 +6682,7 @@ PG::RecoveryState::GetInfo::GetInfo(my_context ctx)
 
   PG *pg = context< RecoveryMachine >().pg;
   pg->generate_past_intervals();
-  auto_ptr<PriorSet> &prior_set = context< Peering >().prior_set;
+  unique_ptr<PriorSet> &prior_set = context< Peering >().prior_set;
 
   if (!prior_set.get())
     pg->build_prior(prior_set);
@@ -6698,7 +6698,7 @@ PG::RecoveryState::GetInfo::GetInfo(my_context ctx)
 void PG::RecoveryState::GetInfo::get_infos()
 {
   PG *pg = context< RecoveryMachine >().pg;
-  auto_ptr<PriorSet> &prior_set = context< Peering >().prior_set;
+  unique_ptr<PriorSet> &prior_set = context< Peering >().prior_set;
 
   for (set<pg_shard_t>::const_iterator it = prior_set->probe.begin();
        it != prior_set->probe.end();
@@ -6737,7 +6737,7 @@ boost::statechart::result PG::RecoveryState::GetInfo::react(const MNotifyRec& in
   epoch_t old_start = pg->info.history.last_epoch_started;
   if (pg->proc_replica_info(infoevt.from, infoevt.notify.info)) {
     // we got something new ...
-    auto_ptr<PriorSet> &prior_set = context< Peering >().prior_set;
+    unique_ptr<PriorSet> &prior_set = context< Peering >().prior_set;
     if (old_start < pg->info.history.last_epoch_started) {
       dout(10) << " last_epoch_started moved forward, rebuilding prior" << dendl;
       pg->build_prior(prior_set);

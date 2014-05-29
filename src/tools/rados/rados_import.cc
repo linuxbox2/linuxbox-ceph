@@ -30,7 +30,7 @@
 #include "include/rados/librados.hpp"
 
 using namespace librados;
-using std::auto_ptr;
+using std::unique_ptr;
 
 class ImportLocalFileWQ : public RadosSyncWQ {
 public:
@@ -45,8 +45,8 @@ private:
   void _process(std::string *s) {
     IoCtx &io_ctx(m_io_ctx_dist->get_ioctx());
     const std::string &local_name(*s);
-    auto_ptr <BackedUpObject> sobj;
-    auto_ptr <BackedUpObject> dobj;
+    unique_ptr <BackedUpObject> sobj;
+    unique_ptr <BackedUpObject> dobj;
     std::list < std::string > only_in_a;
     std::list < std::string > only_in_b;
     std::list < std::string > diff;
@@ -168,7 +168,7 @@ private:
   void _process(std::string *s) {
     IoCtx &io_ctx(m_io_ctx_dist->get_ioctx());
     const std::string &rados_name(*s);
-    auto_ptr <BackedUpObject> robj;
+    unique_ptr <BackedUpObject> robj;
     int ret = BackedUpObject::from_rados(io_ctx, rados_name.c_str(), robj);
     if (ret) {
       cerr << ERR_PREFIX << "BackedUpObject::from_rados in delete loop "
@@ -176,7 +176,7 @@ private:
       _exit(ret);
     }
     std::string obj_path(robj->get_fs_path(m_export_dir));
-    auto_ptr <BackedUpObject> lobj;
+    unique_ptr <BackedUpObject> lobj;
     ret = BackedUpObject::from_path(obj_path.c_str(), lobj);
     if (ret == ENOENT) {
       ret = io_ctx.remove(rados_name);
@@ -199,7 +199,7 @@ private:
 int do_rados_import(ThreadPool *tp, IoCtx &io_ctx, IoCtxDistributor* io_ctx_dist,
 	   const char *dir_name, bool force, bool delete_after)
 {
-  auto_ptr <ExportDir> export_dir;
+  unique_ptr <ExportDir> export_dir;
   export_dir.reset(ExportDir::from_file_system(dir_name));
   if (!export_dir.get())
     return -EIO;

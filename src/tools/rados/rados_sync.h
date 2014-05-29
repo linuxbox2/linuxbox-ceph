@@ -150,10 +150,10 @@ class BackedUpObject
 {
 public:
   static int from_file(const char *file_name, const char *dir_name,
-			    std::auto_ptr<BackedUpObject> &obj);
-  static int from_path(const char *path, std::auto_ptr<BackedUpObject> &obj);
+			    std::unique_ptr<BackedUpObject> &obj);
+  static int from_path(const char *path, std::unique_ptr<BackedUpObject> &obj);
   static int from_rados(librados::IoCtx& io_ctx, const char *rados_name_,
-			auto_ptr<BackedUpObject> &obj);
+			unique_ptr<BackedUpObject> &obj);
   ~BackedUpObject();
 
   /* Get the mangled name for this rados object. */
