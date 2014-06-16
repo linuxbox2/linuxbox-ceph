@@ -132,12 +132,6 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
       : data(c), len(l), nref(0)
     { }
     virtual ~raw() {};
-    void operator delete(void* v)
-      {
-	static_cast<buffer::raw*>(v)->delete_this();
-      }
-
-    virtual void delete_this() { ::delete this; }
 
     // no copying.
     raw(const raw &other);
@@ -541,7 +535,6 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
       raw((char*)d, l), m_hook(_m_hook->get()) {}
     ~xio_msg_buffer() { m_hook->put(); }
     void operator delete(void*) {} // do nothing (pool allocated)
-    void delete_this() {} // also virutalized
     raw* clone_empty() {
       return new buffer::raw_char(len);
     }
