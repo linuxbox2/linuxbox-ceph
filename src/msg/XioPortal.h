@@ -29,6 +29,8 @@ extern "C" {
 #endif
 #define CACHE_PAD(_n) char __pad ## _n [CACHE_LINE_SIZE]
 
+#define SPINLOCKS 1
+
 class XioMessenger;
 
 class XioPortal : public Thread
@@ -71,14 +73,14 @@ private:
     void enq(XioConnection *xcon, XioSubmit* xs)
       {
 	Lane* lane = get_lane(xcon);
-#if 0
+#if SPINLOCKS
 	pthread_spin_lock(&lane->sp);
 #else
 	pthread_mutex_lock(&lane->mtx);
 #endif
 	lane->q.push_back(*xs);
 	++(lane->size);
-#if 0
+#if SPINLOCKS
 	pthread_spin_unlock(&lane->sp);
 #else
 	pthread_mutex_unlock(&lane->mtx);
@@ -92,7 +94,7 @@ private:
 
 	for (ix = 0; ix < nlanes; ++ix) {
 	  lane = &qlane[ix];
-#if 0
+#if SPINLOCKS
 	pthread_spin_lock(&lane->sp);
 #else
 	pthread_mutex_lock(&lane->mtx);
@@ -102,7 +104,7 @@ private:
 	    send_q.splice(i1, lane->q);
 	    lane->size = 0;
 	  }
-#if 0
+#if SPINLOCKS
 	pthread_spin_unlock(&lane->sp);
 #else
 	pthread_mutex_unlock(&lane->mtx);
@@ -178,7 +180,7 @@ public:
 	size = send_q.size();
 
 	/* shutdown() barrier */
-#if 0
+#if SPINLOCKS
 	pthread_spin_lock(&sp);
 #else
 	pthread_mutex_lock(&mtx);
@@ -226,7 +228,7 @@ public:
 	  }
 	}
 
-#if 0
+#if SPINLOCKS
 	pthread_spin_unlock(&sp);
 #else
 	pthread_mutex_unlock(&mtx);
@@ -246,14 +248,14 @@ public:
 
   void shutdown()
     {
-#if 0
+#if SPINLOCKS
 	pthread_spin_lock(&sp);
 #else
 	pthread_mutex_lock(&mtx);
 #endif
       xio_context_stop_loop(ctx, false);
       _shutdown = true;
-#if 0
+#if SPINLOCKS
 	pthread_spin_unlock(&sp);
 #else
 	pthread_mutex_unlock(&mtx);
