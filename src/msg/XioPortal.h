@@ -234,7 +234,7 @@ public:
 	pthread_mutex_unlock(&mtx);
 #endif
 
-	xio_context_run_loop(ctx, 80);
+	xio_context_run_loop(ctx, 300);
 
       } while ((!_shutdown) || (!drained));
 
