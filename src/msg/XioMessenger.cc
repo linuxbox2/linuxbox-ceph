@@ -80,7 +80,9 @@ static int on_msg(struct xio_session *session,
   XioConnection *xcon =
     static_cast<XioConnection*>(cb_user_context);
 
+#if 0
   dout(4) << dout_format("on_msg session %p xcon %p", session, xcon) << dendl;
+#endif
 
   return xcon->on_msg_req(session, req, more_in_batch,
 			  cb_user_context);
@@ -94,10 +96,12 @@ static int on_msg_delivered(struct xio_session *session,
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
 
+#if 0
   dout(4) <<
     dout_format(
       "msg delivered session: %p msg: %p more: %d conn_user_context %p",
       session, msg, more_in_batch, conn_user_context) << dendl;
+#endif
 
   return xcon->on_msg_delivered(session, msg, more_in_batch,
 				conn_user_context);
@@ -489,9 +493,12 @@ int XioMessenger::send_message(Message *m, Connection *con)
   /* get an XioMsg frame */
   XioMsg *xmsg = pool_alloc_xio_msg(m, xcon);
 
+#if 0
   dout(4) << "\nsend_message " << m << " new XioMsg " << xmsg
        << " req_0 " << &xmsg->req_0 << " msg type " << m->get_type()
        << " features: " << xcon->get_features() << dendl;
+#endif
+
   if (magic & (MSG_MAGIC_XIO)) {
 
     /* XXXX verify */
