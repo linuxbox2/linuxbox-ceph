@@ -22,6 +22,7 @@ using namespace std;
 #include "common/config.h"
 #include "msg/msg_types.h"
 #include "msg/XioMessenger.h"
+#include "msg/FastStrategy.h"
 #include "msg/QueueStrategy.h"
 #include "msg/XioMsg.h"
 #include "messages/MPing.h"
@@ -48,9 +49,9 @@ int main(int argc, const char **argv)
 
 	std::string addr = "localhost";
 	std::string port = "1234";
-
 	int n_msgs = 50;
 	int n_dsize = 0;
+	bool dfast = false;
 
 	struct timespec ts;
 	ts.tv_sec = 5;
@@ -71,21 +72,30 @@ int main(int argc, const char **argv)
 	    port = val;
 	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--msgs",
 				    (char*) NULL)) {
-	    n_msgs = atoi(val.c_str());;
+	    n_msgs = atoi(val.c_str());
 	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--dsize",
 				    (char*) NULL)) {
-	    n_dsize = atoi(val.c_str());;
+	    n_dsize = atoi(val.c_str());
+	  } else if (ceph_argparse_flag(args, arg_iter, "--dfast",
+					   (char*) NULL)) {
+	    dfast = true;
 	  } else {
 	    ++arg_iter;
 	  }
 	};
+
+	DispatchStrategy* dstrategy;
+	if (dfast)
+	  dstrategy = new FastStrategy();
+	else
+	  dstrategy = new QueueStrategy(2);
 
 	messenger = new XioMessenger(g_ceph_context,
 				     entity_name_t::GENERIC(),
 				     "xio_client",
 				     0 /* nonce */,
 				     0 /* portals */,
-				     new QueueStrategy(2));
+				     dstrategy);
 
 	static_cast<XioMessenger*>(messenger)->set_special_handling(MSG_SPECIAL_HANDLING_REDUPE);
 

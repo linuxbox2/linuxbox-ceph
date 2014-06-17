@@ -21,6 +21,7 @@ using namespace std;
 
 #include "common/config.h"
 #include "msg/XioMessenger.h"
+#include "msg/FastStrategy.h"
 #include "msg/QueueStrategy.h"
 #include "common/Timer.h"
 #include "common/ceph_argparse.h"
@@ -47,6 +48,7 @@ int main(int argc, const char **argv)
 
 	std::string addr = "localhost";
 	std::string port = "1234";
+	bool dfast = false;
 
 	cout << "Xio Server starting..." << endl;
 
@@ -63,6 +65,9 @@ int main(int argc, const char **argv)
 	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--port",
 				    (char*) NULL)) {
 	    port = val;
+	  }  else if (ceph_argparse_flag(args, arg_iter, "--dfast",
+					   (char*) NULL)) {
+	    dfast = true;
 	  } else {
 	    ++arg_iter;
 	  }
@@ -74,12 +79,18 @@ int main(int argc, const char **argv)
 	dest_str += port;
 	entity_addr_from_url(&bind_addr, dest_str.c_str());
 
+	DispatchStrategy* dstrategy;
+	if (dfast)
+	  dstrategy = new FastStrategy();
+	else
+	  dstrategy = new QueueStrategy(2);
+
 	messenger = new XioMessenger(g_ceph_context,
 				     entity_name_t::GENERIC(),
 				     "xio_server",
 				     0 /* nonce */,
 				     2 /* portals */,
-				     new QueueStrategy(2));
+				     dstrategy);
 	static_cast<XioMessenger*>(messenger)->set_special_handling(MSG_SPECIAL_HANDLING_REDUPE);
 
 	messenger->set_default_policy(

@@ -21,7 +21,7 @@ class Messenger;
 
 class DispatchStrategy
 {
-private:
+protected:
   Messenger *msgr;
 public:
   DispatchStrategy() {}
