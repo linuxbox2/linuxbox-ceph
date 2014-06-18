@@ -274,7 +274,7 @@ int XioMessenger::session_event(struct xio_session *session,
     entity_inst_t s_inst;
 
     (void) xio_query_session(session, &s_attr, XIO_SESSION_ATTR_URI);
-    string s_uri(s_attr.uri, s_attr.uri_len);
+    string s_uri(s_attr.uri);
     (void) entity_addr_from_url(&s_inst.addr, s_uri.c_str());
 
     if (port_shift)
