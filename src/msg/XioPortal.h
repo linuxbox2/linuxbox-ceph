@@ -167,7 +167,7 @@ public:
 
   void *entry()
     {
-      int ix, size, code;
+      int ix, size, code = 0;
       XioSubmit::Queue send_q;
       XioSubmit::Queue::iterator q_iter;
       struct xio_msg *msg = NULL;
