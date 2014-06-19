@@ -192,7 +192,9 @@ public:
 
   ~XioMsg()
     {
-      free(req_arr); /* normally a no-op */
+      if (unlikely(!!req_arr)) {
+	free(req_arr);
+      }
       if (m->get_special_handling() & MSG_SPECIAL_HANDLING_REDUPE) {
 	  /* testing only! server's ready, resubmit request */
 	  xcon->get_messenger()->send_message(m, xcon);

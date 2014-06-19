@@ -359,7 +359,6 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     /* track iovlen */
     req->out.data_iovlen = msg_off+1;
 
-    /* XXXX this SHOULD work fine (Eyal) */
     switch (type) {
     case BUFFER_DATA:
       //break;
@@ -367,10 +366,6 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     {
       struct xio_mempool_obj *mp = get_xio_mp(*pb);
       if (mp) {
-#if 0
-// XXX disable for delivery receipt experiment
-	iov->user_context = mp;
-#endif
 	iov->mr = mp->mr;
       }
     }
@@ -378,10 +373,10 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     }
 
     /* advance iov(s) */
-    if (++msg_off >= XIO_MAX_IOV) {
+    if (unlikely(++msg_off >= XIO_IOVLEN)) {
       if (++req_off < ex_cnt) {
 	/* next record */
-	req->out.data_iovlen = XIO_MAX_IOV;
+	req->out.data_iovlen = XIO_IOVLEN;
 	req->more_in_batch++;
 	/* XXX chain it */
 	req = &xmsg->req_arr[req_off];
@@ -530,10 +525,10 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   xmsg->nbuffers = payload.buffers().size() + middle.buffers().size() +
     data.buffers().size();
-  ex_cnt = ((3 + xmsg->nbuffers) / XIO_MAX_IOV);
+  ex_cnt = ((3 + xmsg->nbuffers) / XIO_IOVLEN);
   xmsg->hdr.msg_cnt = 1 + ex_cnt;
 
-  if (ex_cnt > 0) {
+  if (unlikely(ex_cnt > 0)) {
     xmsg->req_arr =
       (struct xio_msg *) calloc(ex_cnt, sizeof(struct xio_msg));
   }
