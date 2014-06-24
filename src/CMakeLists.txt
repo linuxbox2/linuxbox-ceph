@@ -573,6 +573,7 @@ if(${WITH_MDS})
 endif(${WITH_MDS})
 
 # Support/Tools
+add_subdirectory(gtest)
 add_subdirectory(test)
 set(cephfs_srcs cephfs.cc)
 add_executable(cephfstool ${cephfs_srcs})
