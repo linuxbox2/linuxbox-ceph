@@ -19,6 +19,7 @@
 extern "C" {
 #endif
 
+#include <unistd.h>
 #include <string.h>
 #include "rados_types.h"
 
