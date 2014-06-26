@@ -202,13 +202,25 @@ set(smalliobenchrbd_srcs
   bench/rbd_backend.cc
   bench/detailed_stat_collector.cc
   bench/bencher.cc
-  )
+  ${CMAKE_SOURCE_DIR}/src/common/TextTable.cc
+  ${CMAKE_SOURCE_DIR}/src/common/secret.c
+)
 add_executable(smalliobenchrbd
   ${smalliobenchrbd_srcs}
   $<TARGET_OBJECTS:heap_profiler_objs>
   )
-target_link_libraries(smalliobenchrbd librbd librados boost_program_options os
-  global ${CMAKE_DL_LIBS} ${TCMALLOC_LIBS})
+target_link_libraries(smalliobenchrbd
+  librbd
+  librados
+  os
+  global
+  boost_program_options
+  blkid
+  udev
+  ${CMAKE_DL_LIBS}
+  ${TCMALLOC_LIBS}
+  keyutils
+  )
 
 # tpbench
 set(tpbench_srcs
@@ -324,7 +336,7 @@ target_link_libraries(bench_log global pthread rt ${CMAKE_DL_LIBS} ${TCMALLOC_LI
 ## Unit tests
 
 set(UNITTEST_LIBS gtest_main ${PTHREAD_LIBS})
-set(UNITTEST_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${CMAKE_SOURCE_DIR}/src/gtest/include -I${CMAKE_BINARY_DIR}/src/gtest/include -fno-strict-aliasing")
+set(UNITTEST_CXX_FLAGS "-I${CMAKE_SOURCE_DIR}/src/gtest/include -I${CMAKE_BINARY_DIR}/src/gtest/include -fno-strict-aliasing")
   
 # unittest_encoding
 set(unittest_encoding_srcs
@@ -1075,6 +1087,8 @@ target_link_libraries(multi_stress_watch librados global radostest
 add_executable(test_librbd
   librbd/test_librbd.cc
   $<TARGET_OBJECTS:heap_profiler_objs>
+  ${CMAKE_SOURCE_DIR}/src/common/TextTable.cc
+  ${CMAKE_SOURCE_DIR}/src/common/secret.c
   )
 set_target_properties(test_librbd PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
@@ -1087,12 +1101,17 @@ target_link_libraries(test_librbd
   ${TCMALLOC_LIBS}
   ${CRYPTO_LIBS}
   ${EXTRALIBS}
+  blkid
+  udev
+  keyutils
   radostest
   )
 
 add_executable(test_librbd_fsx
   librbd/fsx.c
   $<TARGET_OBJECTS:heap_profiler_objs>
+  ${CMAKE_SOURCE_DIR}/src/common/TextTable.cc
+  ${CMAKE_SOURCE_DIR}/src/common/secret.c
   )
 target_link_libraries(test_librbd_fsx
   librbd
@@ -1103,11 +1122,16 @@ target_link_libraries(test_librbd_fsx
   ${TCMALLOC_LIBS}
   ${CRYPTO_LIBS}
   ${EXTRALIBS}
+  blkid
+  udev
+  keyutils
   )
 
 add_executable(test_cls_rbd
   cls_rbd/test_cls_rbd.cc
   $<TARGET_OBJECTS:heap_profiler_objs>
+  ${CMAKE_SOURCE_DIR}/src/common/TextTable.cc
+  ${CMAKE_SOURCE_DIR}/src/common/secret.c
   )
 set_target_properties(test_cls_rbd PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
@@ -1123,6 +1147,9 @@ target_link_libraries(test_cls_rbd
   ${CRYPTO_LIBS}
   ${EXTRALIBS}
   radostest
+  blkid
+  udev
+  keyutils
   )
 
 add_executable(test_cls_refcount

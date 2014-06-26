@@ -133,6 +133,7 @@ set(libcommon_files
   ${crush_srcs}
   common/cmdparse.cc
   common/escape.c
+  common/io_priority.cc
   common/Clock.cc
   common/Throttle.cc
   common/Timer.cc
@@ -155,6 +156,7 @@ set(libcommon_files
   common/errno.cc
   common/TrackedOp.cc
   common/SloppyCRCMap.cc
+  common/types.cc
   json_spirit/json_spirit_reader.cpp
   json_spirit/json_spirit_writer.cpp
   json_spirit/json_spirit_value.cpp
@@ -222,6 +224,7 @@ add_library(mon_common_objs OBJECT ${mon_common_files})
 set(common_mountcephfs_files
   common/armor.c
   common/safe_io.c
+  common/module.c
   common/addr_parsing.c)
 add_library(common_mountcephfs_objs OBJECT
   ${common_mountcephfs_files})
@@ -287,7 +290,9 @@ set(librados_srcs
   librados/librados.cc
   librados/RadosClient.cc
   librados/IoCtxImpl.cc
-  librados/snap_set_diff.cc)
+  librados/snap_set_diff.cc
+  librados/RadosXattrIter.cc
+  )
 add_library(librados ${CEPH_SHARED} ${librados_srcs}
   $<TARGET_OBJECTS:cls_lock_objs>
   $<TARGET_OBJECTS:cls_references_objs>)
@@ -532,10 +537,7 @@ install(TARGETS ceph-osd DESTINATION bin)
 # MDS
 if(${WITH_MDS})
   set(mds_srcs 
-    mds/Anchor.cc
     mds/Capability.cc
-    mds/Dumper.cc
-    mds/Resetter.cc
     mds/MDS.cc
     mds/flock.cc
     mds/locks.c
@@ -554,14 +556,12 @@ if(${WITH_MDS})
     mds/InoTable.cc
     mds/MDSTableClient.cc
     mds/MDSTableServer.cc
-    mds/AnchorServer.cc
-    mds/AnchorClient.cc
     mds/SnapRealm.cc
     mds/SnapServer.cc
     mds/snap.cc
     mds/SessionMap.cc
     mds/MDLog.cc
-    mds/MDSUtility.cc
+    mds/JournalPointer.cc
     ${CMAKE_SOURCE_DIR}/src/osdc/Journaler.cc)
   add_library(mds ${mds_srcs})
   set(ceph_mds_srcs
@@ -610,9 +610,6 @@ add_executable(ceph_mon_store_converter ${ceph_mon_store_converter_srcs}
   $<TARGET_OBJECTS:monitorstore_obj>)
 target_link_libraries(ceph_mon_store_converter os global)
 
-configure_file(${CMAKE_SOURCE_DIR}/src/mkcephfs.in
-  ${CMAKE_BINARY_DIR}/mkcephfs @ONLY)
-
 configure_file(${CMAKE_SOURCE_DIR}/src/ceph-coverage.in
   ${CMAKE_BINARY_DIR}/ceph-coverage @ONLY)
 
@@ -626,10 +623,10 @@ configure_file(${CMAKE_SOURCE_DIR}/src/ceph-crush-location.in
   ${CMAKE_BINARY_DIR}/ceph-crush-location @ONLY)
 
 add_custom_target(shell_scripts ALL
-  COMMAND chmod 755 ${CMAKE_BINARY_DIR}/mkcephfs
+  COMMAND chmod 755
   ${CMAKE_BINARY_DIR}/init-ceph ${CMAKE_BINARY_DIR}/ceph-debugpack
   ${CMAKE_BINARY_DIR}/ceph-coverage ${CMAKE_BINARY_DIR}/ceph
-  DEPENDS ${CMAKE_BINARY_DIR}/mkcephfs ${CMAKE_BINARY_DIR}/init-ceph
+  DEPENDS ${CMAKE_BINARY_DIR}/init-ceph
   ${CMAKE_BINARY_DIR}/ceph-debugpack ${CMAKE_BINARY_DIR}/ceph-coverage
   ${CMAKE_BINARY_DIR}/ceph COMMENT "Shell Scripts have permission")
 
@@ -666,7 +663,6 @@ install(PROGRAMS
   ${CMAKE_SOURCE_DIR}/src/ceph-disk-activate
   ${CMAKE_SOURCE_DIR}/src/ceph-disk-prepare
   ${CMAKE_SOURCE_DIR}/src/ceph-disk-udev
-  ${CMAKE_BINARY_DIR}/mkcephfs
   DESTINATION sbin)
 
 if(WITH_LIBCEPHFS)
@@ -726,6 +722,7 @@ if(${WITH_RBD})
 
   set(librbd_srcs
     librbd/librbd.cc
+    krbd.cc
     librbd/AioCompletion.cc
     librbd/AioRequest.cc
     cls/rbd/cls_rbd_client.cc
@@ -751,7 +748,7 @@ if(${WITH_RBD})
     $<TARGET_OBJECTS:rbd_mountcephfs_objs>
     $<TARGET_OBJECTS:heap_profiler_objs>)
   set_target_properties(rbd PROPERTIES OUTPUT_NAME rbd)
-  target_link_libraries(rbd global librbd librados common keyutils
+  target_link_libraries(rbd global librbd librados common keyutils udev
     ${BLKID_LIBRARIES} ${CMAKE_DL_LIBS} ${TCMALLOC_LIBS})
   install(TARGETS rbd DESTINATION bin)
   install(PROGRAMS ${CMAKE_SOURCE_DIR}/src/ceph-rbdnamer DESTINATION bin)
