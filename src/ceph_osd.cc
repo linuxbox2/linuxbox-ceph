@@ -514,10 +514,10 @@ int main(int argc, const char **argv)
     exit(1);
 
 #if defined(HAVE_XIO)
-  r = ms_xio_public->bind(g_conf->public_addr);
+  r = ms_xio_public->bind(ms_public->get_myaddr());
   if (r < 0)
     exit(1);
-  r = ms_xio_cluster->bind(g_conf->cluster_addr);
+  r = ms_xio_cluster->bind(ms_cluster->get_myaddr());
   if (r < 0)
     exit(1);
 #endif
@@ -548,11 +548,11 @@ int main(int argc, const char **argv)
   if (r < 0)
     exit(1);
 
-  r = ms_xio_hb_fs->bind(hb_front_addr);
+  r = ms_xio_hb_fs->bind(ms_hb_front_server->get_myaddr());
   if (r < 0)
     exit(1);
 
-  r = ms_xio_hb_bs->bind(hb_back_addr);
+  r = ms_xio_hb_bs->bind(ms_hb_back_server->get_myaddr());
   if (r < 0)
     exit(1);
 #endif
