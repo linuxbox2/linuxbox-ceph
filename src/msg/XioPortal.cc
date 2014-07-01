@@ -28,6 +28,7 @@ int XioPortal::bind(struct xio_session_ops *ops, const string &_uri)
 int XioPortals::bind(struct xio_session_ops *ops, const string& base_uri,
        const int base_port)
 {
+#define PORT_STRIDE 30	// XXX need to find out who else needs to know this
   /* a server needs at least 1 portal */
   if (n < 1)
     return EINVAL;
@@ -37,12 +38,23 @@ int XioPortals::bind(struct xio_session_ops *ops, const string& base_uri,
 
   /* bind a consecutive range of ports */
   for (int bind_ix = 1, bind_port = base_port;
-       bind_ix < bind_size; ++bind_ix, ++bind_port) {
+       bind_ix < bind_size; ++bind_ix, bind_port += PORT_STRIDE) {
     string xio_uri = base_uri;
     xio_uri += ":";
     xio_uri += boost::lexical_cast<std::string>(bind_port);
     portal = portals[bind_ix];
+#if 0
     (void) portal->bind(ops, xio_uri);
+#else
+int xxx = portal->bind(ops, xio_uri);
+if (xxx)  {
+  derr << dout_format("xp::bind: portal %p bind OK: %s (ix=%d port=%d)",
+	 portal, xio_uri.c_str(), bind_ix, bind_port) << dendl;
+} else {
+  derr << dout_format("xp::bind: portal %p cannot bind: %s (ix=%d port=%d)",
+	 portal, xio_uri.c_str(), bind_ix, bind_port) << dendl;
+}
+#endif
   }
 
   return 0;
