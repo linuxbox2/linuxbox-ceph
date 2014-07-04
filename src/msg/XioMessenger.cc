@@ -270,12 +270,16 @@ int XioMessenger::session_event(struct xio_session *session,
   switch (event_data->event) {
   case XIO_SESSION_NEW_CONNECTION_EVENT:
   {
-    struct xio_session_attr s_attr;
+    struct xio_connection *conn = event_data->conn;
+    struct xio_connection_attr c_attr;
     entity_inst_t s_inst;
 
-    (void) xio_query_session(session, &s_attr, XIO_SESSION_ATTR_URI);
-    string s_uri(s_attr.uri);
-    (void) entity_addr_from_url(&s_inst.addr, s_uri.c_str());
+    (void) xio_query_connection(conn, &c_attr,
+				XIO_CONNECTION_ATTR_PROTO|
+				XIO_CONNECTION_ATTR_SRC_ADDR);
+    /* XXX assumes RDMA */
+    (void) entity_addr_from_sockaddr(&s_inst.addr,
+				     (struct sockaddr *) &c_attr.src_addr);
 
     if (port_shift)
       s_inst.addr.set_port(s_inst.addr.get_port()-port_shift);
@@ -283,9 +287,7 @@ int XioMessenger::session_event(struct xio_session *session,
     xcon = new XioConnection(this, XioConnection::PASSIVE, s_inst);
     xcon->session = session;
 
-    struct xio_connection *conn = event_data->conn;
     struct xio_connection_attr xcona;
-
     (void) xio_query_connection(conn, &xcona, XIO_CONNECTION_ATTR_CTX);
 
     struct xio_context_attr xctxa;
