@@ -196,11 +196,11 @@ public:
   }
 
   void alloc_iov(struct xio_msg *msg) {
-    msg->out.pdata_iov =
-      static_cast<struct xio_iovec_ex *>
-      (pool.alloc(XIO_MSGR_IOVLEN * sizeof(struct xio_iovec_ex)));
     msg->out.data_type = XIO_DATA_TYPE_PTR;
-    msg->out.data_iovsz = 0;
+    msg->out.data_iovsz = XIO_MSGR_IOVLEN;
+    void *data = pool.alloc(XIO_MSGR_IOVLEN * sizeof(struct xio_iovec_ex));
+    assert(data);
+    msg->out.pdata_iov = static_cast<struct xio_iovec_ex *>(data);
   }
 
   Message *get_message() { return m; }

@@ -219,6 +219,12 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_DISABLE_HUGETBL,
 		  &xopt, sizeof(unsigned));
 
+      xopt = XIO_MSGR_IOVLEN;
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_IN_IOVLEN,
+		  &xopt, sizeof(unsigned));
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_OUT_IOVLEN,
+		  &xopt, sizeof(unsigned));
+
       /* and unregisterd one */
 #define XMSG_MEMPOOL_MIN 4096
 #define XMSG_MEMPOOL_MAX 4096
@@ -238,7 +244,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_msgr_iov_mpool =
 	xio_mempool_create_ex(-1 /* nodeid */,
 			      XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC);
-      (void) xio_mempool_add_allocator(xio_msgr_iov_mpool, 512, 0,
+      (void) xio_mempool_add_allocator(xio_msgr_iov_mpool, 568, 0,
 				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
 
       /* initialize ops singleton */
@@ -378,11 +384,9 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     default:
     {
       struct xio_mempool_obj *mp = get_xio_mp(*pb);
-      if (mp) {
-	iov->mr = mp->mr;
-      }
+      iov->mr = (mp) ? mp->mr : NULL;
     }
-      break;
+    break;
     }
 
     /* advance iov(s) */
