@@ -150,6 +150,11 @@ public:
 		    > Queue;
 };
 
+extern struct xio_mempool *xio_msgr_noreg_mpool;
+extern struct xio_mempool *xio_msgr_iov_mpool;
+
+#define XIO_MSGR_IOVLEN 16
+
 struct XioMsg : public XioSubmit
 {
 public:
@@ -158,6 +163,7 @@ public:
   struct xio_msg req_0;
   struct xio_msg* req_arr;
   struct xio_mempool_obj mp_this;
+  XioPool pool;
   int nbuffers;
   atomic_t nrefs;
 
@@ -165,7 +171,7 @@ public:
   XioMsg(Message *_m, XioConnection *_xcon, struct xio_mempool_obj& _mp) :
     XioSubmit(XIO_MSG_TYPE_REQ, _xcon),
     m(_m), hdr(m->get_header(), m->get_footer()),
-    req_arr(NULL), mp_this(_mp), nrefs(1)
+    req_arr(NULL), mp_this(_mp), pool(xio_msgr_iov_mpool), nrefs(1)
     {
       const entity_inst_t &inst = xcon->get_messenger()->get_myinst();
       hdr.peer_type = inst.name.type();
@@ -174,6 +180,7 @@ public:
       memset(&req_0, 0, sizeof(struct xio_msg));
       req_0.type = XIO_MSG_TYPE_ONE_WAY;
       req_0.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
+      alloc_iov(&req_0);
       req_0.user_context = this;
     }
 
@@ -186,6 +193,14 @@ public:
       this->~XioMsg();
       xio_mempool_free(mp);
     }
+  }
+
+  void alloc_iov(struct xio_msg *msg) {
+    msg->out.pdata_iov =
+      static_cast<struct xio_iovec_ex *>
+      (pool.alloc(XIO_MSGR_IOVLEN * sizeof(struct xio_iovec_ex)));
+    msg->out.data_type = XIO_DATA_TYPE_PTR;
+    msg->out.data_iovsz = 0;
   }
 
   Message *get_message() { return m; }
@@ -204,8 +219,6 @@ public:
       }
     }
 };
-
-extern struct xio_mempool *xio_msgr_noreg_mpool;
 
 class XioCompletionHook : public Message::CompletionHook
 {

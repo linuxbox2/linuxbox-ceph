@@ -31,6 +31,7 @@ atomic_t initialized;
 atomic_t XioMessenger::nInstances;
 
 struct xio_mempool *xio_msgr_noreg_mpool;
+struct xio_mempool *xio_msgr_iov_mpool;
 
 static struct xio_session_ops xio_msgr_ops;
 
@@ -225,10 +226,20 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_msgr_noreg_mpool =
 	xio_mempool_create_ex(-1 /* nodeid */,
 			      XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC);
-      for (int i = 64; i < 131072; i <<= 2) {
-	(void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, i, 0,
-					 XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
-      }
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 64, 0,
+				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 256, 0,
+				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 1024, 0,
+				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 16384, 0,
+				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+
+      xio_msgr_iov_mpool =
+	xio_mempool_create_ex(-1 /* nodeid */,
+			      XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC);
+      (void) xio_mempool_add_allocator(xio_msgr_iov_mpool, 512, 0,
+				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
 
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
@@ -375,15 +386,16 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     }
 
     /* advance iov(s) */
-    if (unlikely(++msg_off >= XIO_IOVLEN)) {
+    if (unlikely(++msg_off >= XIO_MSGR_IOVLEN)) {
       if (++req_off < ex_cnt) {
 	/* next record */
-	req->out.data_iovlen = XIO_IOVLEN;
+	req->out.data_iovlen = XIO_MSGR_IOVLEN;
 	req->more_in_batch++;
 	/* XXX chain it */
 	req = &xmsg->req_arr[req_off];
 	req->user_context = xmsg->get();
-	msg_iov = req->out.data_iov;
+	xmsg->alloc_iov(req);
+	msg_iov = req->out.pdata_iov;
 	msg_off = 0;
       }
     }
@@ -511,7 +523,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   }
 
   struct xio_msg *req = &xmsg->req_0;
-  struct xio_iovec_ex *msg_iov = req->out.data_iov, *iov = NULL;
+  struct xio_iovec_ex *msg_iov = req->out.pdata_iov, *iov = NULL;
   int ex_cnt;
 
   buffer::list &payload = m->get_payload();
@@ -527,7 +539,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   xmsg->nbuffers = payload.buffers().size() + middle.buffers().size() +
     data.buffers().size();
-  ex_cnt = ((3 + xmsg->nbuffers) / XIO_IOVLEN);
+  ex_cnt = ((3 + xmsg->nbuffers) / XIO_MSGR_IOVLEN);
   xmsg->hdr.msg_cnt = 1 + ex_cnt;
 
   if (unlikely(ex_cnt > 0)) {
