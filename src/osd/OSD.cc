@@ -5562,10 +5562,11 @@ void OSD::handle_osd_map(MOSDMap *m)
   }
 
   if (osdmap->is_up(whoami) &&
-      osdmap->get_addr(whoami) == client_messenger->get_myaddr() &&
       bind_epoch < osdmap->get_up_from(whoami)) {
-
-    if (is_booting()) {
+    if (osdmap->get_addr(whoami) != client_messenger->get_myaddr()) {
+      dout(1) << "myaddr " << client_messenger->get_myaddr()
+	<< " doesn't match osdmap addr " << osdmap->get_addr(whoami) << dendl;
+    } else if (is_booting()) {
       dout(1) << "state: booting -> active" << dendl;
       state = STATE_ACTIVE;
 

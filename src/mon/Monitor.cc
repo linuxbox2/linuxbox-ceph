@@ -3504,7 +3504,8 @@ void Monitor::handle_timecheck(MTimeCheck *m)
 
 void Monitor::handle_subscribe(MMonSubscribe *m)
 {
-  dout(10) << "handle_subscribe " << *m << dendl;
+  dout(10) << "handle_subscribe " << *m
+    << " from " << m->get_source_addr() << dendl;
 
   bool reply = false;
 
