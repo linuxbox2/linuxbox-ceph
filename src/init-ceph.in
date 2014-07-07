@@ -44,7 +44,7 @@ test -f $BINDIR/ceph_common.sh || exit 0
 
 EXIT_STATUS=0
 
-export LD_LIBRARY_PATH=/opt/accelio-up2/lib/
+export LD_LIBRARY_PATH=/opt/accelio-up2/lib/:/opt/ofed/lib
 
 signal_daemon() {
     name=$1
