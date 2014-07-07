@@ -98,6 +98,8 @@ int main(int argc, const char **argv)
 				     dstrategy);
 
 	static_cast<XioMessenger*>(messenger)->set_special_handling(MSG_SPECIAL_HANDLING_REDUPE);
+	if (n_dsize)
+	  (void) static_cast<XioMessenger*>(messenger)->pool_hint(n_dsize);
 
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 
