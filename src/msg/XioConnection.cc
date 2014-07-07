@@ -127,6 +127,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 			      void *cb_user_context)
 {
   struct xio_msg *treq = req;
+  bool xio_ptr;
 
   /* XXX Accelio guarantees message ordering at
    * xio_session */
@@ -139,7 +140,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
       " msg_cnt " << msg_cnt.msg_cnt <<
       " iov_base " << treq->in.header.iov_base << " iov_len " <<
       (int) treq->in.header.iov_len << " data_iovlen " <<
-      (int) treq->in.data_iovlen << dendl;
+      treq->in.data_iovlen << dendl;
     in_seq.cnt = msg_cnt.msg_cnt;
     in_seq.p = true;
   }
@@ -163,6 +164,13 @@ int XioConnection::on_msg_req(struct xio_session *session,
   struct timeval t1, t2;
   uint64_t seq;
 
+  dout(4) << __func__ << " " << "msg_seq.size()="  << msg_seq.size() <<
+    dendl;
+  if (msg_seq.size() > 1) {
+    dout(4) << __func__ << " " << "msg_seq.size()="  << msg_seq.size() <<
+      dendl;
+  }
+
   list<struct xio_msg *>::iterator msg_iter = msg_seq.begin();
   treq = *msg_iter;
   XioMsgHdr hdr(header, footer,
@@ -178,7 +186,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
 
   unsigned int ix, blen, iov_len;
-  struct xio_iovec_ex *msg_iov;
+  struct xio_iovec_ex *msg_iov, *iovs;
   uint32_t take_len, left_len = 0;
   char *left_base = NULL;
 
@@ -187,9 +195,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
+    xio_ptr = (req->in.data_type == XIO_DATA_TYPE_PTR);
     iov_len = treq->in.data_iovlen;
+    iovs = (xio_ptr) ? treq->in.pdata_iov : treq->in.data_iov;
     for (; blen && (ix < iov_len); ++ix) {
-      msg_iov = &treq->in.data_iov[ix];
+      msg_iov = &iovs[ix];
 
       /* XXX need to detect any buffer which needs to be
        * split due to coalescing of a segment (front, middle,
@@ -233,10 +243,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
+    xio_ptr = (req->in.data_type == XIO_DATA_TYPE_PTR);
     iov_len = treq->in.data_iovlen;
+    iovs = (xio_ptr) ? treq->in.pdata_iov : treq->in.data_iov;
     for (; blen && (ix < iov_len); ++ix) {
-      msg_iov = &treq->in.data_iov[ix];
-
+      msg_iov = &iovs[ix];
       take_len = MIN(blen, msg_iov->iov_len);
       middle.append(
 	buffer::create_msg(
@@ -265,9 +276,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = *msg_iter;
+    xio_ptr = (req->in.data_type == XIO_DATA_TYPE_PTR);
     iov_len = treq->in.data_iovlen;
+    iovs = (xio_ptr) ? treq->in.pdata_iov : treq->in.data_iov;
     for (; blen && (ix < iov_len); ++ix) {
-      msg_iov = &treq->in.data_iov[ix];
+      msg_iov = &iovs[ix];
       data.append(
 	buffer::create_msg(
 	  msg_iov->iov_len, (char*) msg_iov->iov_base, m_hook));
