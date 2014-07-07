@@ -195,7 +195,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     dispatch_strategy(ds),
     loop_con(this),
     port_shift(0),
-    magic(0),
+    magic(UINT_MAX),
     special_handling(0)
 {
   /* package init */
@@ -376,7 +376,7 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
 
     /* advance iov(s) */
     if (unlikely(++msg_off >= XIO_IOVLEN)) {
-      if (++req_off < ex_cnt) {
+      if (++req_off <= ex_cnt) {
 	/* next record */
 	req->out.data_iovlen = XIO_IOVLEN;
 	req->more_in_batch++;
@@ -478,7 +478,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   XioConnection *xcon = static_cast<XioConnection*>(con);
   int code = 0;
-  bool trace_hdr = false;
+  bool trace_hdr = true;
 
   m->set_seq(0); /* XIO handles seq */
   m->encode(xcon->get_features(), !this->cct->_conf->ms_nocrc);
@@ -490,8 +490,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
   /* get an XioMsg frame */
   XioMsg *xmsg = pool_alloc_xio_msg(m, xcon);
 
-#if 0
-  dout(4) << "\nsend_message " << m << " new XioMsg " << xmsg
+#if 1
+  dout(4) << __func__ << " " << m << " new XioMsg " << xmsg
        << " req_0 " << &xmsg->req_0 << " msg type " << m->get_type()
        << " features: " << xcon->get_features() << dendl;
 #endif
@@ -502,9 +502,9 @@ int XioMessenger::send_message(Message *m, Connection *con)
     switch (m->get_type()) {
     case 43:
     // case 15:
-      cout << "stop 43 " << m->get_type() << " " << *m << std::endl;
+      dout(4) << __func__ << "stop 43 " << m->get_type() << " " << *m << dendl;
       buffer::list &payload = m->get_payload();
-      cout << "payload dump:" << std::endl;
+      dout(4) << __func__ << "payload dump:" << dendl;
       payload.hexdump(cout);
       trace_hdr = true;
     }
@@ -519,18 +519,21 @@ int XioMessenger::send_message(Message *m, Connection *con)
   buffer::list &data = m->get_data();
 
   if (magic & (MSG_MAGIC_XIO)) {
-    cout << "payload: " << payload.buffers().size() <<
+    dout(4) << "payload: " << payload.buffers().size() <<
       " middle: " << middle.buffers().size() <<
       " data: " << data.buffers().size() <<
-      std::endl;
+      dendl;
   }
 
   xmsg->nbuffers = payload.buffers().size() + middle.buffers().size() +
     data.buffers().size();
-  ex_cnt = ((3 + xmsg->nbuffers) / XIO_IOVLEN);
-  xmsg->hdr.msg_cnt = 1 + ex_cnt;
+  ex_cnt = (((XIO_IOVLEN-1) + xmsg->nbuffers) / XIO_IOVLEN);
+  if (!xmsg->hdr.msg_cnt)
+    xmsg->hdr.msg_cnt = 1;
 
   if (unlikely(ex_cnt > 0)) {
+    dout(4) << __func__ << " buffer cnt > XIO_IOVLEN (" <<
+      ((XIO_IOVLEN-1) + xmsg->nbuffers) << ")" << dendl;
     xmsg->req_arr =
       (struct xio_msg *) calloc(ex_cnt, sizeof(struct xio_msg));
   }
@@ -569,11 +572,12 @@ int XioMessenger::send_message(Message *m, Connection *con)
   struct xio_msg *head = &xmsg->req_0;
   if (xmsg->hdr.msg_cnt > 1) {
     struct xio_msg *tail = head;
-    for (req_off = 1; req_off < ex_cnt; ++req_off) {
+    for (req_off = 1; ((unsigned) req_off) < xmsg->hdr.msg_cnt; ++req_off) {
       req = &xmsg->req_arr[req_off];
       tail->next = req;
       tail = req;
      }
+    tail->next = NULL;
   }
   xcon->portal->enqueue_for_send(xcon, xmsg);
 

@@ -18,13 +18,18 @@
 #include "XioMessenger.h"
 #include "messages/MDataPing.h"
 
+#include "include/assert.h"
+#include "common/dout.h"
+
 extern struct xio_mempool *xio_msgr_mpool;
 extern struct xio_mempool *xio_msgr_noreg_mpool;
+
+#define dout_subsys ceph_subsys_xio
 
 void print_xio_msg_hdr(XioMsgHdr &hdr)
 {
 
-  cout << "ceph header: " <<
+  dout(4) << "ceph header: " <<
     " front_len: " << hdr.hdr->front_len <<
     " seq: " << hdr.hdr->seq <<
     " tid: " << hdr.hdr->tid <<
@@ -39,24 +44,24 @@ void print_xio_msg_hdr(XioMsgHdr &hdr)
     " data_len: " << hdr.hdr->data_len <<
     " xio header: " <<
     " msg_cnt: " << hdr.msg_cnt <<
-    std::endl;
+    dendl;
 
-  cout << "ceph footer: " <<
+  dout(4) << "ceph footer: " <<
     " front_crc: " << hdr.ftr->front_crc <<
     " middle_crc: " << hdr.ftr->middle_crc <<
     " data_crc: " << hdr.ftr->data_crc <<
     " sig: " << hdr.ftr->sig <<
     " flags: " << (uint32_t) hdr.ftr->flags <<
-    std::endl;
+    dendl;
 }
 
 void print_ceph_msg(Message *m)
 {
   if (m->get_magic() & (MSG_MAGIC_XIO & MSG_MAGIC_TRACE_DTOR)) {
     ceph_msg_header& header = m->get_header();
-    cout << "header version " << header.version <<
+    dout(4) << "header version " << header.version <<
       " compat version " << header.compat_version <<
-      std::endl;
+      dendl;
   }
 }
 
@@ -127,15 +132,14 @@ int XioConnection::on_msg_req(struct xio_session *session,
    * xio_session */
 
   if (! in_seq.p) {
-#if 0 /* XXX */
-    printf("receive req %p treq %p iov_base %p iov_len %d data_iovlen %d\n",
-	   req, treq, treq->in.header.iov_base,
-	   (int) treq->in.header.iov_len,
-	   (int) treq->in.data_iovlen);
-#endif
     XioMsgCnt msg_cnt(
       buffer::create_static(treq->in.header.iov_len,
 			    (char*) treq->in.header.iov_base));
+    dout(10) << __func__ << " receive req " << " treq " << treq <<
+      " msg_cnt " << msg_cnt.msg_cnt <<
+      " iov_base " << treq->in.header.iov_base << " iov_len " <<
+      (int) treq->in.header.iov_len << " data_iovlen " <<
+      (int) treq->in.data_iovlen << dendl;
     in_seq.cnt = msg_cnt.msg_cnt;
     in_seq.p = true;
   }
@@ -213,8 +217,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (magic & (MSG_MAGIC_TRACE_XCON)) {
     if (hdr.hdr->type == 43) {
-      cout << "front (payload) dump:" << std::endl;
-      payload.hexdump(cout);
+      dout(4) << "front (payload) dump:";
+      payload.hexdump( *_dout );
+      *_dout << dendl;
     }
   }
 
@@ -314,22 +319,22 @@ int XioConnection::on_msg_req(struct xio_session *session,
     }
 
     if (magic & (MSG_MAGIC_TRACE_XCON)) {
-      cout << "decode m is " << m->get_type() << std::endl;
+      dout(4) << "decode m is " << m->get_type() << dendl;
 
       if (m->get_type() == 4) {
-	cout << "stop 4 " << std::endl;
+	dout(4) << "stop 4 " << dendl;
       }
 
       if (m->get_type() == 15) {
-	cout << "stop 15 " << std::endl;
+	dout(4) << "stop 15 " << dendl;
       }
 
       if (m->get_type() == 18) {
-	cout << "stop 18 " << std::endl;
+	dout(4) << "stop 18 " << dendl;
       }
 
       if (m->get_type() == 48) {
-	cout << "stop 48 " << std::endl;
+	dout(4) << "stop 48 " << dendl;
       }
     }
 
@@ -337,7 +342,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
     msgr->ds_dispatch(m);
   } else {
     /* responds for undecoded messages and frees hook */
-    cout << "decode m failed" << std::endl;
+    dout(4) << "decode m failed" << dendl;
     m_hook->on_err_finalize(this);
   }
 
@@ -363,7 +368,7 @@ int XioConnection::on_msg_delivered(struct xio_session *session,
 
   XioMsg* xmsg = static_cast<XioMsg*>(req->user_context);
   if ((rc % 1000000) == 0)
-    cout << "xio finished " << rc << " " << time(0) << std::endl;
+    dout(4) << "xio finished " << rc << " " << time(0) << dendl;
   if (xmsg)
     xmsg->put();
 
