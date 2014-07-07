@@ -527,9 +527,12 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   xmsg->nbuffers = payload.buffers().size() + middle.buffers().size() +
     data.buffers().size();
-  ex_cnt = (((XIO_IOVLEN-1) + xmsg->nbuffers) / XIO_IOVLEN);
-  if (!xmsg->hdr.msg_cnt)
+  if (! xmsg->nbuffers) {
     xmsg->hdr.msg_cnt = 1;
+  } else {
+     xmsg->hdr.msg_cnt = (((XIO_IOVLEN-1) + xmsg->nbuffers) / XIO_IOVLEN);
+  }
+  ex_cnt = xmsg->hdr.msg_cnt - 1;
 
   if (unlikely(ex_cnt > 0)) {
     dout(4) << __func__ << " buffer cnt > XIO_IOVLEN (" <<
