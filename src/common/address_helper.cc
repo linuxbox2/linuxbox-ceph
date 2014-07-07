@@ -81,11 +81,13 @@ int entity_addr_from_sockaddr(entity_addr_t *addr /* out */,
 	sin = (struct sockaddr_in *) sa;
 	memcpy(&addr->addr4.sin_addr, &sin->sin_addr,
 	       sizeof(sin->sin_addr));
+	addr->addr4.sin_port = sin->sin_port;
 	break;
     case AF_INET6:
 	sin6 = (struct sockaddr_in6 *) sa;
 	memcpy(&addr->addr6.sin6_addr, &sin6->sin6_addr,
 	       sizeof(sin6->sin6_addr));
+	addr->addr6.sin6_port = sin6->sin6_port;
 	break;
     default:
 	break;
