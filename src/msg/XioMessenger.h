@@ -60,6 +60,7 @@ public:
   void set_magic(int _magic) { magic = _magic; }
   uint32_t get_special_handling() { return special_handling; }
   void set_special_handling(int n) { special_handling = n; }
+  int pool_hint(uint32_t size);
 
   /* xio hooks */
   int new_session(struct xio_session *session,

@@ -254,6 +254,15 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
   
 } /* ctor */
 
+int XioMessenger::pool_hint(uint32_t dsize) {
+  if (dsize > 1024*1024)
+    return 0;
+
+  /* if dsize is already present, returns -EEXIST */
+  return xio_mempool_add_allocator(xio_msgr_noreg_mpool, dsize, 0,
+				   XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+}
+
 int XioMessenger::new_session(struct xio_session *session,
 			      struct xio_new_session_req *req,
 			      void *cb_user_context)
