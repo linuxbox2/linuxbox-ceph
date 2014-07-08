@@ -195,7 +195,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     dispatch_strategy(ds),
     loop_con(this),
     port_shift(0),
-    magic(UINT_MAX),
+    magic(0),
     special_handling(0)
 {
   /* package init */
@@ -226,7 +226,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 	xio_mempool_create_ex(-1 /* nodeid */,
 			      XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC);
       for (int i = 64; i < 131072; i <<= 2) {
-	(void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, i, 0,
+	(void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, i, 15,
 					 XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
       }
 
