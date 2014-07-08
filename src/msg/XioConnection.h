@@ -38,6 +38,7 @@ public:
 private:
   XioConnection::type xio_conn_type;
   XioPortal *portal;
+  atomic_t connected;
   entity_inst_t peer;
   struct xio_session *session;
   struct xio_connection	*conn;
@@ -86,11 +87,22 @@ private:
   friend class XioCompletionHook;
   friend class boost::intrusive_ptr<XioConnection>;
 
+  int on_disconnect_event() {
+    connected.set(false);
+    return 0;
+  }
+
+
 public:
   XioConnection(XioMessenger *m, XioConnection::type _type,
 		const entity_inst_t& peer);
 
-  bool is_connected() { return !!conn; }
+  ~XioConnection() {
+    if (conn)
+      xio_connection_destroy(conn);
+  }
+
+  bool is_connected() { return connected.read(); }
 
   const entity_inst_t& get_peer() const { return peer; }
 

@@ -321,8 +321,11 @@ int XioMessenger::session_event(struct xio_session *session,
        * we don't currently, so if conn_iter points to nothing or to
        * an address other than xcon, there's nothing to clean up */
     }
-#if 0 /* XXX remove from an ephemeral_conns list? */
-    xcon->put(); /* XXX currently, there is no sentinel ref */
+    xcon->on_disconnect_event();
+#if 0
+    /* if residence on cons_entity_map connoted a +ref on xcon, we
+     * would return it here */
+    xcon->put();
 #endif
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
@@ -639,6 +642,8 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
      * we can always set it explicitly */
     conn->conn = xio_connect(conn->session, this->portals.get_portal0()->ctx,
 			     0, NULL, conn);
+
+    conn->connected.set(true);
 
     /* conn has nref == 1 */
     conns_entity_map.insert(*conn);
