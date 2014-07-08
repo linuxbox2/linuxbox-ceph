@@ -181,7 +181,7 @@ include_directories(${PROJECT_BINARY_DIR}/include)
 add_definitions(-D__linux__)
 
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost COMPONENTS thread system REQUIRED)
+find_package(Boost COMPONENTS thread system regex REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(Threads REQUIRED)
