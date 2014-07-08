@@ -575,7 +575,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   struct xio_msg *head = &xmsg->req_0;
   if (xmsg->hdr.msg_cnt > 1) {
     struct xio_msg *tail = head;
-    for (req_off = 1; ((unsigned) req_off) < xmsg->hdr.msg_cnt; ++req_off) {
+    for (req_off = 0; ((unsigned) req_off) < xmsg->hdr.msg_cnt-1; ++req_off) {
       req = &xmsg->req_arr[req_off];
       tail->next = req;
       tail = req;
