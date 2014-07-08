@@ -572,8 +572,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
   req->out.header.iov_len = pb->length();
 
   /* deliver via xio, preserve ordering */
-  struct xio_msg *head = &xmsg->req_0;
   if (xmsg->hdr.msg_cnt > 1) {
+    struct xio_msg *head = &xmsg->req_0;
     struct xio_msg *tail = head;
     for (req_off = 0; ((unsigned) req_off) < xmsg->hdr.msg_cnt-1; ++req_off) {
       req = &xmsg->req_arr[req_off];
