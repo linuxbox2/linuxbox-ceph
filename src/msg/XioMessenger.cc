@@ -300,6 +300,8 @@ int XioMessenger::session_event(struct xio_session *session,
     xcona.user_context = xcon;
     (void) xio_modify_connection(conn, &xcona, XIO_CONNECTION_ATTR_USER_CTX);
 
+    xcon->connected.set(true);
+
     dout(4) << dout_format("new connection session %p xcon %p", session, xcon) << dendl;
   }
   break;
