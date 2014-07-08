@@ -37,24 +37,21 @@ int XioPortals::bind(struct xio_session_ops *ops, const string& base_uri,
   int bind_size = portals.size();
 
   /* bind a consecutive range of ports */
-  for (int bind_ix = 1, bind_port = base_port;
-       bind_ix < bind_size; ++bind_ix, bind_port += PORT_STRIDE) {
+  for (int bind_ix = 0, bind_port = base_port; bind_ix < bind_size; ++bind_ix,
+	 bind_port += PORT_STRIDE) {
     string xio_uri = base_uri;
     xio_uri += ":";
     xio_uri += boost::lexical_cast<std::string>(bind_port);
     portal = portals[bind_ix];
-#if 0
-    (void) portal->bind(ops, xio_uri);
-#else
-int xxx = portal->bind(ops, xio_uri);
-if (xxx)  {
-  derr << dout_format("xp::bind: portal %p bind OK: %s (ix=%d port=%d)",
-	 portal, xio_uri.c_str(), bind_ix, bind_port) << dendl;
-} else {
+    int r = portal->bind(ops, xio_uri);
+    if (r)  {
+      derr << dout_format("xp::bind: portal %p bind OK: %s (ix=%d port=%d)",
+			  portal, xio_uri.c_str(), bind_ix, bind_port) <<
+	dendl;
+    } else {
   derr << dout_format("xp::bind: portal %p cannot bind: %s (ix=%d port=%d)",
-	 portal, xio_uri.c_str(), bind_ix, bind_port) << dendl;
-}
-#endif
+		      portal, xio_uri.c_str(), bind_ix, bind_port) << dendl;
+    }
   }
 
   return 0;

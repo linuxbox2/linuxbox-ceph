@@ -5,7 +5,7 @@
  *
  * Copyright (C) 2004-2006 Sage Weil <sage@newdream.net>
  * Portions Copyright (C) 2013 CohortFS, LLC
- *
+ *s
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License version 2.1, as published by the Free Software
@@ -278,9 +278,11 @@ private:
 public:
   XioPortals(XioMessenger *msgr, int _n) : p_vec(NULL), n(_n)
     {
-      /* n session portals, plus 1 to accept new sessions */
-      int ix, np = n+1;
-      for (ix = 0; ix < np; ++ix) {
+      /* portal0 */
+      portals.push_back(new XioPortal(msgr));
+
+      /* n bound session portals */
+      for (int ix = 1; ix < n; ++ix) {
 	portals.push_back(new XioPortal(msgr));
       }
     }
@@ -309,7 +311,7 @@ public:
 		 struct xio_new_session_req *req,
 		 void *cb_user_context)
     {
-      const char **portals_vec = get_vec()+1;
+      const char **portals_vec = get_vec();
       int portals_len = get_portals_len()-1;
 
       return xio_accept(session,
