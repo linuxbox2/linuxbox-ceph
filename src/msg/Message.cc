@@ -168,7 +168,7 @@ using namespace std;
 
 #define dout_subsys ceph_subsys_ms
 
-void Message::encode(uint64_t features, bool datacrc)
+void Message::encode(uint64_t features, bool crc)
 {
   // encode and copy out of *m
   if (empty_payload()) {
@@ -179,17 +179,19 @@ void Message::encode(uint64_t features, bool datacrc)
     if (header.compat_version == 0)
       header.compat_version = header.version;
   }
-  calc_front_crc();
+  if (crc)
+    calc_front_crc();
 
   // update envelope
   header.front_len = get_payload().length();
   header.middle_len = get_middle().length();
   header.data_len = get_data().length();
-  calc_header_crc();
+  if (crc)
+    calc_header_crc();
 
   footer.flags = CEPH_MSG_FOOTER_COMPLETE;
 
-  if (datacrc) {
+  if (crc) {
     calc_data_crc();
 
 #ifdef ENCODE_DUMP
@@ -241,8 +243,10 @@ void Message::dump(Formatter *f) const
   f->dump_string("summary", ss.str());
 }
 
-Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_footer& footer,
-			bufferlist& front, bufferlist& middle, bufferlist& data)
+Message *decode_message(CephContext *cct, ceph_msg_header& header,
+			ceph_msg_footer& footer,
+			bufferlist& front, bufferlist& middle,
+			bufferlist& data)
 {
   // verify crc
   if (!cct || !cct->_conf->ms_nocrc) {
@@ -280,7 +284,7 @@ Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_foot
 	return 0;
       }
     }
-  } 
+  }
 
   // make message
   Message *m = 0;
@@ -754,10 +758,10 @@ void encode_message(Message *msg, uint64_t features, bufferlist& payload)
   // Here's where we switch to the old footer format.  PLR
 
   footer = msg->get_footer();
-  old_footer.front_crc = footer.front_crc;   
-  old_footer.middle_crc = footer.middle_crc;   
-  old_footer.data_crc = footer.data_crc;   
-  old_footer.flags = footer.flags;   
+  old_footer.front_crc = footer.front_crc;
+  old_footer.middle_crc = footer.middle_crc;
+  old_footer.data_crc = footer.data_crc;
+  old_footer.flags = footer.flags;
   ::encode(old_footer, payload);
 
   ::encode(msg->get_payload(), payload);
