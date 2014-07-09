@@ -46,6 +46,7 @@ class XioMsgHdr
 public:
   __le32 msg_cnt;
   __le32 peer_type;
+  entity_addr_t addr; /* XXX hack! */
   ceph_msg_header* hdr;
   ceph_msg_footer* ftr;
   buffer::list bl;
@@ -67,6 +68,7 @@ public:
   inline void encode_hdr(buffer::list& bl) const {
     ::encode(msg_cnt, bl);
     ::encode(peer_type, bl);
+    ::encode(addr, bl);
     ::encode(hdr->seq, bl);
     ::encode(hdr->tid, bl);
     ::encode(hdr->type, bl);
@@ -98,6 +100,7 @@ public:
   inline void decode_hdr(buffer::list::iterator& bl) {
     ::decode(msg_cnt, bl);
     ::decode(peer_type, bl);
+    ::decode(addr, bl);
     ::decode(hdr->seq, bl);
     ::decode(hdr->tid, bl);
     ::decode(hdr->type, bl);
@@ -195,6 +198,7 @@ public:
     {
       const entity_inst_t &inst = xcon->get_messenger()->get_myinst();
       hdr.peer_type = inst.name.type();
+      hdr.addr = xcon->get_messenger()->get_myaddr();
       hdr.hdr->src.type = inst.name.type();
       hdr.hdr->src.num = inst.name.num();
       req_0.msg.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;

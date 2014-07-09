@@ -78,7 +78,8 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   in_seq()
 {
   pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
-  peer_addr = peer.addr;
+  if (xio_conn_type == XioConnection::ACTIVE)
+    peer_addr = peer.addr;
   peer_type = peer.name.type();
   set_peer_addr(peer.addr);
 
@@ -322,6 +323,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
     /* XXXX validate peer type */
     if (peer_type != (int) hdr.peer_type) { /* XXX isn't peer_type -1? */
       peer_type = hdr.peer_type;
+      peer_addr = hdr.addr;
       if (xio_conn_type == XioConnection::PASSIVE) {
 	/* XXX kick off feature/authn/authz negotiation
 	 * nb:  very possibly the active side should initiate this, but
