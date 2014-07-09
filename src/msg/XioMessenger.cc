@@ -322,7 +322,8 @@ int XioMessenger::session_event(struct xio_session *session,
 
     xcon->connected.set(true);
 
-    dout(4) << dout_format("new connection session %p xcon %p", session, xcon) << dendl;
+    dout(4) << dout_format("new connection session %p xcon %p", session, xcon)
+      << " from " << s_inst << dendl;
   }
   break;
   case XIO_SESSION_CONNECTION_CLOSED_EVENT: /* orderly discon */
