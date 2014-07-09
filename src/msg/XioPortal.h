@@ -366,8 +366,9 @@ public:
     {
       int nportals = portals.size();
       for (int ix = 0; ix < nportals; ++ix) {
-	delete(*(portals.begin()));
+	delete(portals[ix]);
       }
+      portals.clear();
       if (p_vec) {
 	delete[] p_vec;
       }
