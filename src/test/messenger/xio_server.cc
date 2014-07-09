@@ -93,6 +93,9 @@ int main(int argc, const char **argv)
 				     dstrategy);
 	static_cast<XioMessenger*>(messenger)->set_special_handling(MSG_SPECIAL_HANDLING_REDUPE);
 
+	// enable timing prints
+	static_cast<XioMessenger*>(messenger)->set_magic(MSG_MAGIC_TRACE_CTR);
+
 	messenger->set_default_policy(
 	  Messenger::Policy::stateless_server(CEPH_FEATURES_ALL, 0));
 

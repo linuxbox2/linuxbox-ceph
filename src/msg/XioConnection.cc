@@ -381,8 +381,11 @@ int XioConnection::on_msg_delivered(struct xio_session *session,
   uint64_t rc = ++rcount;
 
   XioMsg* xmsg = static_cast<XioMsg*>(req->user_context);
-  if ((rc % 1000000) == 0)
-    dout(4) << "xio finished " << rc << " " << time(0) << dendl;
+  if (unlikely(magic & MSG_MAGIC_TRACE_CTR)) {
+    if (unlikely((rc % 1000000) == 0)) {
+      std::cout << "xio finished " << rc << " " << time(0) << std::endl;
+    }
+  } /* trace ctr */
   if (xmsg)
     xmsg->put();
 

@@ -101,6 +101,9 @@ int main(int argc, const char **argv)
 	if (n_dsize)
 	  (void) static_cast<XioMessenger*>(messenger)->pool_hint(n_dsize);
 
+	// enable timing prints
+	static_cast<XioMessenger*>(messenger)->set_magic(MSG_MAGIC_TRACE_CTR);
+
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 
 	string dest_str = "tcp://";

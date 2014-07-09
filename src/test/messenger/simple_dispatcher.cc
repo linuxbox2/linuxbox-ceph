@@ -59,11 +59,13 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
     abort();
   }
 
-  if ((dc % 2048) == 0) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME_COARSE, &ts);
-    cout << "ping " << dc << " nanos: " <<
-      ts.tv_nsec + (ts.tv_sec * 1000000000)  << std::endl;
+  if (unlikely(m->get_magic() & MSG_MAGIC_TRACE_CTR)) {
+    if (unlikely(dc % 8192) == 0) {
+      struct timespec ts;
+      clock_gettime(CLOCK_REALTIME_COARSE, &ts);
+      cout << "ping " << dc << " nanos: " <<
+	ts.tv_nsec + (ts.tv_sec * 1000000000)  << std::endl;
+    }
   }
 
   //m->put();
