@@ -150,13 +150,39 @@ public:
 		    > Queue;
 };
 
+extern struct xio_mempool *xio_msgr_noreg_mpool;
+
+#define XIO_MSGR_IOVLEN 16
+
+struct xio_msg_ex
+{
+  struct xio_msg msg;
+  struct xio_iovec_ex iovs[XIO_MSGR_IOVLEN];
+
+  xio_msg_ex() {
+    // minimal initialize an "out" msg
+    msg.type = XIO_MSG_TYPE_ONE_WAY;
+    msg.more_in_batch = 0;
+    msg.status = 0;
+    msg.flags = 0;
+    // minimal zero "in" side
+    msg.in.header.iov_len = 0;
+    msg.in.data_iovsz = 0;
+    msg.in.data_iovlen = 0;
+    // out (some members adjusted later)
+    msg.out.data_type = XIO_DATA_TYPE_PTR;
+    msg.out.data_iovsz = XIO_MSGR_IOVLEN;
+    msg.out.pdata_iov = iovs;
+  }
+};
+
 struct XioMsg : public XioSubmit
 {
 public:
   Message* m;
   XioMsgHdr hdr;
-  struct xio_msg req_0;
-  struct xio_msg* req_arr;
+  struct xio_msg_ex req_0;
+  struct xio_msg_ex* req_arr;
   struct xio_mempool_obj mp_this;
   int nbuffers;
   atomic_t nrefs;
@@ -171,10 +197,8 @@ public:
       hdr.peer_type = inst.name.type();
       hdr.hdr->src.type = inst.name.type();
       hdr.hdr->src.num = inst.name.num();
-      memset(&req_0, 0, sizeof(struct xio_msg));
-      req_0.type = XIO_MSG_TYPE_ONE_WAY;
-      req_0.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
-      req_0.user_context = this;
+      req_0.msg.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
+      req_0.msg.user_context = this;
     }
 
   XioMsg* get() { nrefs.inc(); return this; };
@@ -188,12 +212,16 @@ public:
     }
   }
 
+  void alloc_trailers(int cnt) {
+    req_arr = new xio_msg_ex[cnt];
+  }
+
   Message *get_message() { return m; }
 
   ~XioMsg()
     {
       if (unlikely(!!req_arr)) {
-	free(req_arr);
+	delete[] req_arr;
       }
       if (m->get_special_handling() & MSG_SPECIAL_HANDLING_REDUPE) {
 	  /* testing only! server's ready, resubmit request */
@@ -204,8 +232,6 @@ public:
       }
     }
 };
-
-extern struct xio_mempool *xio_msgr_noreg_mpool;
 
 class XioCompletionHook : public Message::CompletionHook
 {

@@ -218,6 +218,12 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_DISABLE_HUGETBL,
 		  &xopt, sizeof(unsigned));
 
+      xopt = XIO_MSGR_IOVLEN;
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_IN_IOVLEN,
+		  &xopt, sizeof(unsigned));
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_OUT_IOVLEN,
+		  &xopt, sizeof(unsigned));
+
       /* and unregisterd one */
 #define XMSG_MEMPOOL_MIN 4096
 #define XMSG_MEMPOOL_MAX 4096
@@ -225,10 +231,15 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_msgr_noreg_mpool =
 	xio_mempool_create_ex(-1 /* nodeid */,
 			      XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC);
-      for (int i = 64; i < 131072; i <<= 2) {
-	(void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, i, 15,
-					 XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
-      }
+
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 64, 15,
+				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 256, 15,
+				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 1024, 15,
+				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, getpagesize(), 15,
+				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
 
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
@@ -381,23 +392,21 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     default:
     {
       struct xio_mempool_obj *mp = get_xio_mp(*pb);
-      if (mp) {
-	iov->mr = mp->mr;
-      }
+      iov->mr = (mp) ? mp->mr : NULL;
     }
       break;
     }
 
     /* advance iov(s) */
-    if (unlikely(++msg_off >= XIO_IOVLEN)) {
+    if (unlikely(++msg_off >= XIO_MSGR_IOVLEN)) {
       if (++req_off <= ex_cnt) {
 	/* next record */
-	req->out.data_iovlen = XIO_IOVLEN;
+	req->out.data_iovlen = XIO_MSGR_IOVLEN;
 	req->more_in_batch++;
 	/* XXX chain it */
-	req = &xmsg->req_arr[req_off];
+	req = &xmsg->req_arr[req_off].msg;
 	req->user_context = xmsg->get();
-	msg_iov = req->out.data_iov;
+	msg_iov = req->out.pdata_iov;
 	msg_off = 0;
       }
     }
@@ -506,7 +515,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
 #if 1
   dout(4) << __func__ << " " << m << " new XioMsg " << xmsg
-       << " req_0 " << &xmsg->req_0 << " msg type " << m->get_type()
+       << " req_0 " << &xmsg->req_0.msg << " msg type " << m->get_type()
        << " features: " << xcon->get_features() << dendl;
 #endif
 
@@ -524,8 +533,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
     }
   }
 
-  struct xio_msg *req = &xmsg->req_0;
-  struct xio_iovec_ex *msg_iov = req->out.data_iov, *iov = NULL;
+  struct xio_msg *req = &xmsg->req_0.msg;
+  struct xio_iovec_ex *msg_iov = req->out.pdata_iov, *iov = NULL;
   int ex_cnt;
 
   buffer::list &payload = m->get_payload();
@@ -544,15 +553,15 @@ int XioMessenger::send_message(Message *m, Connection *con)
   if (! xmsg->nbuffers) {
     xmsg->hdr.msg_cnt = 1;
   } else {
-     xmsg->hdr.msg_cnt = (((XIO_IOVLEN-1) + xmsg->nbuffers) / XIO_IOVLEN);
+     xmsg->hdr.msg_cnt =
+       (((XIO_MSGR_IOVLEN-1) + xmsg->nbuffers) / XIO_MSGR_IOVLEN);
   }
   ex_cnt = xmsg->hdr.msg_cnt - 1;
 
   if (unlikely(ex_cnt > 0)) {
-    dout(4) << __func__ << " buffer cnt > XIO_IOVLEN (" <<
-      ((XIO_IOVLEN-1) + xmsg->nbuffers) << ")" << dendl;
-    xmsg->req_arr =
-      (struct xio_msg *) calloc(ex_cnt, sizeof(struct xio_msg));
+    dout(4) << __func__ << " buffer cnt > XIO_MSGR_IOVLEN (" <<
+      ((XIO_MSGR_IOVLEN-1) + xmsg->nbuffers) << ")" << dendl;
+    xmsg->alloc_trailers(ex_cnt);
   }
 
   /* do the invariant part */
@@ -569,7 +578,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
 		    req_off, BUFFER_DATA);
 
   /* fixup first msg */
-  req = &xmsg->req_0;
+  req = &xmsg->req_0.msg;
 
   if (trace_hdr) {
     void print_xio_msg_hdr(XioMsgHdr &hdr);
@@ -587,10 +596,10 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   /* deliver via xio, preserve ordering */
   if (xmsg->hdr.msg_cnt > 1) {
-    struct xio_msg *head = &xmsg->req_0;
+    struct xio_msg *head = &xmsg->req_0.msg;
     struct xio_msg *tail = head;
     for (req_off = 0; ((unsigned) req_off) < xmsg->hdr.msg_cnt-1; ++req_off) {
-      req = &xmsg->req_arr[req_off];
+      req = &xmsg->req_arr[req_off].msg;
       tail->next = req;
       tail = req;
      }

@@ -200,7 +200,7 @@ public:
 	    switch(xs->type) {
 	    case XIO_MSG_TYPE_REQ: /* it was an outgoing 1-way */
 	      xmsg = static_cast<XioMsg*>(xs);
-	      msg = &xmsg->req_0;
+	      msg = &xmsg->req_0.msg;
 	      code = xio_send_msg(xs->xcon->conn, msg);
 	      xs->xcon->send.set(msg->timestamp); /* XXX atomic? */
 	      break;
