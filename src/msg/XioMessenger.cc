@@ -280,6 +280,18 @@ int XioMessenger::session_event(struct xio_session *session,
   XioConnection *xcon;
 
   switch (event_data->event) {
+  case XIO_SESSION_CONNECTION_ESTABLISHED_EVENT:
+  {
+    struct xio_connection *conn = event_data->conn;
+    struct xio_connection_attr xcona = {};
+
+    (void) xio_query_connection(conn, &xcona, XIO_CONNECTION_ATTR_CTX);
+    dout(4) << "connection established " << conn
+      << " session " << session
+      << " xcon " << xcona.user_context << dendl;
+  }
+  break;
+
   case XIO_SESSION_NEW_CONNECTION_EVENT:
   {
     struct xio_connection *conn = event_data->conn;
