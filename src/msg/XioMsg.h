@@ -165,6 +165,7 @@ struct xio_msg_ex
   xio_msg_ex() {
     // minimal initialize an "out" msg
     msg.type = XIO_MSG_TYPE_ONE_WAY;
+    msg.request = NULL;
     msg.more_in_batch = 0;
     msg.status = 0;
     msg.flags = 0;
