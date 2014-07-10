@@ -234,6 +234,8 @@ public:
 	  /* the normal case: done with message */
 	  m->put();
       }
+      if (xcon->cref)
+	xcon->put();
     }
 };
 

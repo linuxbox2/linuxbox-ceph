@@ -152,6 +152,12 @@ int main(int argc, const char **argv)
 
 	conn->put();
 
+	// wait a bit for cleanup to finalize
+	ts.tv_sec = 5;
+	nanosleep(&ts, NULL);
+
+	cout << "conn has refs " << conn->nref.read() << std::endl;
+
 out:
 	return r;
 }
