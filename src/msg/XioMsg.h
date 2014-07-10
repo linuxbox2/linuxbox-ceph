@@ -148,10 +148,6 @@ public:
       xcon->get();
     }
 
-    virtual ~XioSubmit() {
-      xcon->put();
-    };
-
   typedef bi::list< XioSubmit,
 		    bi::member_hook< XioSubmit,
 				     bi::list_member_hook<>,
@@ -246,6 +242,8 @@ public:
 	  /* the normal case: done with message */
 	  m->put();
       }
+      /* connection ref */
+      xcon->put();
     }
 };
 
@@ -310,7 +308,6 @@ public:
   XioPool& get_pool() { return rsp_pool; }
 
   void on_err_finalize(XioConnection *xcon);
-  virtual ~XioCompletionHook() {}
 };
 
 struct XioRsp : public XioSubmit
@@ -328,6 +325,11 @@ public:
     {
       xhook->put();
     }
+
+  ~XioRsp() {
+    /* connection ref */
+    xcon->put();
+  }
 };
 
 #endif /* XIO_MSG_H */
