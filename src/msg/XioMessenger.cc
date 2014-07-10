@@ -135,6 +135,11 @@ static int on_cancel(struct xio_session *session,
 	 session, msg, conn_user_context) << dendl;
 #endif
 
+  cout << dout_format("on cancel: session: %p msg: %p conn_user_context %p",
+		      session, msg, conn_user_context) << std::endl;
+
+  abort();
+
   return 0;
 }
 
@@ -150,6 +155,12 @@ static int on_cancel_request(struct xio_session *session,
     "on cancel request: session: %p msg: %p conn_user_context %p",
     session, msg, conn_user_context) << dendl;
 #endif
+
+  cout << dout_format(
+    "on cancel request: session: %p msg: %p conn_user_context %p",
+    session, msg, conn_user_context) << std::endl;
+
+  abort();
 
   return 0;
 }
@@ -262,7 +273,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
   /* update class instance count */
   nInstances.inc();
-  
+
 } /* ctor */
 
 int XioMessenger::pool_hint(uint32_t dsize) {
