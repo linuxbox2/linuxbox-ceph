@@ -118,7 +118,8 @@ static inline XioCompletionHook* pool_alloc_xio_completion_hook(
   struct xio_mempool_obj mp_mem;
   int e = xio_mempool_alloc(xio_msgr_noreg_mpool,
 			    sizeof(XioCompletionHook), &mp_mem);
-  assert(e == 0);
+  if (!!e)
+    return NULL;
   XioCompletionHook *xhook = (XioCompletionHook*) mp_mem.addr;
   new (xhook) XioCompletionHook(xcon, m, msg_seq, mp_mem);
   return xhook;
@@ -394,6 +395,24 @@ int XioConnection::on_msg_delivered(struct xio_session *session,
 
   return 0;
 }  /* on_msg_delivered */
+
+void XioConnection::msg_send_fail(XioMsg *xmsg, int code)
+{
+  dout(4) << "xio_send_msg FAILED " << &xmsg->req_0.msg << " code=" << code <<
+    " (" << xio_strerror(code) << ")" << dendl;
+  /* return refs taken by each xio_msg */
+  unsigned int ix;
+  for (ix = 0; ix < xmsg->hdr.msg_cnt; ++ix) {
+    xmsg->put();
+  }
+  xmsg->put();
+} /* msg_send_fail */
+
+void XioConnection::msg_release_fail(struct xio_msg *msg, int code)
+{
+  dout(4) << "xio_release_msg FAILED " << msg <<  "code=" << code <<
+    " (" << xio_strerror(code) << ")" << dendl;
+} /* msg_release_fail */
 
 int XioConnection::on_msg_error(struct xio_session *session,
 				enum xio_status error,

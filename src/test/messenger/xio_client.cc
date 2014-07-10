@@ -97,7 +97,9 @@ int main(int argc, const char **argv)
 				     0 /* portals */,
 				     dstrategy);
 
-	static_cast<XioMessenger*>(messenger)->set_special_handling(MSG_SPECIAL_HANDLING_REDUPE);
+	static_cast<XioMessenger*>(messenger)->set_special_handling(
+	  MSG_SPECIAL_HANDLING_REDUPE);
+
 	if (n_dsize)
 	  (void) static_cast<XioMessenger*>(messenger)->pool_hint(n_dsize);
 
@@ -155,6 +157,8 @@ int main(int argc, const char **argv)
 	// wait a bit for cleanup to finalize
 	ts.tv_sec = 5;
 	nanosleep(&ts, NULL);
+
+	messenger->shutdown();
 
 	cout << "conn has refs " << conn->nref.read() << std::endl;
 

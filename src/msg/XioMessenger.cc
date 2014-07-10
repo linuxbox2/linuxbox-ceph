@@ -476,7 +476,8 @@ static inline XioMsg* pool_alloc_xio_msg(Message *m, XioConnection *xcon)
 {
   struct xio_mempool_obj mp_mem;
   int e = xio_mempool_alloc(xio_msgr_noreg_mpool, sizeof(XioMsg), &mp_mem);
-  assert(e == 0);
+  if (!!e)
+    return NULL;
   XioMsg *xmsg = (XioMsg*) mp_mem.addr;
   assert(!!xmsg);
   new (xmsg) XioMsg(m, xcon, mp_mem);
@@ -505,12 +506,14 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   /* get an XioMsg frame */
   XioMsg *xmsg = pool_alloc_xio_msg(m, xcon);
+  if (! xmsg) {
+    /* could happen if Accelio has been shutdown */
+    return ENOMEM;
+  }
 
-#if 1
   dout(4) << __func__ << " " << m << " new XioMsg " << xmsg
        << " req_0 " << &xmsg->req_0.msg << " msg type " << m->get_type()
        << " features: " << xcon->get_features() << dendl;
-#endif
 
   if (magic & (MSG_MAGIC_XIO)) {
 

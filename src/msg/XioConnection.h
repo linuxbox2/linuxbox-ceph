@@ -30,6 +30,7 @@ namespace bi = boost::intrusive;
 
 class XioPortal;
 class XioMessenger;
+class XioMsg;
 
 class XioConnection : public Connection
 {
@@ -134,6 +135,10 @@ public:
 
   int on_msg_send_complete(struct xio_session *session,
 			   struct xio_msg *rsp, void *conn_user_context);
+
+  void msg_send_fail(XioMsg *xmsg, int code);
+
+  void msg_release_fail(struct xio_msg *msg, int code);
 };
 
 typedef boost::intrusive_ptr<XioConnection> XioConnectionRef;

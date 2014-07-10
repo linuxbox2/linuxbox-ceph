@@ -146,6 +146,8 @@ public:
     type(_type), xcon(_xcon)
     {}
 
+    virtual ~XioSubmit() {};
+
   typedef bi::list< XioSubmit,
 		    bi::member_hook< XioSubmit,
 				     bi::list_member_hook<>,
@@ -228,9 +230,14 @@ public:
       if (unlikely(!!req_arr)) {
 	delete[] req_arr;
       }
-      if (m->get_special_handling() & MSG_SPECIAL_HANDLING_REDUPE) {
-	  /* testing only! server's ready, resubmit request */
+      /* testing only! server's ready, resubmit request */
+      if (unlikely(m->get_special_handling() & MSG_SPECIAL_HANDLING_REDUPE)) {
+	if (likely(xcon->is_connected())) {
 	  xcon->get_messenger()->send_message(m, xcon);
+	} else {
+	  /* dispose it */
+	  m->put();
+	}
       } else {
 	  /* the normal case: done with message */
 	  m->put();

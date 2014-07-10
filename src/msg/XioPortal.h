@@ -166,8 +166,34 @@ public:
 	return;
       }
 
-      /* XXXX need to dispose of xs */
-      abort();
+      /* dispose xs */
+      switch(xs->type) {
+      case XIO_MSG_TYPE_REQ: /* it was an outgoing 1-way */
+      {
+	XioMsg* xmsg = static_cast<XioMsg*>(xs);
+	xs->xcon->msg_send_fail(xmsg, -EINVAL);
+      }
+	break;
+      default:
+	/* XIO_MSG_TYPE_RSP */
+      {
+	XioRsp* xrsp = static_cast<XioRsp*>(xs);
+	list <struct xio_msg *>& msg_seq = xrsp->get_xhook()->get_seq();
+	list <struct xio_msg *>::iterator iter;
+	struct xio_msg *msg = NULL;
+	for (iter = msg_seq.begin(); iter != msg_seq.end();
+	     ++iter) {
+	  msg = *iter;
+	  int code = xio_release_msg(msg);
+	  if (unlikely(code)) {
+	    /* very unlikely, so log it */
+	    xs->xcon->msg_release_fail(msg, code);
+	  }
+	}
+	xrsp->finalize(); /* unconditional finalize */
+      }
+      break;
+      };
     }
 
   void *entry()
@@ -207,7 +233,10 @@ public:
 	      xmsg = static_cast<XioMsg*>(xs);
 	      msg = &xmsg->req_0.msg;
 	      code = xio_send_msg(xs->xcon->conn, msg);
-	      xs->xcon->send.set(msg->timestamp); /* XXX atomic? */
+	      if (unlikely(code)) {
+		xs->xcon->msg_send_fail(xmsg, code);
+	      } else
+		xs->xcon->send.set(msg->timestamp); /* XXX atomic? */
 	      break;
 	    default:
 	      /* XIO_MSG_TYPE_RSP */
@@ -218,18 +247,15 @@ public:
 		   ++iter) {
 		msg = *iter;
 		code = xio_release_msg(msg);
+		if (unlikely(code)) {
+		  /* very unlikely, so log it */
+		  xs->xcon->msg_release_fail(msg, code);
+		}
 	      }
-	      xrsp->finalize();
+	      xrsp->finalize(); /* unconditional finalize */
 	    }
 	    break;
 	    };
-
-	    if (code) { // XXX cleanup or discard
-	      cerr << "IGNORING THIS FAILURE: xio_send_" << ((long)(msg))<< " "
-		   << (!msg->request ? "request" : "response") <<
-		" failed, code=" << code << std::endl;
-	      continue; /* XXX messages will be queued for cleanup */
-	    }
 	  }
 	}
 
