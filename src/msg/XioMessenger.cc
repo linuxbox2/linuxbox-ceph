@@ -283,24 +283,21 @@ int XioMessenger::session_event(struct xio_session *session,
   case XIO_SESSION_NEW_CONNECTION_EVENT:
   {
     struct xio_connection *conn = event_data->conn;
-    struct xio_connection_attr c_attr;
+    struct xio_connection_attr xcona;
     entity_inst_t s_inst;
 
-    (void) xio_query_connection(conn, &c_attr,
-				XIO_CONNECTION_ATTR_PROTO|
+    (void) xio_query_connection(conn, &xcona,
+				XIO_CONNECTION_ATTR_CTX|
 				XIO_CONNECTION_ATTR_SRC_ADDR);
     /* XXX assumes RDMA */
     (void) entity_addr_from_sockaddr(&s_inst.addr,
-				     (struct sockaddr *) &c_attr.src_addr);
+				     (struct sockaddr *) &xcona.src_addr);
 
     if (port_shift)
       s_inst.addr.set_port(s_inst.addr.get_port()-port_shift);
 
     xcon = new XioConnection(this, XioConnection::PASSIVE, s_inst);
     xcon->session = session;
-
-    struct xio_connection_attr xcona;
-    (void) xio_query_connection(conn, &xcona, XIO_CONNECTION_ATTR_CTX);
 
     struct xio_context_attr xctxa;
     (void) xio_query_context(xcona.ctx, &xctxa, XIO_CONTEXT_ATTR_USER_CTX);
