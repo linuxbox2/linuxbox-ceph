@@ -41,7 +41,7 @@ bool XioDispatcher::ms_dispatch(Message *m)
     break;
   case MSG_DATA_PING:
   {
-    MDataPing* mdp = static_cast<MDataPing*>(m);
+    MDataPing* mdp __attribute__((unused)) = static_cast<MDataPing*>(m);
     //cout << "MDataPing " << mdp->tag << " " << mdp->counter << std::endl;
     //mdp->get_data().hexdump(cout);
   }

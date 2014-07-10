@@ -77,12 +77,10 @@ static int on_msg(struct xio_session *session,
 		  int more_in_batch,
 		  void *cb_user_context)
 {
-  XioConnection *xcon =
+  XioConnection* xcon __attribute__((unused)) =
     static_cast<XioConnection*>(cb_user_context);
 
-#if 0
-  dout(4) << dout_format("on_msg session %p xcon %p", session, xcon) << dendl;
-#endif
+  dout(25) << dout_format("on_msg session %p xcon %p", session, xcon) << dendl;
 
   return xcon->on_msg_req(session, req, more_in_batch,
 			  cb_user_context);
@@ -96,12 +94,10 @@ static int on_msg_delivered(struct xio_session *session,
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
 
-#if 0
-  dout(4) <<
+  dout(25) <<
     dout_format(
       "msg delivered session: %p msg: %p more: %d conn_user_context %p",
       session, msg, more_in_batch, conn_user_context) << dendl;
-#endif
 
   return xcon->on_msg_delivered(session, msg, more_in_batch,
 				conn_user_context);
@@ -116,8 +112,9 @@ static int on_msg_error(struct xio_session *session,
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
 
-  dout(4) << dout_format("msg error session: %p error: %s msg: %p conn_user_context %p",
-	 session, xio_strerror(error), msg, conn_user_context) << dendl;
+  cout << dout_format(
+    "msg error session: %p error: %s msg: %p conn_user_context %p",
+    session, xio_strerror(error), msg, conn_user_context) << std::endl;
 
   return xcon->on_msg_error(session, error, msg, conn_user_context);
 }
@@ -127,18 +124,11 @@ static int on_cancel(struct xio_session *session,
 		     enum xio_status result,
 		     void *conn_user_context)
 {
-#if 0
-  XioConnection *xcon =
+  XioConnection* xcon __attribute__((unused)) =
     static_cast<XioConnection*>(conn_user_context);
 
-  dout(4) << dout_format("on cancel: session: %p msg: %p conn_user_context %p",
+  dout(25) << dout_format("on cancel: session: %p msg: %p conn_user_context %p",
 	 session, msg, conn_user_context) << dendl;
-#endif
-
-  cout << dout_format("on cancel: session: %p msg: %p conn_user_context %p",
-		      session, msg, conn_user_context) << std::endl;
-
-  abort();
 
   return 0;
 }
@@ -147,20 +137,12 @@ static int on_cancel_request(struct xio_session *session,
 			     struct xio_msg  *msg,
 			     void *conn_user_context)
 {
-#if 0
-  XioConnection *xcon =
+  XioConnection* xcon __attribute__((unused)) =
     static_cast<XioConnection*>(conn_user_context);
 
-  dout(4) << dout_format(
+  dout(25) << dout_format(
     "on cancel request: session: %p msg: %p conn_user_context %p",
     session, msg, conn_user_context) << dendl;
-#endif
-
-  cout << dout_format(
-    "on cancel request: session: %p msg: %p conn_user_context %p",
-    session, msg, conn_user_context) << std::endl;
-
-  abort();
 
   return 0;
 }
@@ -170,7 +152,7 @@ static string xio_uri_from_entity(const entity_addr_t& addr, bool want_port)
 {
   const char *host = NULL;
   char addr_buf[129];
-  
+
   switch(addr.addr.ss_family) {
   case AF_INET:
     host = inet_ntop(AF_INET, &addr.addr4.sin_addr, addr_buf,
