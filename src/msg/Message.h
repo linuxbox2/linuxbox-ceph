@@ -279,8 +279,8 @@ public:
     return static_cast<Message *>(RefCountedObject::get());
   }
 
-protected:
-  virtual ~Message() {
+public:
+  ~Message() {
     assert(nref.read() == 0);
     if (byte_throttler)
       byte_throttler->put(payload.length() + middle.length() + data.length());
@@ -290,7 +290,7 @@ protected:
     if (completion_hook)
       completion_hook->complete(0);
   }
-public:
+
   inline const ConnectionRef& get_connection() { return connection; }
   void set_connection(const ConnectionRef& c) {
     connection = c;
