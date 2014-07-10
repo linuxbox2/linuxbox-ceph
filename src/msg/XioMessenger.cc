@@ -531,7 +531,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   dout(4) << __func__ << " " << m << " new XioMsg " << xmsg
        << " req_0 " << &xmsg->req_0.msg << " msg type " << m->get_type()
-       << " features: " << xcon->get_features() << dendl;
+       << " features: " << xcon->get_features()
+       << " conn " << xcon->conn << " sess " << xcon->session << dendl;
 
   if (magic & (MSG_MAGIC_XIO)) {
 
