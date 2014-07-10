@@ -48,7 +48,6 @@ private:
   atomic_t recv;
   uint32_t magic;
   uint32_t special_handling;
-  bool cref;
 
   /* batching */
   struct msg_seq {
@@ -105,11 +104,6 @@ public:
   }
 
   bool is_connected() { return connected.read(); }
-
-  void sendref() {
-    get();
-    cref = true;
-  }
 
   const entity_inst_t& get_peer() const { return peer; }
 

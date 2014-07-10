@@ -160,7 +160,6 @@ public:
   void enqueue_for_send(XioConnection *xcon, XioSubmit *xs)
     {
       if (! _shutdown) {
-	xcon->sendref();
 	submit_q.enq(xcon, xs);
 	xio_context_stop_loop(ctx, false);
 	return;

@@ -144,9 +144,13 @@ public:
 
   XioSubmit(enum xio_msg_type _type, XioConnection *_xcon) :
     type(_type), xcon(_xcon)
-    {}
+    {
+      xcon->get();
+    }
 
-    virtual ~XioSubmit() {};
+    virtual ~XioSubmit() {
+      xcon->put();
+    };
 
   typedef bi::list< XioSubmit,
 		    bi::member_hook< XioSubmit,
@@ -242,8 +246,6 @@ public:
 	  /* the normal case: done with message */
 	  m->put();
       }
-      if (xcon->cref)
-	xcon->put();
     }
 };
 

@@ -75,7 +75,6 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   session(NULL),
   conn(NULL),
   magic(m->get_magic()),
-  cref(false),
   in_seq()
 {
   pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
