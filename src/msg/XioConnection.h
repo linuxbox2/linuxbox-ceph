@@ -108,7 +108,16 @@ public:
   const entity_inst_t& get_peer() const { return peer; }
 
   XioConnection* get() {
-    return static_cast<XioConnection*>(RefCountedObject::get());
+    int refs = nref.read();
+    cout << "XioConnection::get " << this << " " << refs << std::endl;
+    RefCountedObject::get();
+    return this;
+  }
+
+  void put() {
+    RefCountedObject::put();
+    int refs = nref.read();
+    cout << "XioConnection::put " << this << " " << refs << std::endl;
   }
 
   uint32_t get_magic() { return magic; }
