@@ -26,12 +26,14 @@ extern "C" {
 #include "include/atomic.h"
 #include "common/Thread.h"
 #include "common/Mutex.h"
+#include "include/Spinlock.h"
 
 class XioMessenger : public SimplePolicyMessenger
 {
 private:
   static atomic_t nInstances;
-  Mutex conns_lock;
+  Spinlock conns_sp;
+  XioConnection::ConnList conns_list;
   XioConnection::EntitySet conns_entity_map;
   XioPortals portals;
   DispatchStrategy* dispatch_strategy;
@@ -61,6 +63,7 @@ public:
   uint32_t get_special_handling() { return special_handling; }
   void set_special_handling(int n) { special_handling = n; }
   int pool_hint(uint32_t size);
+  void try_insert(XioConnection *xcon);
 
   /* xio hooks */
   int new_session(struct xio_session *session,

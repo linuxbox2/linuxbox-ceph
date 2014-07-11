@@ -83,9 +83,11 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   peer_type = peer.name.type();
   set_peer_addr(peer.addr);
 
+  /* try to insert in conns_entity_map */
+  m->try_insert(this);
+
   /* XXXX fake features, aieee! */
   set_features(XXX_XIO_ALL_FEATURES);
-
 }
 
 int XioConnection::passive_setup()
@@ -306,7 +308,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (m) {
     /* completion */
-    this->get(); /* XXX getting underrun */
     m->set_connection(this);
 
     /* reply hook */

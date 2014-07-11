@@ -183,7 +183,6 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 			   string mname, uint64_t nonce, int nportals,
 			   DispatchStrategy *ds)
   : SimplePolicyMessenger(cct, name, mname, nonce),
-    conns_lock("XioMessenger::conns_lock"),
     portals(this, nportals),
     dispatch_strategy(ds),
     loop_con(this),
@@ -315,7 +314,16 @@ int XioMessenger::session_event(struct xio_session *session,
 
     xcon->connected.set(true);
 
-    dout(4) << dout_format("new connection session %p xcon %p", session, xcon) << dendl;
+    /* sentinel ref */
+    xcon->get(); /* xcon->nref == 1 */
+    conns_sp.lock();
+    conns_list.push_back(*xcon);
+    /* XXX we can't put xcon in conns_entity_map becase we don't yet know
+     * it's peer address */
+    conns_sp.unlock();
+
+    dout(4) << dout_format("new connection session %p xcon %p", session, xcon)
+	    << dendl;
   }
   break;
   case XIO_SESSION_CONNECTION_CLOSED_EVENT: /* orderly discon */
@@ -326,6 +334,7 @@ int XioMessenger::session_event(struct xio_session *session,
     /* clean up mapped connections */
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
     {
+      Spinlock::Locker lckr(conns_sp);
       XioConnection::EntitySet::iterator conn_iter =
 	conns_entity_map.find(xcon->peer, XioConnection::EntityComp());
       if (conn_iter != conns_entity_map.end()) {
@@ -334,16 +343,14 @@ int XioMessenger::session_event(struct xio_session *session,
 	  conns_entity_map.erase(conn_iter);
 	}
       }
-      /* XXX it could make sense to track ephemeral connections, but
-       * we don't currently, so if conn_iter points to nothing or to
-       * an address other than xcon, there's nothing to clean up */
+      /* now find xcon on conns_list, erase, and release sentinel ref */
+      XioConnection::ConnList::iterator citer =
+	XioConnection::ConnList::s_iterator_to(*xcon);
+      /* XXX check if citer on conn_list? */
+      conns_list.erase(citer);
+      xcon->on_disconnect_event();
+      xcon->put();
     }
-    xcon->on_disconnect_event();
-#if 0
-    /* if residence on cons_entity_map connoted a +ref on xcon, we
-     * would return it here */
-    xcon->put();
-#endif
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
     dout(4) << dout_format("xio_session_teardown %p", session) << dendl;
@@ -629,11 +636,16 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
       _dest.addr.get_port() + port_shift);
   }
 
+  conns_sp.lock();
   XioConnection::EntitySet::iterator conn_iter =
     conns_entity_map.find(_dest, XioConnection::EntityComp());
-  if (conn_iter != conns_entity_map.end())
-    return static_cast<Connection*>(&(*conn_iter));
+  if (conn_iter != conns_entity_map.end()) {
+    ConnectionRef cref = &(*conn_iter);
+    conns_sp.unlock();
+    return cref;
+  }
   else {
+    conns_sp.unlock();
     string xio_uri = xio_uri_from_entity(_dest.addr, true /* want_port */);
 
     dout(4) << dout_format("XioMessenger %p get_connection: xio_uri %s",
@@ -646,27 +658,30 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
       0     /* XXX? */
     };
 
-    XioConnection *conn = new XioConnection(this, XioConnection::ACTIVE,
+    XioConnection *xcon = new XioConnection(this, XioConnection::ACTIVE,
 					    _dest);
 
-    conn->session = xio_session_create(XIO_SESSION_REQ, &attr, xio_uri.c_str(),
+    xcon->session = xio_session_create(XIO_SESSION_REQ, &attr, xio_uri.c_str(),
 				       0, 0, this);
-    if (! conn->session) {
-      delete conn;
+    if (! xcon->session) {
+      delete xcon;
       return NULL;
     }
 
     /* this should cause callbacks with user context of conn, but
      * we can always set it explicitly */
-    conn->conn = xio_connect(conn->session, this->portals.get_portal0()->ctx,
-			     0, NULL, conn);
+    xcon->conn = xio_connect(xcon->session, this->portals.get_portal0()->ctx,
+			     0, NULL, xcon);
+    xcon->connected.set(true);
 
-    conn->connected.set(true);
+    /* sentinel ref */
+    xcon->get(); /* xcon->nref == 1 */
+    conns_sp.lock();
+    conns_list.push_back(*xcon);
+    conns_entity_map.insert(*xcon);
+    conns_sp.unlock();
 
-    /* conn has nref == 1 */
-    conns_entity_map.insert(*conn);
-
-    return conn->get();
+    return xcon->get(); /* nref +1 */
   }
 } /* get_connection */
 
@@ -674,6 +689,13 @@ ConnectionRef XioMessenger::get_loopback_connection()
 {
   return (loop_con.get());
 } /* get_loopback_connection */
+
+void XioMessenger::try_insert(XioConnection *xcon)
+{
+  Spinlock::Locker lckr(conns_sp);
+  /* already resident in conns_list */
+  conns_entity_map.insert(*xcon);
+}
 
 XioMessenger::~XioMessenger()
 {

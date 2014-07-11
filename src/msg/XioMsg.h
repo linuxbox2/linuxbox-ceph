@@ -230,7 +230,8 @@ public:
       if (unlikely(!!req_arr)) {
 	delete[] req_arr;
       }
-      /* testing only! server's ready, resubmit request */
+      /* testing only! server's ready, resubmit request (not reached on
+       * PASSIVE/server side) */
       if (unlikely(m->get_special_handling() & MSG_SPECIAL_HANDLING_REDUPE)) {
 	if (likely(xcon->is_connected())) {
 	  xcon->get_messenger()->send_message(m, xcon);
@@ -250,7 +251,7 @@ public:
 class XioCompletionHook : public Message::CompletionHook
 {
 private:
-  ConnectionRef conn;
+  XioConnection *xcon;
   list <struct xio_msg *> msg_seq;
   XioPool rsp_pool;
   atomic_t nrefs;
@@ -264,7 +265,7 @@ public:
 		    list <struct xio_msg *>& _msg_seq,
 		    struct xio_mempool_obj& _mp) :
     CompletionHook(_m),
-    conn(_xcon->get()),
+    xcon(_xcon->get()),
     msg_seq(_msg_seq),
     rsp_pool(xio_msgr_noreg_mpool),
     nrefs(1),
@@ -299,7 +300,7 @@ public:
     }
   }
 
-  XioConnection* get_xcon() { return static_cast<XioConnection*>(conn.get()); }
+  XioConnection* get_xcon() { return xcon; }
 
   list <struct xio_msg *>& get_seq() { return msg_seq; }
 
@@ -308,6 +309,10 @@ public:
   XioPool& get_pool() { return rsp_pool; }
 
   void on_err_finalize(XioConnection *xcon);
+
+  ~XioCompletionHook() {
+    xcon->put();
+  }
 };
 
 struct XioRsp : public XioSubmit

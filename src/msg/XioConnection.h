@@ -17,6 +17,7 @@
 #define XIO_CONNECTION_H
 
 #include <boost/intrusive/avl_set.hpp>
+#include <boost/intrusive/list.hpp>
 extern "C" {
 #include "libxio.h"
 }
@@ -76,17 +77,22 @@ private:
       {  return c.get_peer() < peer;  }
   };
 
+  bi::list_member_hook<> conns_hook;
   bi::avl_set_member_hook<> conns_entity_map_hook;
+
+  typedef bi::list< XioConnection,
+		    bi::member_hook<XioConnection, bi::list_member_hook<>,
+				    &XioConnection::conns_hook > > ConnList;
 
   typedef bi::member_hook<XioConnection, bi::avl_set_member_hook<>,
 			  &XioConnection::conns_entity_map_hook> EntityHook;
+
   typedef bi::avl_set< XioConnection, EntityHook,
 		       bi::compare<EntityComp> > EntitySet;
 
   friend class XioPortal;
   friend class XioMessenger;
   friend class XioCompletionHook;
-  friend class boost::intrusive_ptr<XioConnection>;
   friend class XioMsg;
 
   int on_disconnect_event() {
@@ -143,8 +149,6 @@ public:
 
   void msg_release_fail(struct xio_msg *msg, int code);
 };
-
-typedef boost::intrusive_ptr<XioConnection> XioConnectionRef;
 
 class XioLoopbackConnection : public Connection
 {
