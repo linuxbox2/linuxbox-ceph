@@ -2751,7 +2751,7 @@ void Monitor::resend_routed_requests()
     RoutedRequest *rr = p->second;
 
     bufferlist::iterator q = rr->request_bl.begin();
-    PaxosServiceMessage *req = (PaxosServiceMessage *)decode_message(cct, q);
+    PaxosServiceMessage *req = (PaxosServiceMessage *)decode_message(cct, messenger->crcflags, q);
 
     if (mon == rank) {
       dout(10) << " requeue for self tid " << rr->tid << " " << *req << dendl;

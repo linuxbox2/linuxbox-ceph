@@ -533,7 +533,7 @@ int XioMessenger::send_message(Message *m, Connection *con)
   bool trace_hdr = true;
 
   m->set_seq(0); /* XIO handles seq */
-  m->encode(xcon->get_features(), !this->cct->_conf->ms_nocrc);
+  m->encode(xcon->get_features(), this->crcflags);
 
   /* trace flag */
   m->set_magic(magic);
