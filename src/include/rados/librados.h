@@ -23,6 +23,7 @@ extern "C" {
 #include "rados_types.h"
 
 #include <sys/time.h>
+#include <unistd.h>
 
 #ifndef CEPH_OSD_TMAP_SET
 /* These are also defined in rados.h and objclass.h. Keep them in sync! */
