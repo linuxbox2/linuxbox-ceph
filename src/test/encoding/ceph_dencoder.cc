@@ -171,9 +171,10 @@ public:
 
   string decode(bufferlist bl, uint64_t seek) {
     bufferlist::iterator p = bl.begin();
+    int crcflags = MSG_CRC_DATA | MSG_CRC_REST;
     p.seek(seek);
     try {
-      Message *n = decode_message(g_ceph_context, p);
+      Message *n = decode_message(g_ceph_context, crcflags, p);
       if (!n)
 	throw std::runtime_error("failed to decode");
       if (n->get_type() != m_object->get_type()) {

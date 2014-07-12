@@ -405,7 +405,7 @@ void SimpleMessenger::submit_message(Message *m, Connection *con,
 {
 
   if (cct->_conf->ms_dump_on_send) {
-    m->encode(-1, true);
+    m->encode(-1, crcflags);
     ldout(cct, 0) << "submit_message " << *m << "\n";
     m->get_payload().hexdump(*_dout);
     if (m->get_data().length() > 0) {
