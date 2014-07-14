@@ -205,9 +205,8 @@ public:
       req_0.msg.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
       req_0.msg.user_context = this;
 
-      // connection ref
+      // submit queue ref
       xcon->get();
-
     }
 
   XioMsg* get() { nrefs.inc(); return this; };
@@ -245,7 +244,7 @@ public:
 	  /* the normal case: done with message */
 	  m->put();
       }
-      /* connection ref */
+      /* submit queue ref */
       xcon->put();
     }
 };
@@ -325,7 +324,7 @@ public:
     : XioSubmit(XIO_MSG_TYPE_RSP, _xhook->get_xcon()),
       xhook(_xhook->get())
     {
-      // connection ref
+      // submit queue ref
       xcon->get();
     };
 

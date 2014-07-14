@@ -29,8 +29,6 @@ extern "C" {
 #endif
 #define CACHE_PAD(_n) char __pad ## _n [CACHE_LINE_SIZE]
 
-#define SPINLOCKS 1
-
 class XioMessenger;
 
 class XioPortal : public Thread
@@ -46,7 +44,6 @@ private:
       uint32_t size;
       XioMsg::Queue q;
       pthread_spinlock_t sp;
-      pthread_mutex_t mtx;
       CACHE_PAD(0);
     };
 
@@ -60,7 +57,6 @@ private:
 	for (ix = 0; ix < nlanes; ++ix) {
 	  lane = &qlane[ix];
 	  pthread_spin_init(&lane->sp, PTHREAD_PROCESS_PRIVATE);
-	  pthread_mutex_init(&lane->mtx, NULL);
 	  lane->size = 0;
 	}
       }
@@ -73,18 +69,10 @@ private:
     void enq(XioConnection *xcon, XioSubmit* xs)
       {
 	Lane* lane = get_lane(xcon);
-#if SPINLOCKS
 	pthread_spin_lock(&lane->sp);
-#else
-	pthread_mutex_lock(&lane->mtx);
-#endif
 	lane->q.push_back(*xs);
 	++(lane->size);
-#if SPINLOCKS
 	pthread_spin_unlock(&lane->sp);
-#else
-	pthread_mutex_unlock(&lane->mtx);
-#endif
       }
 
     void deq(XioSubmit::Queue &send_q)
@@ -94,21 +82,13 @@ private:
 
 	for (ix = 0; ix < nlanes; ++ix) {
 	  lane = &qlane[ix];
-#if SPINLOCKS
-	pthread_spin_lock(&lane->sp);
-#else
-	pthread_mutex_lock(&lane->mtx);
-#endif
+	  pthread_spin_lock(&lane->sp);
 	  if (lane->size > 0) {
 	    XioSubmit::Queue::const_iterator i1 = send_q.end();
 	    send_q.splice(i1, lane->q);
 	    lane->size = 0;
 	  }
-#if SPINLOCKS
-	pthread_spin_unlock(&lane->sp);
-#else
-	pthread_mutex_unlock(&lane->mtx);
-#endif
+	  pthread_spin_unlock(&lane->sp);
 	}
       }
 
@@ -210,11 +190,7 @@ public:
 	size = send_q.size();
 
 	/* shutdown() barrier */
-#if SPINLOCKS
 	pthread_spin_lock(&sp);
-#else
-	pthread_mutex_lock(&mtx);
-#endif
 
 	if (_shutdown) {
 	  drained = true;
@@ -258,12 +234,7 @@ public:
 	  }
 	}
 
-#if SPINLOCKS
 	pthread_spin_unlock(&sp);
-#else
-	pthread_mutex_unlock(&mtx);
-#endif
-
 	xio_context_run_loop(ctx, 300);
 
       } while ((!_shutdown) || (!drained));
@@ -278,18 +249,10 @@ public:
 
   void shutdown()
     {
-#if SPINLOCKS
 	pthread_spin_lock(&sp);
-#else
-	pthread_mutex_lock(&mtx);
-#endif
-      xio_context_stop_loop(ctx, false);
-      _shutdown = true;
-#if SPINLOCKS
+	xio_context_stop_loop(ctx, false);
+	_shutdown = true;
 	pthread_spin_unlock(&sp);
-#else
-	pthread_mutex_unlock(&mtx);
-#endif
     }
 
   ~XioPortal()
