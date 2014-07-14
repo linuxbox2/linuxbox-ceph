@@ -324,19 +324,18 @@ public:
   XioRsp(XioConnection *_xcon, XioCompletionHook *_xhook)
     : XioSubmit(XIO_MSG_TYPE_RSP, _xhook->get_xcon()),
       xhook(_xhook->get())
-    {};
+    {
+      // connection ref
+      xcon->get();
+    };
 
   XioCompletionHook *get_xhook() { return xhook; }
 
   void finalize()
     {
+      xcon->put();
       xhook->put();
     }
-
-  ~XioRsp() {
-    /* connection ref */
-    //xcon->put();
-  }
 };
 
 #endif /* XIO_MSG_H */
