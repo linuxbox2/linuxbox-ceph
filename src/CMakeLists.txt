@@ -650,16 +650,18 @@ add_custom_target(shell_scripts ALL
   ${CMAKE_BINARY_DIR}/ceph COMMENT "Shell Scripts have permission")
 
 install(PROGRAMS
-  ceph
-  cephfstool
-  ceph-conf
-  ceph-authtool
+  ${CMAKE_BINARY_DIR}/ceph
   ${CMAKE_BINARY_DIR}/ceph-debugpack
   ${CMAKE_BINARY_DIR}/ceph-coverage
   ${CMAKE_SOURCE_DIR}/src/ceph-run
-  ceph_mon_store_converter
   ${CMAKE_SOURCE_DIR}/src/vstart.sh
   ${CMAKE_SOURCE_DIR}/src/ceph-clsinfo
+  DESTINATION bin)
+install(TARGETS
+  cephfstool
+  ceph-conf
+  ceph-authtool
+  ceph_mon_store_converter
   DESTINATION bin)
 
 configure_file(${CMAKE_SOURCE_DIR}/src/init-ceph.in
