@@ -35,6 +35,21 @@ struct xio_mempool *xio_msgr_noreg_mpool;
 static struct xio_session_ops xio_msgr_ops;
 
 /* Accelio API callouts */
+
+/* string table */
+static const char *xio_session_event_types[] =
+{ "XIO_SESSION_REJECT_EVENT",
+  "XIO_SESSION_TEARDOWN_EVENT",
+  "XIO_SESSION_NEW_CONNECTION_EVENT",
+  "XIO_SESSION_CONNECTION_ESTABLISHED_EVENT",
+  "XIO_SESSION_CONNECTION_TEARDOWN_EVENT",
+  "XIO_SESSION_CONNECTION_CLOSED_EVENT",
+  "XIO_SESSION_CONNECTION_DISCONNECTED_EVENT",
+  "XIO_SESSION_CONNECTION_REFUSED_EVENT",
+  "XIO_SESSION_CONNECTION_ERROR_EVENT",
+  "XIO_SESSION_ERROR_EVENT"
+};
+
 static int on_session_event(struct xio_session *session,
 			    struct xio_session_event_data *event_data,
 			    void *cb_user_context)
@@ -339,10 +354,17 @@ int XioMessenger::session_event(struct xio_session *session,
   case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT: /* unexpected discon */
   case XIO_SESSION_CONNECTION_REFUSED_EVENT:
   case XIO_SESSION_CONNECTION_ERROR_EVENT:
-    dout(4) << dout_format("xio client disconnection %p", event_data->conn_user_context) << dendl;
+    dout(2) << dout_format("xio client disconnection %s user_context %p",
+			   xio_session_event_types[event_data->event],
+			   event_data->conn_user_context) << dendl;
     /* clean up mapped connections */
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
-    {
+    if (likely(!!xcon)) {
+      struct xio_connection_attr xcona;
+      xcona.user_context = NULL;
+      (void) xio_modify_connection(xcon->conn, &xcona,
+				   XIO_CONNECTION_ATTR_USER_CTX);
+
       Spinlock::Locker lckr(conns_sp);
       XioConnection::EntitySet::iterator conn_iter =
 	conns_entity_map.find(xcon->peer, XioConnection::EntityComp());
