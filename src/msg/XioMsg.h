@@ -144,9 +144,7 @@ public:
 
   XioSubmit(enum xio_msg_type _type, XioConnection *_xcon) :
     type(_type), xcon(_xcon)
-    {
-      xcon->get();
-    }
+    {}
 
   typedef bi::list< XioSubmit,
 		    bi::member_hook< XioSubmit,
@@ -206,6 +204,10 @@ public:
       hdr.hdr->src.num = inst.name.num();
       req_0.msg.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
       req_0.msg.user_context = this;
+
+      // connection ref
+      xcon->get();
+
     }
 
   XioMsg* get() { nrefs.inc(); return this; };
@@ -333,7 +335,7 @@ public:
 
   ~XioRsp() {
     /* connection ref */
-    xcon->put();
+    //xcon->put();
   }
 };
 
