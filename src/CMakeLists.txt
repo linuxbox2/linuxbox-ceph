@@ -270,7 +270,7 @@ if(${WITH_PROFILER})
   target_link_libraries(common profiler)
 endif(${WITH_PROFILER})
 
-target_link_libraries(common ${CRYPTO_LIBS} rt ${Boost_LIBRARIES})
+target_link_libraries(common ${CRYPTO_LIBS} rt uuid boost_regex ${Boost_LIBRARIES})
 
 set(libglobal_srcs
   global/global_init.cc
@@ -333,13 +333,13 @@ set(rados_srcs
   tools/rados/rados_export.cc
   common/obj_bencher.cc)
 add_executable(rados ${rados_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
-target_link_libraries(rados librados boost_regex global ${CMAKE_DL_LIBS} ${TCMALLOC_LIBS})
+target_link_libraries(rados librados global ${CMAKE_DL_LIBS} ${TCMALLOC_LIBS})
 
 set(librados_config_srcs
   librados-config.cc)
 add_executable(librados-config ${librados_config_srcs}
   $<TARGET_OBJECTS:heap_profiler_objs>)
-target_link_libraries(librados-config librados boost_regex global ${CMAKE_DL_LIBS}
+target_link_libraries(librados-config librados global ${CMAKE_DL_LIBS}
   ${TCMALLOC_LIBS})
 
 install(TARGETS rados librados-config DESTINATION bin)
@@ -382,7 +382,7 @@ set(ceph_mon_srcs
   ceph_mon.cc
   common/TextTable.cc)
 add_executable(ceph-mon ${ceph_mon_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
-target_link_libraries(ceph-mon mon boost_regex boost_thread common os global ${EXTRALIBS}
+target_link_libraries(ceph-mon mon boost_thread common os global ${EXTRALIBS}
   ${CMAKE_DL_LIBS} ${TCMALLOC_LIBS})
 install(TARGETS ceph-mon DESTINATION bin)
 
@@ -545,7 +545,7 @@ set(ceph_osd_srcs
   ceph_osd.cc
   objclass/class_api.cc)
 add_executable(ceph-osd ${ceph_osd_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
-target_link_libraries(ceph-osd osd boost_regex os global ${TCMALLOC_LIBS})
+target_link_libraries(ceph-osd osd os global ${TCMALLOC_LIBS})
 install(TARGETS ceph-osd DESTINATION bin)
 
 # MDS
@@ -586,7 +586,7 @@ if(${WITH_MDS})
   set(ceph_mds_srcs
     ceph_mds.cc)
   add_executable(ceph-mds ${ceph_mds_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
-  target_link_libraries(ceph-mds mds osdc ${CMAKE_DL_LIBS} boost_regex global
+  target_link_libraries(ceph-mds mds osdc ${CMAKE_DL_LIBS} global
     ${TCMALLOC_LIBS} boost_thread)
   install(TARGETS ceph-mds DESTINATION bin)
 endif(${WITH_MDS})
@@ -694,7 +694,7 @@ if(WITH_LIBCEPHFS)
     client/MetaSession.cc
     client/Trace.cc)
   add_library(client ${libclient_srcs})
-  target_link_libraries(client osdc boost_regex ${LIBEDIT_LIBS})
+  target_link_libraries(client osdc ${LIBEDIT_LIBS})
   set(libcephfs_srcs libcephfs.cc)
   add_library(cephfs SHARED ${libcephfs_srcs})
   target_link_libraries(cephfs client global)
@@ -706,7 +706,7 @@ if(WITH_LIBCEPHFS)
     ceph_syn.cc
     client/SyntheticClient.cc)
   add_executable(ceph-syn ${ceph_syn_srcs})
-  target_link_libraries(ceph-syn client boost_regex global)
+  target_link_libraries(ceph-syn client global)
 
   set(mount_ceph_srcs
     mount/mount.ceph.c)
@@ -723,7 +723,7 @@ if(WITH_LIBCEPHFS)
       ceph_fuse.cc
       client/fuse_ll.cc)
     add_executable(ceph-fuse ${ceph_fuse_srcs})
-    target_link_libraries(ceph-fuse fuse client boost_regex global)
+    target_link_libraries(ceph-fuse fuse client global)
     install(TARGETS ceph-fuse DESTINATION bin)
   endif(WITH_FUSE)
 endif(WITH_LIBCEPHFS)
@@ -767,7 +767,6 @@ if(${WITH_RBD})
     $<TARGET_OBJECTS:heap_profiler_objs>)
   set_target_properties(rbd PROPERTIES OUTPUT_NAME rbd)
   target_link_libraries(rbd global librbd librados common keyutils udev
-    boost_regex
     ${BLKID_LIBRARIES} ${CMAKE_DL_LIBS} ${TCMALLOC_LIBS})
   install(TARGETS rbd DESTINATION bin)
   install(PROGRAMS ${CMAKE_SOURCE_DIR}/src/ceph-rbdnamer DESTINATION bin)
@@ -888,6 +887,6 @@ if(${WITH_RADOSGW})
   add_executable(radosgw ${radosgw_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
   target_link_libraries(radosgw rgw_a librados cls_rgw cls_lock cls_refcount
     cls_log cls_statelog cls_version cls_replica_log cls_kvs cls_user curl
-    expat boost_regex global fcgi resolv ${TCMALLOC_LIBS})
+    expat global fcgi resolv ${TCMALLOC_LIBS})
   install(TARGETS radosgw DESTINATION bin)
 endif(${WITH_RADOSGW})
