@@ -360,11 +360,6 @@ int XioMessenger::session_event(struct xio_session *session,
     /* clean up mapped connections */
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
     if (likely(!!xcon)) {
-      struct xio_connection_attr xcona;
-      xcona.user_context = NULL;
-      (void) xio_modify_connection(xcon->conn, &xcona,
-				   XIO_CONNECTION_ATTR_USER_CTX);
-
       Spinlock::Locker lckr(conns_sp);
       XioConnection::EntitySet::iterator conn_iter =
 	conns_entity_map.find(xcon->peer, XioConnection::EntityComp());
@@ -384,7 +379,7 @@ int XioMessenger::session_event(struct xio_session *session,
     }
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
-    dout(4) << dout_format("xio_session_teardown %p", session) << dendl;
+    dout(2) << dout_format("xio_session_teardown %p", session) << dendl;
     xio_session_destroy(session);
     break;
   default:
