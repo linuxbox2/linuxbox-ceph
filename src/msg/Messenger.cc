@@ -23,27 +23,27 @@ Messenger *Messenger::create(CephContext *cct,
  *  crc does is slow the code down (and maybe catch programming errors.)
  *
  * behavior:
- *	ms_datacrc = false ms_restcrc = false	=> 0		force crc no
- *	ms_datacrc = false ms_restcrc = true	=> MS_CRC_REST	force former "no crc"
- *	ms_datacrc = true ms_restcrc = true	=> MS_CRC_REST|MS_CRC_DATA force crc yes
- *	otherwise, if rdma_local is specified	=> 0		no crc
- *	otherwise, if "ms nocrc" == true	=> MS_CRC_REST	former "no crc"
- *	otherwise,				=> MS_CRC_REST|MS_CRC_DATA crc yes
+ *	ms_datacrc = false ms_headercrc = false	=> 0		force crc no
+ *	ms_datacrc = false ms_headercrc = true	=> MS_CRC_HEADER	force former "no crc"
+ *	ms_datacrc = true ms_headercrc = true	=> MS_CRC_HEADER|MS_CRC_DATA force crc yes
+ *	otherwise, if cluster_rdma is specified	=> 0		no crc
+ *	otherwise, if "ms nocrc" == true	=> MS_CRC_HEADER	former "no crc"
+ *	otherwise,				=> MS_CRC_HEADER|MS_CRC_DATA crc yes
  */
 int Messenger::get_default_crc_flags(md_config_t * conf)
 {
 	int r = 0;
 	if (conf->ms_datacrc)
 		r |= MSG_CRC_DATA;
-	if (conf->ms_restcrc)
-		r |= MSG_CRC_REST;
+	if (conf->ms_headercrc)
+		r |= MSG_CRC_HEADER;
 	switch(r) {
 	case MSG_CRC_DATA:
 		std::vector <std::string> my_sections;
 		g_conf->get_my_sections(my_sections);
 		std::string val;
-		r = MSG_CRC_REST | MSG_CRC_DATA;
-		if (g_conf->get_val_from_conf_file(my_sections, "rdma local",
+		r = MSG_CRC_HEADER | MSG_CRC_DATA;
+		if (g_conf->get_val_from_conf_file(my_sections, "cluster rdma",
 			val, true) == 0) {
 			r = 0;
 		}

@@ -111,9 +111,9 @@ OPTION(ms_tcp_nodelay, OPT_BOOL, true)
 OPTION(ms_tcp_rcvbuf, OPT_INT, 0)
 OPTION(ms_initial_backoff, OPT_DOUBLE, .2)
 OPTION(ms_max_backoff, OPT_DOUBLE, 15.0)
-// ms_datacrc&&!ms_restcrc == special, see Messenger::get_default_crc_flags
+// ms_datacrc&&!ms_headercrc == special, see Messenger::get_default_crc_flags
 OPTION(ms_datacrc, OPT_BOOL, true)
-OPTION(ms_restcrc, OPT_BOOL, false)
+OPTION(ms_headercrc, OPT_BOOL, false)
 OPTION(ms_die_on_bad_msg, OPT_BOOL, false)
 OPTION(ms_die_on_unhandled_msg, OPT_BOOL, false)
 OPTION(ms_die_on_old_message, OPT_BOOL, false)     // assert if we get a dup incoming message and shouldn't have (may be triggered by pre-541cd3c64be0dfa04e8a2df39422e0eb9541a428 code)

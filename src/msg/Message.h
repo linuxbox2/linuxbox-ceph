@@ -169,7 +169,7 @@
 
 // *** Message::encode() crcflags bits.
 #define MSG_CRC_DATA		1
-#define MSG_CRC_REST		2
+#define MSG_CRC_HEADER		2
 
 // ======================================================
 

@@ -179,14 +179,14 @@ void Message::encode(uint64_t features, int crcflags)
     if (header.compat_version == 0)
       header.compat_version = header.version;
   }
-  if (crcflags & MSG_CRC_REST)
+  if (crcflags & MSG_CRC_HEADER)
     calc_front_crc();
 
   // update envelope
   header.front_len = get_payload().length();
   header.middle_len = get_middle().length();
   header.data_len = get_data().length();
-  if (crcflags & MSG_CRC_REST)
+  if (crcflags & MSG_CRC_HEADER)
     calc_header_crc();
 
   footer.flags = CEPH_MSG_FOOTER_COMPLETE;
@@ -250,7 +250,7 @@ Message *decode_message(CephContext *cct, int crcflags,
 			bufferlist& data)
 {
   // verify crc
-  if (crcflags & MSG_CRC_REST) {
+  if (crcflags & MSG_CRC_HEADER) {
     __u32 front_crc = front.crc32c(0);
     __u32 middle_crc = middle.crc32c(0);
 
