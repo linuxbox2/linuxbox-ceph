@@ -21,7 +21,7 @@ Foundation.  See file COPYING.
 
 import os
 import sys
-
+@CEPH_PYTHON_SET_PATH@
 # Make life easier on developers:
 # If in src/, and .libs and pybind exist here, assume we're running
 # from a Ceph source dir and tweak PYTHONPATH and LD_LIBRARY_PATH
