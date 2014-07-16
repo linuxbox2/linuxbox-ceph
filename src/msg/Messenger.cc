@@ -40,14 +40,14 @@ int Messenger::get_default_crc_flags(md_config_t * conf)
 	switch(r) {
 	case MSG_CRC_DATA:
 		std::vector <std::string> my_sections;
-		g_conf->get_my_sections(my_sections);
+		conf->get_my_sections(my_sections);
 		std::string val;
 		r = MSG_CRC_HEADER | MSG_CRC_DATA;
-		if (g_conf->get_val_from_conf_file(my_sections, "cluster rdma",
+		if (conf->get_val_from_conf_file(my_sections, "cluster rdma",
 			val, true) == 0) {
 			r = 0;
 		}
-		if (g_conf->get_val_from_conf_file(my_sections, "ms nocrc",
+		if (conf->get_val_from_conf_file(my_sections, "ms nocrc",
 			val, true) == 0) {
 			int v = -1;
 			if (strcasecmp(val.c_str(), "false") == 0)
