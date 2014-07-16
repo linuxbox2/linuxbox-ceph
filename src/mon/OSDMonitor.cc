@@ -636,7 +636,7 @@ void OSDMonitor::share_map_with_random_osd()
   dout(10) << "committed, telling random " << s->inst << " all about it" << dendl;
   // whatev, they'll request more if they need it
   MOSDMap *m = build_incremental(osdmap.get_epoch() - 1, osdmap.get_epoch());
-  mon->messenger->send_message(m, s->inst);
+  mon->messenger->send_message(m, s->con);
 }
 
 version_t OSDMonitor::get_trim_to()
