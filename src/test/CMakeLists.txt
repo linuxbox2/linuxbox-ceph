@@ -110,6 +110,7 @@ target_link_libraries(dencoder
   global
   osd
   mds
+  osdc
   mon
   boost_regex
   ${EXTRALIBS}

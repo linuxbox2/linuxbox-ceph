@@ -267,10 +267,10 @@ set_source_files_properties(${CMAKE_SOURCE_DIR}/src/ceph_ver.c
   APPEND PROPERTY OBJECT_DEPENDS ${CMAKE_BINARY_DIR}/src/include/ceph_ver.h)
 
 if(${WITH_PROFILER})
-  target_link_libraries(common profiler)
+  target_link_libraries(common PRIVATE profiler)
 endif(${WITH_PROFILER})
 
-target_link_libraries(common ${CRYPTO_LIBS} rt uuid boost_regex ${Boost_LIBRARIES})
+target_link_libraries(common PRIVATE ${CRYPTO_LIBS} rt uuid boost_regex ${Boost_LIBRARIES})
 
 set(libglobal_srcs
   global/global_init.cc
@@ -281,7 +281,7 @@ set(global_common_files
 add_library(global_common_objs OBJECT ${global_common_files})
 add_library(global STATIC ${libglobal_srcs}
   $<TARGET_OBJECTS:global_common_objs>)
-target_link_libraries(global common ${CMAKE_THREAD_LIBS_INIT} ${CRYPTO_LIBS}
+target_link_libraries(global PRIVATE common ${CMAKE_THREAD_LIBS_INIT} ${CRYPTO_LIBS}
   ${EXTRALIBS})
 if(${ENABLE_SHARED})
   set_target_properties(global PROPERTIES
@@ -309,9 +309,10 @@ set(librados_srcs
   )
 add_library(librados ${CEPH_SHARED} ${librados_srcs}
   $<TARGET_OBJECTS:cls_lock_objs>
-  $<TARGET_OBJECTS:cls_references_objs>)
+  $<TARGET_OBJECTS:cls_references_objs>
+  $<TARGET_OBJECTS:heap_profiler_objs>)
 add_dependencies(librados osdc)
-target_link_libraries(librados osdc common osd os ${CRYPTO_LIBS} ${EXTRALIBS})
+target_link_libraries(librados PRIVATE osdc osd os global common ${CRYPTO_LIBS} ${EXTRALIBS} ${TCMALLOC_LIBS})
 if(${ENABLE_SHARED})
   set_target_properties(librados PROPERTIES OUTPUT_NAME rados VERSION 2.0.0
     SOVERSION 2)
@@ -332,15 +333,13 @@ set(rados_srcs
   tools/rados/rados_import.cc
   tools/rados/rados_export.cc
   common/obj_bencher.cc)
-add_executable(rados ${rados_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
-target_link_libraries(rados librados global ${CMAKE_DL_LIBS} ${TCMALLOC_LIBS})
+add_executable(rados ${rados_srcs})
+target_link_libraries(rados librados global ${CMAKE_DL_LIBS})
 
 set(librados_config_srcs
   librados-config.cc)
-add_executable(librados-config ${librados_config_srcs}
-  $<TARGET_OBJECTS:heap_profiler_objs>)
-target_link_libraries(librados-config librados global ${CMAKE_DL_LIBS}
-  ${TCMALLOC_LIBS})
+add_executable(librados-config ${librados_config_srcs})
+target_link_libraries(librados-config librados global ${CMAKE_DL_LIBS})
 
 install(TARGETS rados librados-config DESTINATION bin)
 
@@ -411,9 +410,9 @@ set(os_mon_files
 add_library(os_mon_objs OBJECT ${os_mon_files})
 add_library(os STATIC ${libos_srcs} $<TARGET_OBJECTS:os_mon_objs>)
 if(${HAVE_LIBAIO})
-  target_link_libraries(os aio)
+  target_link_libraries(os PRIVATE aio)
 endif(${HAVE_LIBAIO})
-target_link_libraries(os leveldb snappy)
+target_link_libraries(os PRIVATE leveldb snappy)
 
 set(cls_references_files objclass/class_api.cc)
 add_library(cls_references_objs OBJECT ${cls_references_files})
@@ -539,7 +538,7 @@ set(osd_mon_files
 add_library(osd_mon_objs OBJECT ${osd_mon_files})
 add_library(osd STATIC ${osd_srcs} $<TARGET_OBJECTS:osd_mon_objs>
   $<TARGET_OBJECTS:cls_references_objs>)
-target_link_libraries(osd dl leveldb)
+target_link_libraries(osd PRIVATE common dl leveldb)
 
 set(ceph_osd_srcs
   ceph_osd.cc
@@ -696,10 +695,10 @@ if(WITH_LIBCEPHFS)
     client/MetaSession.cc
     client/Trace.cc)
   add_library(client ${libclient_srcs})
-  target_link_libraries(client osdc ${LIBEDIT_LIBS})
+  target_link_libraries(client PRIVATE osdc ${LIBEDIT_LIBS})
   set(libcephfs_srcs libcephfs.cc)
   add_library(cephfs SHARED ${libcephfs_srcs})
-  target_link_libraries(cephfs client global)
+  target_link_libraries(cephfs PRIVATE client global)
   install(TARGETS cephfs DESTINATION lib)
   install(DIRECTORY
     "${CMAKE_SOURCE_DIR}/src/include/cephfs"
@@ -753,7 +752,7 @@ if(${WITH_RBD})
   add_library(librbd ${CEPH_SHARED} ${librbd_srcs}
     $<TARGET_OBJECTS:cls_lock_objs> $<TARGET_OBJECTS:osdc_rbd_objs>
     $<TARGET_OBJECTS:common_util_obj>)
-  target_link_libraries(librbd ${CMAKE_DL_LIBS})
+  target_link_libraries(librbd PRIVATE ${CMAKE_DL_LIBS})
   if(${ENABLE_SHARED})
     set_target_properties(librbd PROPERTIES VERSION "1.0.0" SOVERSION "1"
       OUTPUT_NAME rbd)
