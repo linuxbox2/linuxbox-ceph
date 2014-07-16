@@ -25,7 +25,8 @@ extern "C" {
 #include "Messenger.h"
 #include "include/atomic.h"
 
-#define XXX_XIO_ALL_FEATURES ULONG_MAX
+#define XIO_ALL_FEATURES (CEPH_FEATURES_ALL & \
+			  ~CEPH_FEATURE_MSGR_KEEPALIVE2)
 
 namespace bi = boost::intrusive;
 
@@ -163,7 +164,7 @@ public:
       const entity_inst_t& m_inst = m->get_myinst();
       peer_addr = m_inst.addr;
       peer_type = m_inst.name.type();
-      set_features(XXX_XIO_ALL_FEATURES); /* XXXX set to ours */
+      set_features(XIO_ALL_FEATURES); /* XXXX set to ours */
     }
   XioLoopbackConnection* get() {
     return static_cast<XioLoopbackConnection*>(RefCountedObject::get());

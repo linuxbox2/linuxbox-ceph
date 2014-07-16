@@ -87,7 +87,7 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   m->try_insert(this);
 
   /* XXXX fake features, aieee! */
-  set_features(XXX_XIO_ALL_FEATURES);
+  set_features(XIO_ALL_FEATURES);
 }
 
 int XioConnection::passive_setup()
