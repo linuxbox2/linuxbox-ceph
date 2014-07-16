@@ -328,6 +328,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
     if (peer_type != (int) hdr.peer_type) { /* XXX isn't peer_type -1? */
       peer_type = hdr.peer_type;
       peer_addr = hdr.addr;
+      peer.addr = peer_addr;
+      peer.name = hdr.hdr->src;
       if (xio_conn_type == XioConnection::PASSIVE) {
 	/* XXX kick off feature/authn/authz negotiation
 	 * nb:  very possibly the active side should initiate this, but
