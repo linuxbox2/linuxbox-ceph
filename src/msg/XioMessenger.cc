@@ -205,6 +205,10 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     magic(0),
     special_handling(0)
 {
+
+  if (cct->_conf->xio_trace_xcon)
+    magic |= MSG_MAGIC_TRACE_XCON;
+
   /* package init */
   if (! initialized.read()) {
 

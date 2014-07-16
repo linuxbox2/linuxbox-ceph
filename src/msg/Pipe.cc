@@ -1954,6 +1954,10 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
     goto out_dethrottle;
   }
 
+  if (msgr->cct->_conf->xio_trace_xcon) {
+    dout(4) << "pipe decode m is " << message->get_type() << dendl;
+  }
+
   //
   //  Check the signature if one should be present.  A zero return indicates success. PLR
   //

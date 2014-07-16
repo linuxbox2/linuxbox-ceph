@@ -46,6 +46,8 @@ OPTION(err_to_syslog, OPT_BOOL, false)
 OPTION(log_flush_on_exit, OPT_BOOL, true) // default changed by common_preinit()
 OPTION(log_stop_at_utilization, OPT_FLOAT, .97)  // stop logging at (near) full
 
+OPTION(xio_trace_xcon, OPT_BOOL, false) // Xio message encode/decode trace
+
 OPTION(clog_to_monitors, OPT_BOOL, true)
 OPTION(clog_to_syslog, OPT_BOOL, false)
 OPTION(clog_to_syslog_level, OPT_STR, "info")         // this level and above

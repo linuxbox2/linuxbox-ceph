@@ -340,22 +340,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
     if (magic & (MSG_MAGIC_TRACE_XCON)) {
       dout(4) << "decode m is " << m->get_type() << dendl;
-
-      if (m->get_type() == 4) {
-	dout(4) << "stop 4 " << dendl;
-      }
-
-      if (m->get_type() == 15) {
-	dout(4) << "stop 15 " << dendl;
-      }
-
-      if (m->get_type() == 18) {
-	dout(4) << "stop 18 " << dendl;
-      }
-
-      if (m->get_type() == 48) {
-	dout(4) << "stop 48 " << dendl;
-      }
     }
 
     /* dispatch it */
