@@ -207,7 +207,12 @@ public:
 	    case XIO_MSG_TYPE_REQ: /* it was an outgoing 1-way */
 	      xmsg = static_cast<XioMsg*>(xs);
 	      msg = &xmsg->req_0.msg;
-	      code = xio_send_msg(xs->xcon->conn, msg);
+	      /* XXX we know we are not racing with a disconnect
+	       * thread */
+	      if (unlikely(!xs->xcon->conn))
+		code = ENOTCONN;
+	      else
+		code = xio_send_msg(xs->xcon->conn, msg);
 	      if (unlikely(code)) {
 		xs->xcon->msg_send_fail(xmsg, code);
 	      } else

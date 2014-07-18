@@ -354,14 +354,18 @@ int XioMessenger::session_event(struct xio_session *session,
 	    << dendl;
   }
   break;
+  case XIO_SESSION_CONNECTION_ERROR_EVENT:
+    dout(4) << dout_format("%s user_context %p",
+			   xio_session_event_types[event_data->event],
+			   event_data->conn_user_context) << dendl;
+    /* informational (Eyal)*/
+    break;
   case XIO_SESSION_CONNECTION_CLOSED_EVENT: /* orderly discon */
   case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT: /* unexpected discon */
   case XIO_SESSION_CONNECTION_REFUSED_EVENT:
-  case XIO_SESSION_CONNECTION_ERROR_EVENT:
-    dout(2) << dout_format("xio client disconnection %s user_context %p",
+    dout(2) << dout_format("%s user_context %p",
 			   xio_session_event_types[event_data->event],
 			   event_data->conn_user_context) << dendl;
-    /* clean up mapped connections */
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
     if (likely(!!xcon)) {
       Spinlock::Locker lckr(conns_sp);
@@ -379,8 +383,14 @@ int XioMessenger::session_event(struct xio_session *session,
       /* XXX check if citer on conn_list? */
       conns_list.erase(citer);
       xcon->on_disconnect_event();
-      xcon->put();
     }
+    break;
+  case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
+    dout(2) << dout_format("%s user_context %p",
+			   xio_session_event_types[event_data->event],
+			   event_data->conn_user_context) << dendl;
+    xcon = static_cast<XioConnection*>(event_data->conn_user_context);
+    xcon->on_teardown_event();
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
     dout(2) << dout_format("xio_session_teardown %p", session) << dendl;
