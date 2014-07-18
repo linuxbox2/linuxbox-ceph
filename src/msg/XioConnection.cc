@@ -18,6 +18,8 @@
 #include "XioMessenger.h"
 #include "messages/MDataPing.h"
 
+#include "auth/none/AuthNoneProtocol.h" // XXX
+
 #include "include/assert.h"
 #include "common/dout.h"
 
@@ -94,16 +96,23 @@ int XioConnection::passive_setup()
 {
   /* XXX passive setup is a placeholder for (potentially active-side
      initiated) feature and auth* negotiation */
-  static bufferlist authorizer, authorizer_reply; /* static because fake */
+  static bufferlist authorizer_reply; /* static because fake */
   static CryptoKey session_key; /* ditto */
   bool authorizer_valid;
 
   XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
 
+  // fake an auth buffer
+  EntityName name;
+  name.set_type(peer.name.type());
+
+  AuthNoneAuthorizer auth;
+  auth.build_authorizer(name, peer.name.num());
+
   /* XXX fake authorizer! */
   msgr->ms_deliver_verify_authorizer(
     this, peer_type, CEPH_AUTH_NONE,
-    authorizer,
+    auth.bl,
     authorizer_reply,
     authorizer_valid,
     session_key);

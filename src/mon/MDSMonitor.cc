@@ -1170,7 +1170,7 @@ void MDSMonitor::check_sub(Subscription *sub)
 {
   if (sub->next <= mdsmap.get_epoch()) {
     mon->messenger->send_message(new MMDSMap(mon->monmap->fsid, &mdsmap),
-				 sub->session->inst);
+				 sub->session->con);
     if (sub->onetime)
       mon->session_map.remove_sub(sub);
     else
