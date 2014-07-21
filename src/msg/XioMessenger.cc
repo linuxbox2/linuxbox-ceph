@@ -354,9 +354,6 @@ int XioMessenger::session_event(struct xio_session *session,
      * it's peer address */
     conns_sp.unlock();
 
-    /* notify hook */
-    this->ms_deliver_handle_accept(xcon);
-
     dout(4) << dout_format("new connection session %p xcon %p", session, xcon)
 	    << dendl;
   }

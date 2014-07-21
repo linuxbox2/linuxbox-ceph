@@ -117,6 +117,9 @@ int XioConnection::passive_setup()
     authorizer_valid,
     session_key);
 
+  /* notify hook */
+  msgr->ms_deliver_handle_accept(this);
+
   return (0);
 }
 
