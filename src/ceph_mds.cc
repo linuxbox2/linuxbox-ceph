@@ -293,7 +293,7 @@ int main(int argc, const char **argv)
   xmsgr->set_policy(entity_name_t::TYPE_CLIENT,
 		    Messenger::Policy::stateful_server(supported, 0));
 
-  r = xmsgr->bind(g_conf->public_addr);
+  r = xmsgr->bind(simple_msgr->get_myaddr());
   if (r < 0)
     exit(1);
 #endif
