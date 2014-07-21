@@ -173,6 +173,8 @@ struct xio_msg_ex
     msg.in.header.iov_len = 0;
     msg.in.data_iovsz = 0;
     msg.in.data_iovlen = 0;
+    // minimal zero "out" side
+    msg.out.header.iov_len = 0;
     // out (some members adjusted later)
     msg.out.data_type = XIO_DATA_TYPE_PTR;
     msg.out.data_iovsz = XIO_MSGR_IOVLEN;
