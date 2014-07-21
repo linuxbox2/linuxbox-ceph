@@ -301,6 +301,7 @@ int XioMessenger::session_event(struct xio_session *session,
   switch (event_data->event) {
   case XIO_SESSION_CONNECTION_ESTABLISHED_EVENT:
   {
+    xcon = static_cast<XioConnection*>(event_data->conn_user_context);
     struct xio_connection *conn = event_data->conn;
     struct xio_connection_attr xcona = {};
 
