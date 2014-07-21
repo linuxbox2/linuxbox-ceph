@@ -175,6 +175,8 @@ struct xio_msg_ex
     msg.in.data_iovlen = 0;
     // minimal zero "out" side
     msg.out.header.iov_len = 0;
+    msg.out.header.iov_base = NULL;  /* XXX Accelio requires this currently,
+				      * against spec */
     // out (some members adjusted later)
     msg.out.data_type = XIO_DATA_TYPE_PTR;
     msg.out.data_iovsz = XIO_MSGR_IOVLEN;
