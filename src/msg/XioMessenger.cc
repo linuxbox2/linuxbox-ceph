@@ -308,6 +308,9 @@ int XioMessenger::session_event(struct xio_session *session,
     dout(4) << "connection established " << conn
       << " session " << session
       << " xcon " << xcona.user_context << dendl;
+
+    /* notify hook */
+    this->ms_deliver_handle_connect(xcon);
   }
   break;
 
@@ -349,6 +352,9 @@ int XioMessenger::session_event(struct xio_session *session,
     /* XXX we can't put xcon in conns_entity_map becase we don't yet know
      * it's peer address */
     conns_sp.unlock();
+
+    /* notify hook */
+    this->ms_deliver_handle_accept(xcon);
 
     dout(4) << dout_format("new connection session %p xcon %p", session, xcon)
 	    << dendl;
@@ -543,6 +549,9 @@ int XioMessenger::send_message(Message *m, Connection *con)
   }
 
   XioConnection *xcon = static_cast<XioConnection*>(con);
+  if (! xcon->is_connected())
+    return ENOTCONN;
+
   int code = 0;
   bool trace_hdr = true;
 
