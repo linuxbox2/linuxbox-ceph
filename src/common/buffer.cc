@@ -536,12 +536,23 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
 
     static void operator delete(void *p)
     {
-      ldout(g_ceph_context, 10) << "buffer::xio_msg_buffer::delete" << dendl;
       xio_msg_buffer *buf = static_cast<xio_msg_buffer*>(p);
       // return hook ref (counts against pool);  it appears illegal
       // to do this in our dtor, because this fires after that
       buf->m_hook->put();
     }
+    raw* clone_empty() {
+      return new buffer::raw_char(len);
+    }
+  };
+
+  class buffer::xio_mempool : public buffer::raw {
+  public:
+    struct xio_mempool_obj *mp;
+    xio_mempool(struct xio_mempool_obj *_mp, unsigned l) :
+      raw((char*)mp->addr, l), mp(_mp)
+      { }
+    ~xio_mempool() {}
     raw* clone_empty() {
       return new buffer::raw_char(len);
     }
