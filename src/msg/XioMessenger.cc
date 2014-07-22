@@ -127,9 +127,9 @@ static int on_msg_error(struct xio_session *session,
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
 
-  cout << dout_format(
+  dout(4) << dout_format(
     "msg error session: %p error: %s msg: %p conn_user_context %p",
-    session, xio_strerror(error), msg, conn_user_context) << std::endl;
+    session, xio_strerror(error), msg, conn_user_context) << dendl;
 
   return xcon->on_msg_error(session, error, msg, conn_user_context);
 }
