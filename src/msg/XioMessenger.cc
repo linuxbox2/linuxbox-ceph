@@ -300,20 +300,14 @@ int XioMessenger::session_event(struct xio_session *session,
 
   switch (event_data->event) {
   case XIO_SESSION_CONNECTION_ESTABLISHED_EVENT:
-  {
     xcon = static_cast<XioConnection*>(event_data->conn_user_context);
-    struct xio_connection *conn = event_data->conn;
-    struct xio_connection_attr xcona = {};
 
-    (void) xio_query_connection(conn, &xcona, XIO_CONNECTION_ATTR_CTX);
-    dout(4) << "connection established " << conn
-      << " session " << session
-      << " xcon " << xcona.user_context << dendl;
+    dout(4) << "connection established " << event_data->conn
+      << " session " << session << " xcon " << xcon << dendl;
 
     /* notify hook */
     this->ms_deliver_handle_connect(xcon);
-  }
-  break;
+    break;
 
   case XIO_SESSION_NEW_CONNECTION_EVENT:
   {
