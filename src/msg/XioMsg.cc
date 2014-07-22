@@ -34,6 +34,7 @@ int XioCompletionHook::release_msgs()
   /* merge with portal traffic */
   xcon->portal->enqueue_for_send(xcon, xrsp);
 
+  assert(r);
   return r;
 }
 
