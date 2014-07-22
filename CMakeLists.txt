@@ -198,6 +198,8 @@ find_package(xio)
 set(HAVE_XIO ${Xio_FOUND})
 endif(WITH_XIO)
 
+option(WITH_TEST "Build tests" ON)
+
 #option for RGW
 option(WITH_RADOSGW "Rados Gateway is enabled" ON)
 

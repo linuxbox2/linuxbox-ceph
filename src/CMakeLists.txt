@@ -597,7 +597,9 @@ endif(${WITH_MDS})
 
 # Support/Tools
 add_subdirectory(gtest)
+if (WITH_TEST)
 add_subdirectory(test)
+endif (WITH_TEST)
 set(cephfs_srcs cephfs.cc)
 add_executable(cephfstool ${cephfs_srcs})
 target_link_libraries(cephfstool common ${EXTRALIBS})
