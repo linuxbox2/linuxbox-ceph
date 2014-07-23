@@ -701,6 +701,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   xio_place_buffers(data, xmsg, req, msg_iov, req_size, ex_cnt, msg_off,
 		    req_off, BUFFER_DATA);
+  dout(10) << "ex_cnt " << ex_cnt << ", req_off " << req_off
+    << ", msg_cnt " << xmsg->hdr.msg_cnt << dendl;
 
   /* finalize request */
   if (msg_off)

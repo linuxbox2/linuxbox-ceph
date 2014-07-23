@@ -163,6 +163,7 @@ struct xio_msg_ex
   struct xio_iovec_ex iovs[XIO_MSGR_IOVLEN];
 
   xio_msg_ex() {
+    memset(&msg, 0, sizeof(msg));
     // minimal initialize an "out" msg
     msg.type = XIO_MSG_TYPE_ONE_WAY;
     msg.request = NULL;
