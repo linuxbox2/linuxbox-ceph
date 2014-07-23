@@ -408,23 +408,88 @@ enum bl_type
   BUFFER_DATA
 };
 
+#define MAX_XIO_BUF_SIZE 1044480
+
+static inline int
+xio_count_buffers(buffer::list& bl, int& req_size, int& msg_off, int& req_off)
+{
+
+  const std::list<buffer::ptr>& buffers = bl.buffers();
+  list<bufferptr>::const_iterator pb;
+  size_t size, off, count;
+  int result;
+  int first = 1;
+
+  off = size = 0;
+  result = 0;
+  for (;;) {
+    if (off >= size) {
+      if (first) pb = buffers.begin(); else ++pb;
+      if (pb == buffers.end()) {
+	break;
+      }
+      off = 0;
+      size = pb->length();
+      first = 0;
+    }
+    count = size - off;
+    if (!count) continue;
+    if (req_size + count > MAX_XIO_BUF_SIZE) {
+	count = MAX_XIO_BUF_SIZE - req_size;
+    }
+
+    ++result;
+
+    /* advance iov and perhaps request */
+
+    off += count;
+    req_size += count;
+    ++msg_off;
+    if (unlikely(msg_off >= XIO_MSGR_IOVLEN || req_size >= MAX_XIO_BUF_SIZE)) {
+      ++req_off;
+      msg_off = 0;
+      req_size = 0;
+    }
+  }
+
+  return result;
+}
+
 static inline void
-xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
-		  struct xio_iovec_ex*& msg_iov, struct xio_iovec_ex*& iov,
+xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg*& req,
+		  struct xio_iovec_ex*& msg_iov, int& req_size,
 		  int ex_cnt, int& msg_off, int& req_off, bl_type type)
 {
 
   const std::list<buffer::ptr>& buffers = bl.buffers();
   list<bufferptr>::const_iterator pb;
-  for (pb = buffers.begin(); pb != buffers.end(); ++pb) {
+  struct xio_iovec_ex* iov;
+  size_t size, off, count;
+  const char *data = NULL;
+  int first = 1;
+
+  off = size = 0;
+  for (;;) {
+    if (off >= size) {
+      if (first) pb = buffers.begin(); else ++pb;
+      if (pb == buffers.end()) {
+	break;
+      }
+      off = 0;
+      size = pb->length();
+      data = pb->c_str();	 // is c_str() efficient?
+      first = 0;
+    }
+    count = size - off;
+    if (!count) continue;
+    if (req_size + count > MAX_XIO_BUF_SIZE) {
+	count = MAX_XIO_BUF_SIZE - req_size;
+    }
 
     /* assign buffer */
     iov = &msg_iov[msg_off];
-    iov->iov_base = (void *) pb->c_str(); // is this efficient?
-    iov->iov_len = pb->length();
-
-    /* track iovlen */
-    req->out.data_iovlen = msg_off+1;
+    iov->iov_base = (void *) (&data[off]);
+    iov->iov_len = count;
 
     switch (type) {
     case BUFFER_DATA:
@@ -438,17 +503,28 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg* req,
     }
 
     /* advance iov(s) */
-    if (unlikely(++msg_off >= XIO_MSGR_IOVLEN)) {
-      if (++req_off <= ex_cnt) {
-	/* next record */
-	req->out.data_iovlen = XIO_MSGR_IOVLEN;
-	req->more_in_batch++;
-	/* XXX chain it */
-	req = &xmsg->req_arr[req_off].msg;
-	req->user_context = xmsg->get();
-	msg_iov = req->out.pdata_iov;
-	msg_off = 0;
+
+    off += count;
+    req_size += count;
+    ++msg_off;
+
+    /* next request if necessary */
+
+    if (unlikely(msg_off >= XIO_MSGR_IOVLEN || req_size >= MAX_XIO_BUF_SIZE)) {
+      if (++req_off >= ex_cnt) {
+	/* ran off iov - programmer error: ex_cnt calc botched */
+	assert(req_off > ex_cnt);
+	break;
       }
+      /* finish this request */
+      req->out.data_iovlen = msg_off;
+      req->more_in_batch = 1;
+//      if (req != &xmsg->req_0.msg) req->user_context = xmsg;
+      /* advance to next, but do not write in it yet. */
+      req = &xmsg->req_arr[req_off].msg;
+      msg_iov = req->out.pdata_iov;
+      msg_off = 0;
+      req_size = 0;
     }
   }
 }
@@ -581,8 +657,11 @@ int XioMessenger::send_message(Message *m, Connection *con)
   }
 
   struct xio_msg *req = &xmsg->req_0.msg;
-  struct xio_iovec_ex *msg_iov = req->out.pdata_iov, *iov = NULL;
+  struct xio_iovec_ex *msg_iov = req->out.pdata_iov;
   int ex_cnt;
+  int msg_off;
+  int req_off;
+  int req_size;
 
   buffer::list &payload = m->get_payload();
   buffer::list &middle = m->get_middle();
@@ -595,15 +674,14 @@ int XioMessenger::send_message(Message *m, Connection *con)
       dendl;
   }
 
-  xmsg->nbuffers = payload.buffers().size() + middle.buffers().size() +
-    data.buffers().size();
-  if (! xmsg->nbuffers) {
-    xmsg->hdr.msg_cnt = 1;
-  } else {
-     xmsg->hdr.msg_cnt =
-       (((XIO_MSGR_IOVLEN-1) + xmsg->nbuffers) / XIO_MSGR_IOVLEN);
-  }
-  ex_cnt = xmsg->hdr.msg_cnt - 1;
+  msg_off = 0;
+  req_off = 0;
+  req_size = 0;
+  xmsg->nbuffers = xio_count_buffers(payload, req_size, msg_off, req_off)
+		 + xio_count_buffers(middle, req_size, msg_off, req_off)
+		 + xio_count_buffers(data, req_size, msg_off, req_off);
+  ex_cnt = req_off;
+  xmsg->hdr.msg_cnt = req_off + 1;
 
   if (unlikely(ex_cnt > 0)) {
     dout(4) << __func__ << " buffer cnt > XIO_MSGR_IOVLEN (" <<
@@ -612,17 +690,24 @@ int XioMessenger::send_message(Message *m, Connection *con)
   }
 
   /* do the invariant part */
-  int msg_off = 0;
-  int req_off = -1; /* most often, not used */
+  msg_off = 0;
+  req_off = -1; /* most often, not used */
+  req_size = 0;
 
-  xio_place_buffers(payload, xmsg, req, msg_iov, iov, ex_cnt, msg_off,
+  xio_place_buffers(payload, xmsg, req, msg_iov, req_size, ex_cnt, msg_off,
 		    req_off, BUFFER_PAYLOAD);
 
-  xio_place_buffers(middle, xmsg, req, msg_iov, iov, ex_cnt, msg_off,
+  xio_place_buffers(middle, xmsg, req, msg_iov, req_size, ex_cnt, msg_off,
 		    req_off, BUFFER_MIDDLE);
 
-  xio_place_buffers(data, xmsg, req, msg_iov, iov, ex_cnt, msg_off,
+  xio_place_buffers(data, xmsg, req, msg_iov, req_size, ex_cnt, msg_off,
 		    req_off, BUFFER_DATA);
+
+  /* finalize request */
+  if (msg_off) {
+    req->out.data_iovlen = msg_off;
+//    if (req != &xmsg->req_0.msg) req->user_context = xmsg;
+  }
 
   /* fixup first msg */
   req = &xmsg->req_0.msg;
