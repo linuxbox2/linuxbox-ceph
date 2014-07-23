@@ -44,12 +44,12 @@ namespace ceph {
     AO_t dec() {
       return AO_fetch_and_sub1_write(&val) - 1;
     }
-    void add(AO_t add_me) {
-      AO_fetch_and_add(&val, add_me);
+    AO_t add(AO_t add_me) {
+      return AO_fetch_and_add(&val, add_me) + add_me;
     }
-    void sub(int sub_me) {
+    AO_t sub(int sub_me) {
       int negsub = 0 - sub_me;
-      AO_fetch_and_add_write(&val, (AO_t)negsub);
+      return AO_fetch_and_add_write(&val, (AO_t)negsub) - sub_me;
     }
     AO_t read() const {
       // cast away const on the pointer.  this is only needed to build
