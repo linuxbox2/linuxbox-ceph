@@ -404,8 +404,8 @@ void XioConnection::msg_send_fail(XioMsg *xmsg, int code)
 {
   dout(4) << "xio_send_msg FAILED " << &xmsg->req_0.msg << " code=" << code <<
     " (" << xio_strerror(code) << ")" << dendl;
-  /* return enqueue_for_send's ref */
-  xmsg->put();
+  /* return refs taken for each xio_msg */
+  xmsg->put_msg_refs();
 } /* msg_send_fail */
 
 void XioConnection::msg_release_fail(struct xio_msg *msg, int code)

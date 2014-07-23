@@ -162,13 +162,15 @@ struct xio_msg_ex
   struct xio_msg msg;
   struct xio_iovec_ex iovs[XIO_MSGR_IOVLEN];
 
-  xio_msg_ex() {
+  xio_msg_ex(void* user_context) {
     // minimal initialize an "out" msg
     msg.type = XIO_MSG_TYPE_ONE_WAY;
     msg.request = NULL;
     msg.more_in_batch = 0;
     msg.status = 0;
-    msg.flags = 0;
+    // for now, we DO NEED receipts for every msg
+    msg.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
+    msg.user_context = user_context;
     // minimal zero "in" side
     msg.in.header.iov_len = 0;
     msg.in.data_iovsz = 0;
@@ -189,25 +191,30 @@ struct XioMsg : public XioSubmit
 public:
   Message* m;
   XioMsgHdr hdr;
-  struct xio_msg_ex req_0;
-  struct xio_msg_ex* req_arr;
+  xio_msg_ex req_0;
+  xio_msg_ex* req_arr;
   struct xio_mempool_obj mp_this;
-  int nbuffers;
   atomic_t nrefs;
 
 public:
-  XioMsg(Message *_m, XioConnection *_xcon, struct xio_mempool_obj& _mp) :
+  XioMsg(Message *_m, XioConnection *_xcon, struct xio_mempool_obj& _mp,
+	 int _ex_cnt) :
     XioSubmit(XIO_MSG_TYPE_REQ, _xcon),
     m(_m), hdr(m->get_header(), m->get_footer()),
-    req_arr(NULL), mp_this(_mp), nrefs(1)
+    req_0(this), req_arr(NULL), mp_this(_mp), nrefs(_ex_cnt+1)
     {
       const entity_inst_t &inst = xcon->get_messenger()->get_myinst();
       hdr.peer_type = inst.name.type();
       hdr.addr = xcon->get_messenger()->get_myaddr();
       hdr.hdr->src.type = inst.name.type();
       hdr.hdr->src.num = inst.name.num();
+      hdr.msg_cnt = _ex_cnt+1;
       req_0.msg.flags = 0;
       req_0.msg.user_context = NULL;
+
+      if (unlikely(_ex_cnt > 0)) {
+	alloc_trailers(_ex_cnt);
+      }
 
       // submit queue ref
       xcon->get();
@@ -215,8 +222,8 @@ public:
 
   XioMsg* get() { nrefs.inc(); return this; };
 
-  void put() {
-    int refs = nrefs.dec();
+  void put(int n) {
+    int refs = nrefs.sub(n);
     if (refs == 0) {
       struct xio_mempool_obj *mp = &this->mp_this;
       this->~XioMsg();
@@ -224,8 +231,20 @@ public:
     }
   }
 
+  void put() {
+    put(1);
+  }
+
+  void put_msg_refs() {
+    put(hdr.msg_cnt);
+  }
+
   void alloc_trailers(int cnt) {
-    req_arr = new xio_msg_ex[cnt];
+    req_arr = (xio_msg_ex*) malloc(cnt * sizeof(xio_msg_ex));
+    for (int ix = 0; ix < cnt; ++ix) {
+      xio_msg_ex* xreq = &(req_arr[ix]);
+      new (xreq) xio_msg_ex(this);
+    }
   }
 
   Message *get_message() { return m; }
@@ -233,8 +252,13 @@ public:
   ~XioMsg()
     {
       if (unlikely(!!req_arr)) {
-	delete[] req_arr;
+	for (unsigned int ix = 0; ix < hdr.msg_cnt-1; ++ix) {
+	  xio_msg_ex* xreq = &(req_arr[ix]);
+	  xreq->~xio_msg_ex();
+	}
+	free(req_arr);
       }
+
       /* testing only! server's ready, resubmit request (not reached on
        * PASSIVE/server side) */
       if (unlikely(m->get_special_handling() & MSG_SPECIAL_HANDLING_REDUPE)) {
@@ -291,8 +315,8 @@ public:
     m = _m;
   }
 
-  void put() {
-    int refs = nrefs.dec();
+  void put(int n) {
+    int refs = nrefs.sub(n);
     if (refs == 0) {
       /* in Marcus' new system, refs reaches 0 twice:  once in
        * Message lifecycle, and again after xio_release_msg.
@@ -303,6 +327,10 @@ public:
       this->~XioCompletionHook();
       xio_mempool_free(mp);
     }
+  }
+
+  void put() {
+    put(1);
   }
 
   XioConnection* get_xcon() { return xcon; }

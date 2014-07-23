@@ -521,6 +521,7 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg*& req,
       req->more_in_batch = 1;
       /* advance to next, but do not write in it yet. */
       req = &xmsg->req_arr[req_off].msg;
+      req->user_context = xmsg; /* already ref'd */
       msg_iov = req->out.pdata_iov;
       msg_off = 0;
       req_size = 0;
@@ -594,7 +595,8 @@ int XioMessenger::send_message(Message *m, const entity_inst_t& dest)
     return EINVAL;
 } /* send_message(Message *, const entity_inst_t&) */
 
-static inline XioMsg* pool_alloc_xio_msg(Message *m, XioConnection *xcon)
+static inline XioMsg* pool_alloc_xio_msg(Message *m, XioConnection *xcon,
+  int ex_cnt)
 {
   struct xio_mempool_obj mp_mem;
   int e = xio_mempool_alloc(xio_msgr_noreg_mpool, sizeof(XioMsg), &mp_mem);
@@ -602,7 +604,7 @@ static inline XioMsg* pool_alloc_xio_msg(Message *m, XioConnection *xcon)
     return NULL;
   XioMsg *xmsg = (XioMsg*) mp_mem.addr;
   assert(!!xmsg);
-  new (xmsg) XioMsg(m, xcon, mp_mem);
+  new (xmsg) XioMsg(m, xcon, mp_mem, ex_cnt);
   return xmsg;
 }
 
@@ -629,8 +631,22 @@ int XioMessenger::send_message(Message *m, Connection *con)
   m->set_magic(magic);
   m->set_special_handling(special_handling);
 
+  buffer::list &payload = m->get_payload();
+  buffer::list &middle = m->get_middle();
+  buffer::list &data = m->get_data();
+
+  int msg_off = 0;
+  int req_off = 0;
+  int req_size = 0;
+  int nbuffers =
+    xio_count_buffers(payload, req_size, msg_off, req_off) +
+    xio_count_buffers(middle, req_size, msg_off, req_off) +
+    xio_count_buffers(data, req_size, msg_off, req_off);
+
+  int ex_cnt = req_off;
+
   /* get an XioMsg frame */
-  XioMsg *xmsg = pool_alloc_xio_msg(m, xcon);
+  XioMsg *xmsg = pool_alloc_xio_msg(m, xcon, ex_cnt);
   if (! xmsg) {
     /* could happen if Accelio has been shutdown */
     return ENOMEM;
@@ -657,14 +673,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   struct xio_msg *req = &xmsg->req_0.msg;
   struct xio_iovec_ex *msg_iov = req->out.pdata_iov;
-  int ex_cnt;
-  int msg_off;
-  int req_off;
-  int req_size;
-
-  buffer::list &payload = m->get_payload();
-  buffer::list &middle = m->get_middle();
-  buffer::list &data = m->get_data();
 
   if (magic & (MSG_MAGIC_XIO)) {
     dout(4) << "payload: " << payload.buffers().size() <<
@@ -673,19 +681,9 @@ int XioMessenger::send_message(Message *m, Connection *con)
       dendl;
   }
 
-  msg_off = 0;
-  req_off = 0;
-  req_size = 0;
-  xmsg->nbuffers = xio_count_buffers(payload, req_size, msg_off, req_off)
-		 + xio_count_buffers(middle, req_size, msg_off, req_off)
-		 + xio_count_buffers(data, req_size, msg_off, req_off);
-  ex_cnt = req_off;
-  xmsg->hdr.msg_cnt = req_off + 1;
-
   if (unlikely(ex_cnt > 0)) {
     dout(4) << __func__ << " buffer cnt > XIO_MSGR_IOVLEN (" <<
-      ((XIO_MSGR_IOVLEN-1) + xmsg->nbuffers) << ")" << dendl;
-    xmsg->alloc_trailers(ex_cnt);
+      ((XIO_MSGR_IOVLEN-1) + nbuffers) << ")" << dendl;
   }
 
   /* do the invariant part */
@@ -705,10 +703,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
   /* finalize request */
   if (msg_off)
     req->out.data_iovlen = msg_off;
-
-  /* request delivery receipt on the last msg in the sequence */
-  req->flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
-  req->user_context = xmsg; /* transfers ownership of nref */
 
   /* fixup first msg */
   req = &xmsg->req_0.msg;
