@@ -206,8 +206,8 @@ public:
       hdr.addr = xcon->get_messenger()->get_myaddr();
       hdr.hdr->src.type = inst.name.type();
       hdr.hdr->src.num = inst.name.num();
-      req_0.msg.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
-      req_0.msg.user_context = this;
+      req_0.msg.flags = 0;
+      req_0.msg.user_context = NULL;
 
       // submit queue ref
       xcon->get();

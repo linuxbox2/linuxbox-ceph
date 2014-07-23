@@ -519,7 +519,6 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg*& req,
       /* finish this request */
       req->out.data_iovlen = msg_off;
       req->more_in_batch = 1;
-//      if (req != &xmsg->req_0.msg) req->user_context = xmsg;
       /* advance to next, but do not write in it yet. */
       req = &xmsg->req_arr[req_off].msg;
       msg_iov = req->out.pdata_iov;
@@ -704,10 +703,12 @@ int XioMessenger::send_message(Message *m, Connection *con)
 		    req_off, BUFFER_DATA);
 
   /* finalize request */
-  if (msg_off) {
+  if (msg_off)
     req->out.data_iovlen = msg_off;
-//    if (req != &xmsg->req_0.msg) req->user_context = xmsg;
-  }
+
+  /* request delivery receipt on the last msg in the sequence */
+  req->flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
+  req->user_context = xmsg; /* transfers ownership of nref */
 
   /* fixup first msg */
   req = &xmsg->req_0.msg;

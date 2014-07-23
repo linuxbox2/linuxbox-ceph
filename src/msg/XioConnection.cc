@@ -394,8 +394,8 @@ int XioConnection::on_msg_delivered(struct xio_session *session,
       std::cout << "xio finished " << rc << " " << time(0) << std::endl;
     }
   } /* trace ctr */
-  if (xmsg)
-    xmsg->put();
+
+  xmsg->put();
 
   return 0;
 }  /* on_msg_delivered */
@@ -404,13 +404,7 @@ void XioConnection::msg_send_fail(XioMsg *xmsg, int code)
 {
   dout(4) << "xio_send_msg FAILED " << &xmsg->req_0.msg << " code=" << code <<
     " (" << xio_strerror(code) << ")" << dendl;
-  /* return refs taken by each xio_msg */
-#if 0 // we don't take refs per xio_msg, because the send chain gets one notification.
-  unsigned int ix;
-  for (ix = 0; ix < xmsg->hdr.msg_cnt; ++ix) {
-    xmsg->put();
-  }
-#endif
+  /* return enqueue_for_send's ref */
   xmsg->put();
 } /* msg_send_fail */
 
