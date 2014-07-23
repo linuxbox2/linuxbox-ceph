@@ -511,17 +511,16 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg*& req,
     /* next request if necessary */
 
     if (unlikely(msg_off >= XIO_MSGR_IOVLEN || req_size >= MAX_XIO_BUF_SIZE)) {
-      if (++req_off >= ex_cnt) {
-	/* ran off iov - programmer error: ex_cnt calc botched */
-	assert(req_off > ex_cnt);
-	break;
-      }
       /* finish this request */
       req->out.data_iovlen = msg_off;
       req->more_in_batch = 1;
-      /* advance to next, but do not write in it yet. */
-      req = &xmsg->req_arr[req_off].msg;
-      req->user_context = xmsg; /* already ref'd */
+      /* advance to next, and write in it if it's not the last one. */
+      if (++req_off >= ex_cnt) {
+	req = 0;	/* poison.  trap if we try to use it. */
+      } else {
+	req = &xmsg->req_arr[req_off].msg;
+	req->user_context = xmsg; /* already ref'd */
+      }
       msg_iov = req->out.pdata_iov;
       msg_off = 0;
       req_size = 0;
@@ -708,6 +707,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   /* fixup first msg */
   req = &xmsg->req_0.msg;
+  req->flags |= XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
+  req->user_context = xmsg; /* already ref'd */
 
   if (trace_hdr) {
     void print_xio_msg_hdr(XioMsgHdr &hdr);
@@ -729,6 +730,8 @@ int XioMessenger::send_message(Message *m, Connection *con)
     struct xio_msg *tail = head;
     for (req_off = 0; ((unsigned) req_off) < xmsg->hdr.msg_cnt-1; ++req_off) {
       req = &xmsg->req_arr[req_off].msg;
+assert(!req->in.data_iovlen);
+assert(req->out.data_iovlen || !nbuffers);
       tail->next = req;
       tail = req;
      }
