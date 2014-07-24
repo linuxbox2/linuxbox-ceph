@@ -517,10 +517,11 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg*& req,
       /* advance to next, and write in it if it's not the last one. */
       if (++req_off >= ex_cnt) {
 	req = 0;	/* poison.  trap if we try to use it. */
+	msg_iov = NULL;
       } else {
 	req = &xmsg->req_arr[req_off].msg;
+	msg_iov = req->out.pdata_iov;
       }
-      msg_iov = req->out.pdata_iov;
       msg_off = 0;
       req_size = 0;
     }
@@ -642,6 +643,11 @@ int XioMessenger::send_message(Message *m, Connection *con)
     xio_count_buffers(data, req_size, msg_off, req_off);
 
   int ex_cnt = req_off;
+  if (msg_off == 0 && ex_cnt > 0) {
+    // no buffers for last msg
+    dout(10) << "msg_off 0, ex_cnt " << ex_cnt << " -> " << ex_cnt-1 << dendl;
+    ex_cnt--;
+  }
 
   /* get an XioMsg frame */
   XioMsg *xmsg = pool_alloc_xio_msg(m, xcon, ex_cnt);
