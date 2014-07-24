@@ -519,7 +519,6 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg*& req,
 	req = 0;	/* poison.  trap if we try to use it. */
       } else {
 	req = &xmsg->req_arr[req_off].msg;
-	req->user_context = xmsg; /* already ref'd */
       }
       msg_iov = req->out.pdata_iov;
       msg_off = 0;
