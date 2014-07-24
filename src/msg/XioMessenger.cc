@@ -707,8 +707,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   /* fixup first msg */
   req = &xmsg->req_0.msg;
-  req->flags |= XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
-  req->user_context = xmsg; /* already ref'd */
 
   if (trace_hdr) {
     void print_xio_msg_hdr(XioMsgHdr &hdr);

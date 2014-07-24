@@ -209,8 +209,6 @@ public:
       hdr.hdr->src.type = inst.name.type();
       hdr.hdr->src.num = inst.name.num();
       hdr.msg_cnt = _ex_cnt+1;
-      req_0.msg.flags = 0;
-      req_0.msg.user_context = NULL;
 
       if (unlikely(_ex_cnt > 0)) {
 	alloc_trailers(_ex_cnt);
