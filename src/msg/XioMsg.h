@@ -173,6 +173,7 @@ struct xio_msg_ex
     msg.user_context = user_context;
     // minimal zero "in" side
     msg.in.header.iov_len = 0;
+    msg.in.header.iov_base = NULL;  /* XXX Accelio requires this currently */
     msg.in.data_iovsz = 0;
     msg.in.data_iovlen = 0;
     // minimal zero "out" side
