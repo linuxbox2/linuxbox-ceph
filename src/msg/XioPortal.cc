@@ -20,8 +20,8 @@ int XioPortal::bind(struct xio_session_ops *ops, const string &_uri)
   xio_uri = _uri;
   portal_id = strdup(xio_uri.c_str());
   server = xio_bind(ctx, ops, portal_id, NULL, 0, msgr);
-  dout(4) << dout_format("xio_bind: portal %p %s returned server %p",
-	 this, xio_uri.c_str(), server) << dendl;
+  dout(4) << "xio_bind: portal " << this << ' ' << xio_uri
+    << " returned server " << server << dendl;
   return (!!server);
 }
 
@@ -45,12 +45,11 @@ int XioPortals::bind(struct xio_session_ops *ops, const string& base_uri,
     portal = portals[bind_ix];
     int r = portal->bind(ops, xio_uri);
     if (r)  {
-      derr << dout_format("xp::bind: portal %p bind OK: %s (ix=%d port=%d)",
-			  portal, xio_uri.c_str(), bind_ix, bind_port) <<
-	dendl;
+      derr << "xp::bind: portal " << portal << " bind OK: " << xio_uri
+	<< " (ix=" << bind_ix << " port=" << bind_port << ')' << dendl;
     } else {
-  derr << dout_format("xp::bind: portal %p cannot bind: %s (ix=%d port=%d)",
-		      portal, xio_uri.c_str(), bind_ix, bind_port) << dendl;
+      derr << "xp::bind: portal " << portal << " cannot bind: " << xio_uri
+	<< " (ix=" << bind_ix << " port=" << bind_port << ')' << dendl;
     }
   }
 
