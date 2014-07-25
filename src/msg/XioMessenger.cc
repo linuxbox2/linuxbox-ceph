@@ -155,7 +155,7 @@ static int on_cancel_request(struct xio_session *session,
     static_cast<XioConnection*>(conn_user_context);
 
   dout(25) << "on cancel request: session: " << session << " msg: " << msg
-    << " conn_user_context " conn_user_context << dendl;
+    << " conn_user_context " << conn_user_context << dendl;
 
   return 0;
 }
