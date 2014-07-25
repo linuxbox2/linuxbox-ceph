@@ -85,9 +85,6 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   peer_type = peer.name.type();
   set_peer_addr(peer.addr);
 
-  /* try to insert in conns_entity_map */
-  m->try_insert(this);
-
   /* XXXX fake features, aieee! */
   set_features(XIO_ALL_FEATURES);
 }
@@ -120,6 +117,8 @@ int XioConnection::passive_setup()
   /* notify hook */
   msgr->ms_deliver_handle_accept(this);
 
+  /* try to insert in conns_entity_map */
+  msgr->try_insert(this);
   return (0);
 }
 
