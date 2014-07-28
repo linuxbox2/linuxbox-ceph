@@ -247,7 +247,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       unsigned xopt;
 
-      if (magic & (MSG_MAGIC_TRACE_XIO)) {
+      if (dlog_p(ceph_subsys_xio, 15)) {
 	xopt = XIO_LOG_LEVEL_TRACE;
 	xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_LEVEL,
 		    &xopt, sizeof(unsigned));
