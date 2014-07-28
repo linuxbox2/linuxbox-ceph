@@ -77,10 +77,13 @@ static inline Message* new_ping_with_data(const char *tag, uint32_t size)
 }
 
 static inline Message* new_simple_ping_with_data(const char *tag,
-						 uint32_t size)
+						 uint32_t size,
+						 uint32_t nfrags)
 {
   static size_t pagesize = sysconf(_SC_PAGESIZE);
   static uint32_t counter;
+  uint32_t segsize;
+  int do_page_alignment;
 
   MDataPing *m = new MDataPing();
   m->counter = counter++;
@@ -89,19 +92,38 @@ static inline Message* new_simple_ping_with_data(const char *tag,
   bufferlist bl;
   void *p;
 
-  size = (size + pagesize - 1) & ~(pagesize - 1);
-  if (posix_memalign(&p, pagesize, size))
-    p = NULL;
+  segsize = (size+nfrags-1)/nfrags;
+  segsize = (segsize + 7) & ~7;
+  if (segsize < 32) segsize = 32;
+
+  do_page_alignment = segsize >= 1024;
+  if (do_page_alignment)
+    segsize = (segsize + pagesize - 1) & ~(pagesize - 1);
   m->free_data = true;
+  for (uint32_t i = 0; i < nfrags; ++i) {
+    if (do_page_alignment) {
+      if (posix_memalign(&p, pagesize, segsize))
+	p = NULL;
+    } else {
+	p = malloc(segsize);
+    }
 
-  strcpy((char*) p, tag);
-  uint32_t* t = (uint32_t* ) (((char*) p) + size - 32);
-  *t = counter;
+    strcpy((char*) p, tag);
+    uint32_t* t = (uint32_t* ) (((char*) p) + segsize - 32);
+    *t = counter;
+    t[1] = i;
 
-  bl.append(buffer::create_static(size, (char*) p));
+    bl.append(buffer::create_static(segsize, (char*) p));
+  }
   m->set_data(bl);
 
   return static_cast<Message*>(m);
+}
+
+static inline Message* new_simple_ping_with_data(const char *tag,
+						 uint32_t size)
+{
+  return new_simple_ping_with_data(tag, size, 1);
 }
 
 
