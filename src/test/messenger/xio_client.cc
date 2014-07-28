@@ -36,6 +36,19 @@ using namespace std;
 
 #define dout_subsys ceph_subsys_xio_client
 
+void usage(ostream& out)
+{
+  out << "usage: xio_client [options]\n"
+"options:\n"
+"  --addr X\n"
+"  --port X\n"
+"  --msgs X\n"
+"  --dsize X\n"
+"  --nfrags X\n"
+"  --dfast\n"
+    ;
+}
+
 int main(int argc, const char **argv)
 {
 	vector<const char*> args;
@@ -51,6 +64,7 @@ int main(int argc, const char **argv)
 	std::string port = "1234";
 	int n_msgs = 50;
 	int n_dsize = 0;
+	int n_nfrags = 1;
 	bool dfast = false;
 
 	struct timespec ts;
@@ -76,6 +90,9 @@ int main(int argc, const char **argv)
 	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--dsize",
 				    (char*) NULL)) {
 	    n_dsize = atoi(val.c_str());
+	  } else if (ceph_argparse_witharg(args, arg_iter, &val, "--nfrags",
+				    (char*) NULL)) {
+	    n_nfrags = atoi(val.c_str());
 	  } else if (ceph_argparse_flag(args, arg_iter, "--dfast",
 					   (char*) NULL)) {
 	    dfast = true;
@@ -83,6 +100,12 @@ int main(int argc, const char **argv)
 	    ++arg_iter;
 	  }
 	};
+
+	if (!args.empty()) {
+	  cerr << "What is this? -- " << args[0] << std::endl;
+	  usage(cerr);
+	  exit(1);
+	}
 
 	DispatchStrategy* dstrategy;
 	if (dfast)
@@ -138,7 +161,7 @@ int main(int argc, const char **argv)
 	      new MPing(), conn);
 	  } else {
 	  messenger->send_message(
-	    new_simple_ping_with_data("xio_client", n_dsize), conn);
+	    new_simple_ping_with_data("xio_client", n_dsize, n_nfrags), conn);
 	  }
 	}
 
