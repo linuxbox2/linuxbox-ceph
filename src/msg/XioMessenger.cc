@@ -50,6 +50,36 @@ static const char *xio_session_event_types[] =
   "XIO_SESSION_ERROR_EVENT"
 };
 
+void xio_log_dout(const char *file, unsigned line,
+		  const char *function, unsigned level,
+		  const char *fmt, ...)
+{
+  char buffer[2048];
+  va_list args;
+  va_start(args, fmt);
+  int n = vsnprintf(buffer, sizeof(buffer), fmt, args);
+  va_end(args);
+
+  if (n > 0) {
+    static const pair<const char*, int> levels[] = {
+      make_pair("FATAL", 0),
+      make_pair("ERROR", 0),
+      make_pair("WARN", 1),
+      make_pair("INFO", 5),
+      make_pair("DEBUG", 10),
+      make_pair("TRACE", 20)
+    };
+    const pair<const char*, int> &lvl = levels[level];
+
+    const char *short_file = strrchr(file, '/');
+    short_file = (short_file == NULL) ? file : short_file + 1;
+
+    dout(lvl.second) << '[' << lvl.first << "] "
+      << short_file << ':' << line << ' '
+      << function << " - " << buffer << dendl;
+  }
+}
+
 static int on_session_event(struct xio_session *session,
 			    struct xio_session_event_data *event_data,
 			    void *cb_user_context)
@@ -232,6 +262,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 		  &xopt, sizeof(unsigned));
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_OUT_IOVLEN,
 		  &xopt, sizeof(unsigned));
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_FN,
+		  (const void*)xio_log_dout, sizeof(xio_log_fn));
 
       /* and unregisterd one */
 #define XMSG_MEMPOOL_MIN 4096
