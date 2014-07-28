@@ -50,6 +50,36 @@ static const char *xio_session_event_types[] =
   "XIO_SESSION_ERROR_EVENT"
 };
 
+void xio_log_dout(const char *file, unsigned line,
+		  const char *function, unsigned level,
+		  const char *fmt, ...)
+{
+  char buffer[2048];
+  va_list args;
+  va_start(args, fmt);
+  int n = vsnprintf(buffer, sizeof(buffer), fmt, args);
+  va_end(args);
+
+  if (n > 0) {
+    static const pair<const char*, int> levels[] = {
+      make_pair("FATAL", 0),
+      make_pair("ERROR", 0),
+      make_pair("WARN", 1),
+      make_pair("INFO", 5),
+      make_pair("DEBUG", 10),
+      make_pair("TRACE", 20)
+    };
+    const pair<const char*, int> &lvl = levels[level];
+
+    const char *short_file = strrchr(file, '/');
+    short_file = (short_file == NULL) ? file : short_file + 1;
+
+    dout(lvl.second) << '[' << lvl.first << "] "
+      << short_file << ':' << line << ' '
+      << function << " - " << buffer << dendl;
+  }
+}
+
 static int on_session_event(struct xio_session *session,
 			    struct xio_session_event_data *event_data,
 			    void *cb_user_context)
@@ -217,7 +247,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       unsigned xopt;
 
-      if (magic & (MSG_MAGIC_TRACE_XIO)) {
+      if (dlog_p(ceph_subsys_xio, 15)) {
 	xopt = XIO_LOG_LEVEL_TRACE;
 	xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_LEVEL,
 		    &xopt, sizeof(unsigned));
@@ -232,6 +262,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 		  &xopt, sizeof(unsigned));
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_OUT_IOVLEN,
 		  &xopt, sizeof(unsigned));
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_FN,
+		  (const void*)xio_log_dout, sizeof(xio_log_fn));
 
       /* and unregisterd one */
 #define XMSG_MEMPOOL_MIN 4096
@@ -616,7 +648,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
     return ENOTCONN;
 
   int code = 0;
-  bool trace_hdr = true;
 
   m->set_seq(0); /* XIO handles seq */
   m->encode(xcon->get_features(), this->crcflags);
@@ -666,7 +697,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
       buffer::list &payload = m->get_payload();
       dout(4) << __func__ << "payload dump:" << dendl;
       payload.hexdump(cout);
-      trace_hdr = true;
     }
   }
 
@@ -707,14 +737,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   /* fixup first msg */
   req = &xmsg->req_0.msg;
-
-  if (trace_hdr) {
-    void print_xio_msg_hdr(XioMsgHdr &hdr);
-    print_xio_msg_hdr(xmsg->hdr);
-
-    void print_ceph_msg(Message *m);
-    print_ceph_msg(m);
-  }
 
   const std::list<buffer::ptr>& header = xmsg->hdr.get_bl().buffers();
   assert(header.size() == 1); /* XXX */

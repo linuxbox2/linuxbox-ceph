@@ -28,8 +28,15 @@ extern struct xio_mempool *xio_msgr_noreg_mpool;
 
 #define dout_subsys ceph_subsys_xio
 
-void print_xio_msg_hdr(XioMsgHdr &hdr)
+void print_xio_msg_hdr(XioMsgHdr &hdr, struct xio_msg *msg)
 {
+
+  if (msg) {
+    dout(4) << "xio msg:" <<
+    " sn: " << msg->sn <<
+    " timestamp: " << msg->timestamp <<
+      dendl;
+  }
 
   dout(4) << "ceph header: " <<
     " front_len: " << hdr.hdr->front_len <<
@@ -165,6 +172,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
     assert(session == this->session);
     in_seq.cnt = msg_cnt.msg_cnt;
     in_seq.p = true;
+  } else {
+    /* XXX major sequence error */
+    assert(! treq->in.header.iov_len);
   }
   in_seq.append(req);
   if (in_seq.cnt > 0) {
@@ -188,10 +198,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   dout(4) << __func__ << " " << "msg_seq.size()="  << msg_seq.size() <<
     dendl;
-  if (msg_seq.size() > 1) {
-    dout(4) << __func__ << " " << "msg_seq.size()="  << msg_seq.size() <<
-      dendl;
-  }
 
   list<struct xio_msg *>::iterator msg_iter = msg_seq.begin();
   treq = *msg_iter;
@@ -203,7 +209,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (magic & (MSG_MAGIC_TRACE_XCON)) {
     if (hdr.hdr->type == 43) {
-      print_xio_msg_hdr(hdr);
+      print_xio_msg_hdr(hdr, NULL);
     }
   }
 
