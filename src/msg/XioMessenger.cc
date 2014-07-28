@@ -616,7 +616,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
     return ENOTCONN;
 
   int code = 0;
-  bool trace_hdr = true;
 
   m->set_seq(0); /* XIO handles seq */
   m->encode(xcon->get_features(), this->crcflags);
@@ -666,7 +665,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
       buffer::list &payload = m->get_payload();
       dout(4) << __func__ << "payload dump:" << dendl;
       payload.hexdump(cout);
-      trace_hdr = true;
     }
   }
 
@@ -707,14 +705,6 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   /* fixup first msg */
   req = &xmsg->req_0.msg;
-
-  if (trace_hdr) {
-    void print_xio_msg_hdr(XioMsgHdr &hdr);
-    print_xio_msg_hdr(xmsg->hdr);
-
-    void print_ceph_msg(Message *m);
-    print_ceph_msg(m);
-  }
 
   const std::list<buffer::ptr>& header = xmsg->hdr.get_bl().buffers();
   assert(header.size() == 1); /* XXX */
