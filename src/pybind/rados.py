@@ -208,6 +208,7 @@ Rados object in state %s." % (self.state))
             self.librados = CDLL(librados_path)
         self.cluster = c_void_p()
         self.rados_id = rados_id
+        self.use_xio_flag = False
         if rados_id is not None and not isinstance(rados_id, str):
             raise TypeError('rados_id must be a string or None')
         if conffile is not None and not isinstance(conffile, str):
@@ -312,7 +313,14 @@ Rados object in state %s." % (self.state))
         # cretargs was allocated with fixed length; collapse return
         # list to eliminate any missing args
 
+
         retargs = [a for a in cretargs if a is not None]
+        def find_xio_flag(j):
+                if j in ['-x', '--xio']:
+                        self.use_xio_flag = True
+                        return False
+                return True
+        retargs = filter(find_xio_flag, retargs)
         return retargs
 
     def conf_parse_env(self, var='CEPH_ARGS'):
@@ -413,7 +421,9 @@ Rados object in state %s." % (self.state))
         Connect to the cluster.
         """
         self.require_state("configuring")
-        ret = run_in_thread(self.librados.rados_connect, (self.cluster,),
+        ret = run_in_thread(self.librados.rados_xio_connect
+                            if self.use_xio_flag else self.librados.rados_connect,
+                            (self.cluster,),
                             timeout)
         if (ret != 0):
             raise make_ex(ret, "error calling connect")
