@@ -163,12 +163,13 @@ int XioConnection::on_msg_req(struct xio_session *session,
     XioMsgCnt msg_cnt(
       buffer::create_static(treq->in.header.iov_len,
 			    (char*) treq->in.header.iov_base));
-    dout(10) << __func__ << " receive req " << " treq " << treq
+    dout(10) << __func__ << " receive req " << "treq " << treq
       << " msg_cnt " << msg_cnt.msg_cnt
       << " iov_base " << treq->in.header.iov_base
       << " iov_len " << (int) treq->in.header.iov_len
       << " data_iovlen " << treq->in.data_iovlen
-      << " conn " << conn << " sess " << session << dendl;
+      << " conn " << conn << " sess " << session
+      << " sn " << treq->sn << dendl;
     assert(session == this->session);
     in_seq.cnt = msg_cnt.msg_cnt;
     in_seq.p = true;
