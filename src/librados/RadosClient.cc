@@ -222,6 +222,14 @@ int librados::RadosClient::connect()
     return -EISCONN;
   state = CONNECTING;
 
+  /* dout and friends use g_ceph_context to print stuff.  If we want
+   * to use dout to debug library calls, these have to be set.  There's
+   * no way for python code (ie, the ceph command) to set them (or know
+   * that it should).  Eventually, should use ldout(cct,x)
+   * everywhere (and make sure cct is passed more places).  For now, ...
+   */
+  if (!g_ceph_context) g_ceph_context = cct;
+
   // get monmap
   err = monclient.build_initial_monmap();
   if (err < 0)
