@@ -215,10 +215,8 @@ public:
 		code = xio_send_msg(xs->xcon->conn, msg);
 		/* header trace moved here to capture xio serial# */
 		if (dlog_p(ceph_subsys_xio, 11)) {
-		  void print_xio_msg_hdr(XioMsgHdr &hdr, struct xio_msg *msg);
-		  print_xio_msg_hdr(xmsg->hdr, msg);
-		  void print_ceph_msg(Message *m);
-		  print_ceph_msg(xmsg->m);
+		  print_xio_msg_hdr("xio_send_msg", xmsg->hdr, msg);
+		  print_ceph_msg("xio_send_msg", xmsg->m);
 		}
 	      }
 	      if (unlikely(code)) {

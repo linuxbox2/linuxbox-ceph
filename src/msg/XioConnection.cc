@@ -28,17 +28,20 @@ extern struct xio_mempool *xio_msgr_noreg_mpool;
 
 #define dout_subsys ceph_subsys_xio
 
-void print_xio_msg_hdr(XioMsgHdr &hdr, struct xio_msg *msg)
+void print_xio_msg_hdr(const char *tag, const XioMsgHdr &hdr,
+		       const struct xio_msg *msg)
 {
 
   if (msg) {
-    dout(4) << "xio msg:" <<
-    " sn: " << msg->sn <<
-    " timestamp: " << msg->timestamp <<
+    dout(4) << tag <<
+      " xio msg:" <<
+      " sn: " << msg->sn <<
+      " timestamp: " << msg->timestamp <<
       dendl;
   }
 
-  dout(4) << "ceph header: " <<
+  dout(4) << tag <<
+    " ceph header: " <<
     " front_len: " << hdr.hdr->front_len <<
     " seq: " << hdr.hdr->seq <<
     " tid: " << hdr.hdr->tid <<
@@ -55,7 +58,8 @@ void print_xio_msg_hdr(XioMsgHdr &hdr, struct xio_msg *msg)
     " msg_cnt: " << hdr.msg_cnt <<
     dendl;
 
-  dout(4) << "ceph footer: " <<
+  dout(4) << tag <<
+    " ceph footer: " <<
     " front_crc: " << hdr.ftr->front_crc <<
     " middle_crc: " << hdr.ftr->middle_crc <<
     " data_crc: " << hdr.ftr->data_crc <<
@@ -64,11 +68,11 @@ void print_xio_msg_hdr(XioMsgHdr &hdr, struct xio_msg *msg)
     dendl;
 }
 
-void print_ceph_msg(Message *m)
+void print_ceph_msg(const char *tag, Message *m)
 {
   if (m->get_magic() & (MSG_MAGIC_XIO & MSG_MAGIC_TRACE_DTOR)) {
     ceph_msg_header& header = m->get_header();
-    dout(4) << "header version " << header.version <<
+    dout(4) << tag << " header version " << header.version <<
       " compat version " << header.compat_version <<
       dendl;
   }
@@ -210,7 +214,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (magic & (MSG_MAGIC_TRACE_XCON)) {
     if (hdr.hdr->type == 43) {
-      print_xio_msg_hdr(hdr, NULL);
+      print_xio_msg_hdr("on_msg_req", hdr, NULL);
     }
   }
 
