@@ -401,6 +401,11 @@ int XioConnection::on_msg_delivered(struct xio_session *session,
     }
   } /* trace ctr */
 
+  dout(11) << "on_msg_delivered xcon: " << xmsg->xcon <<
+    " session: " << session << " msg: " << req << " sn: " << req->sn <<
+    " type: " << xmsg->m->get_type() << " tid: " << xmsg->m->get_tid() <<
+    " seq: " << xmsg->m->get_seq() << dendl;
+
   xmsg->put();
 
   return 0;
