@@ -136,7 +136,7 @@ int XioConnection::passive_setup()
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
 
 static inline XioCompletionHook* pool_alloc_xio_completion_hook(
-  XioConnection *xcon, Message *m, list <struct xio_msg *>& msg_seq)
+  XioConnection *xcon, Message *m, XioInSeq& msg_seq)
 {
   struct xio_mempool_obj mp_mem;
   int e = xio_mempool_alloc(xio_msgr_noreg_mpool,
@@ -159,7 +159,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   /* XXX Accelio guarantees message ordering at
    * xio_session */
 
-  if (! in_seq.p) {
+  if (! in_seq.p()) {
     if (!treq->in.header.iov_len) {
 	derr << __func__ << " empty header: packet out of sequence?" << dendl;
 	return 0;
@@ -175,24 +175,22 @@ int XioConnection::on_msg_req(struct xio_session *session,
       << " conn " << conn << " sess " << session
       << " sn " << treq->sn << dendl;
     assert(session == this->session);
-    in_seq.cnt = msg_cnt.msg_cnt;
-    in_seq.p = true;
+    in_seq.set_count(msg_cnt.msg_cnt);
   } else {
     /* XXX major sequence error */
     assert(! treq->in.header.iov_len);
   }
+
   in_seq.append(req);
-  if (in_seq.cnt > 0) {
+  if (in_seq.count() > 0) {
     return 0;
   }
-  else
-    in_seq.p = false;
 
   XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
   XioCompletionHook *m_hook =
-    pool_alloc_xio_completion_hook(this, NULL /* msg */, in_seq.seq);
-  list<struct xio_msg *>& msg_seq = m_hook->msg_seq;
-  in_seq.seq.clear();
+    pool_alloc_xio_completion_hook(this, NULL /* msg */, in_seq);
+  XioInSeq& msg_seq = m_hook->msg_seq;
+  in_seq.clear();
 
   ceph_msg_header header;
   ceph_msg_footer footer;
@@ -204,8 +202,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
   dout(4) << __func__ << " " << "msg_seq.size()="  << msg_seq.size() <<
     dendl;
 
-  list<struct xio_msg *>::iterator msg_iter = msg_seq.begin();
-  treq = *msg_iter;
+  struct xio_msg* msg_iter = msg_seq.begin();
+  treq = msg_iter;
   XioMsgHdr hdr(header, footer,
 		buffer::create_static(treq->in.header.iov_len,
 				      (char*) treq->in.header.iov_base));
@@ -227,7 +225,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   blen = header.front_len;
 
   while (blen && (msg_iter != msg_seq.end())) {
-    treq = *msg_iter;
+    treq = msg_iter;
     xio_ptr = (req->in.data_type == XIO_DATA_TYPE_PTR);
     iov_len = treq->in.data_iovlen;
     iovs = (xio_ptr) ? treq->in.pdata_iov : treq->in.data_iov;
@@ -253,7 +251,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
     /* XXX as above, if a buffer is split, then we needed to track
      * the new start (carry) and not advance */
     if (ix == iov_len) {
-      msg_iter++;
+      msg_seq.next(&msg_iter);
       ix = 0;
     }
   }
@@ -275,7 +273,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
 
   while (blen && (msg_iter != msg_seq.end())) {
-    treq = *msg_iter;
+    treq = msg_iter;
     xio_ptr = (req->in.data_type == XIO_DATA_TYPE_PTR);
     iov_len = treq->in.data_iovlen;
     iovs = (xio_ptr) ? treq->in.pdata_iov : treq->in.data_iov;
@@ -294,7 +292,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
       }
     }
     if (ix == iov_len) {
-      msg_iter++;
+      msg_seq.next(&msg_iter);
       ix = 0;
     }
   }
@@ -308,7 +306,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
 
   while (blen && (msg_iter != msg_seq.end())) {
-    treq = *msg_iter;
+    treq = msg_iter;
     xio_ptr = (req->in.data_type == XIO_DATA_TYPE_PTR);
     iov_len = treq->in.data_iovlen;
     iovs = (xio_ptr) ? treq->in.pdata_iov : treq->in.data_iov;
@@ -320,7 +318,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
       blen -= msg_iov->iov_len;
     }
     if (ix == iov_len) {
-      msg_iter++;
+      msg_seq.next(&msg_iter);
       ix = 0;
     }
   }
@@ -332,7 +330,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
   recv.set(treq->timestamp);
 
   Message *m =
-    decode_message(msgr->cct, msgr->crcflags, header, footer, payload, middle, data);
+    decode_message(msgr->cct, msgr->crcflags, header, footer, payload, middle,
+		   data);
 
   if (m) {
     /* completion */

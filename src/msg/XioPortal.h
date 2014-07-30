@@ -19,10 +19,14 @@
 extern "C" {
 #include "libxio.h"
 }
+#include "XioInSeq.h"
 #include <boost/lexical_cast.hpp>
 #include "SimplePolicyMessenger.h"
 #include "XioConnection.h"
 #include "XioMsg.h"
+
+#include "include/assert.h"
+#include "common/dout.h"
 
 #ifndef CACHE_LINE_SIZE
 #define CACHE_LINE_SIZE 64 /* XXX arch-specific define */
@@ -137,6 +141,19 @@ public:
 
   int bind(struct xio_session_ops *ops, const string &_uri);
 
+  inline void release_xio_rsp(XioRsp* xrsp) {
+    struct xio_msg *msg = xrsp->dequeue();
+    while (msg) {
+      int code = xio_release_msg(msg);
+      if (unlikely(code)) {
+	/* very unlikely, so log it */
+	xrsp->xcon->msg_release_fail(msg, code);
+      }
+      msg = static_cast<struct xio_msg *>(msg->user_context);
+    }
+    xrsp->finalize(); /* unconditional finalize */
+  }
+
   void enqueue_for_send(XioConnection *xcon, XioSubmit *xs)
     {
       if (! _shutdown) {
@@ -155,22 +172,7 @@ public:
 	break;
       default:
 	/* XIO_MSG_TYPE_RSP */
-      {
-	XioRsp* xrsp = static_cast<XioRsp*>(xs);
-	list <struct xio_msg *>& msg_seq = xrsp->get_xhook()->get_seq();
-	list <struct xio_msg *>::iterator iter;
-	struct xio_msg *msg = NULL;
-	for (iter = msg_seq.begin(); iter != msg_seq.end();
-	     ++iter) {
-	  msg = *iter;
-	  int code = xio_release_msg(msg);
-	  if (unlikely(code)) {
-	    /* very unlikely, so log it */
-	    xs->xcon->msg_release_fail(msg, code);
-	  }
-	}
-	xrsp->finalize(); /* unconditional finalize */
-      }
+	release_xio_rsp(static_cast<XioRsp*>(xs));
       break;
       };
     }
@@ -181,7 +183,6 @@ public:
       XioSubmit::Queue send_q;
       XioSubmit::Queue::iterator q_iter;
       struct xio_msg *msg = NULL;
-      list <struct xio_msg *>::iterator iter;
       XioSubmit *xs;
       XioMsg *xmsg;
 
@@ -226,20 +227,7 @@ public:
 	      break;
 	    default:
 	      /* XIO_MSG_TYPE_RSP */
-	    {
-	      XioRsp* xrsp = static_cast<XioRsp*>(xs);
-	      list <struct xio_msg *>& msg_seq = xrsp->get_xhook()->get_seq();
-	      for (iter = msg_seq.begin(); iter != msg_seq.end();
-		   ++iter) {
-		msg = *iter;
-		code = xio_release_msg(msg);
-		if (unlikely(code)) {
-		  /* very unlikely, so log it */
-		  xs->xcon->msg_release_fail(msg, code);
-		}
-	      }
-	      xrsp->finalize(); /* unconditional finalize */
-	    }
+	      release_xio_rsp(static_cast<XioRsp*>(xs));
 	    break;
 	    };
 	  }

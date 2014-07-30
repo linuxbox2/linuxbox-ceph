@@ -21,6 +21,7 @@
 extern "C" {
 #include "libxio.h"
 }
+#include "XioInSeq.h"
 #include "Connection.h"
 #include "Messenger.h"
 #include "include/atomic.h"
@@ -52,16 +53,7 @@ private:
   uint32_t special_handling;
 
   /* batching */
-  struct msg_seq {
-    bool p;
-    int cnt;
-    pthread_spinlock_t sp;
-    list<struct xio_msg *> seq;
-    msg_seq() : p(false) {
-      pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
-    }
-    void append(struct xio_msg* req) { seq.push_back(req); --cnt; }
-  } in_seq;
+  XioInSeq in_seq;
 
   // conns_entity_map comparison functor
   struct EntityComp
