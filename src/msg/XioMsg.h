@@ -138,11 +138,16 @@ WRITE_CLASS_ENCODER(XioMsgHdr);
 struct XioSubmit
 {
 public:
-  enum xio_msg_type type;
+  enum submit_type
+  {
+    OUTGOING_MSG,
+    INCOMING_MSG_RELEASE
+  };
+  enum submit_type type;
   bi::list_member_hook<> submit_list;
   XioConnection *xcon;
 
-  XioSubmit(enum xio_msg_type _type, XioConnection *_xcon) :
+  XioSubmit(enum submit_type _type, XioConnection *_xcon) :
     type(_type), xcon(_xcon)
     {}
 
@@ -200,7 +205,7 @@ public:
 public:
   XioMsg(Message *_m, XioConnection *_xcon, struct xio_mempool_obj& _mp,
 	 int _ex_cnt) :
-    XioSubmit(XIO_MSG_TYPE_REQ, _xcon),
+    XioSubmit(XioSubmit::OUTGOING_MSG, _xcon),
     m(_m), hdr(m->get_header(), m->get_footer()),
     req_0(this), req_arr(NULL), mp_this(_mp), nrefs(_ex_cnt+1)
     {
@@ -351,7 +356,7 @@ struct XioRsp : public XioSubmit
   XioCompletionHook *xhook;
 public:
   XioRsp(XioConnection *_xcon, XioCompletionHook *_xhook)
-    : XioSubmit(XIO_MSG_TYPE_RSP, _xhook->get_xcon()),
+    : XioSubmit(XioSubmit::INCOMING_MSG_RELEASE, _xhook->get_xcon()),
       xhook(_xhook->get())
     {
       // submit queue ref

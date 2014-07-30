@@ -164,14 +164,14 @@ public:
 
       /* dispose xs */
       switch(xs->type) {
-      case XIO_MSG_TYPE_REQ: /* it was an outgoing 1-way */
+      case XioSubmit::OUTGOING_MSG: /* it was an outgoing 1-way */
       {
 	XioMsg* xmsg = static_cast<XioMsg*>(xs);
 	xs->xcon->msg_send_fail(xmsg, -EINVAL);
       }
 	break;
       default:
-	/* XIO_MSG_TYPE_RSP */
+	/* INCOMING_MSG_RELEASE */
 	release_xio_rsp(static_cast<XioRsp*>(xs));
       break;
       };
@@ -205,7 +205,7 @@ public:
 	    send_q.erase(q_iter);
 
 	    switch(xs->type) {
-	    case XIO_MSG_TYPE_REQ: /* it was an outgoing 1-way */
+	    case XioSubmit::OUTGOING_MSG: /* it was an outgoing 1-way */
 	      xmsg = static_cast<XioMsg*>(xs);
 	      msg = &xmsg->req_0.msg;
 	      /* XXX we know we are not racing with a disconnect
@@ -226,7 +226,7 @@ public:
 		xs->xcon->send.set(msg->timestamp); /* XXX atomic? */
 	      break;
 	    default:
-	      /* XIO_MSG_TYPE_RSP */
+	      /* INCOMING_MSG_RELEASE */
 	      release_xio_rsp(static_cast<XioRsp*>(xs));
 	    break;
 	    };
