@@ -23,6 +23,7 @@
 namespace ceph {
   class Formatter;
 }
+using ceph::Formatter;
 
 typedef enum {
   CLOG_DEBUG = 0,

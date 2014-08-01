@@ -1,12 +1,17 @@
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
+// vim: ts=8 sw=2 smarttab
+
 #ifndef __CEPH_SNAP_TYPES_H
 #define __CEPH_SNAP_TYPES_H
 
 #include "include/types.h"
 
 namespace ceph {
-
-class Formatter;
+  class Formatter;
 }
+
+using ceph::Formatter;
+
 struct SnapRealmInfo {
   mutable ceph_mds_snap_realm h;
   vector<snapid_t> my_snaps;

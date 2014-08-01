@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 #include "include/int_types.h"
 
@@ -93,6 +93,8 @@ using ceph::crypto::SHA1;
 #define XATTR_SPILL_OUT_NAME "user.cephos.spill_out"
 #define XATTR_NO_SPILL_OUT "0"
 #define XATTR_SPILL_OUT "1"
+
+using ceph::BackTrace;
 
 //Initial features in new superblock.
 static CompatSet get_fs_initial_compat_set() {
@@ -3379,12 +3381,12 @@ int FileStore::_fgetattr(int fd, const char *name, bufferptr& bp)
   char val[100];
   int l = chain_fgetxattr(fd, name, val, sizeof(val));
   if (l >= 0) {
-    bp = buffer::create(l);
+    bp = ceph::buffer::create(l);
     memcpy(bp.c_str(), val, l);
   } else if (l == -ERANGE) {
     l = chain_fgetxattr(fd, name, 0, 0);
     if (l > 0) {
-      bp = buffer::create(l);
+      bp = ceph::buffer::create(l);
       l = chain_fgetxattr(fd, name, bp.c_str(), l);
     }
   }
@@ -3846,7 +3848,7 @@ int FileStore::_rmattrs(coll_t cid, const ghobject_t& oid,
 // collections
 
 int FileStore::collection_getattr(coll_t c, const char *name,
-				  void *value, size_t size) 
+				  void *value, size_t size)
 {
   char fn[PATH_MAX];
   get_cdir(c, fn, sizeof(fn));
@@ -3862,7 +3864,8 @@ int FileStore::collection_getattr(coll_t c, const char *name,
   r = chain_fgetxattr(fd, n, value, size);
   VOID_TEMP_FAILURE_RETRY(::close(fd));
  out:
-  dout(10) << "collection_getattr " << fn << " '" << name << "' len " << size << " = " << r << dendl;
+  dout(10) << "collection_getattr " << fn << " '" << name << "' len " << size
+	   << " = " << r << dendl;
   assert(!m_filestore_fail_eio || r != -EIO);
   return r;
 }
@@ -3874,7 +3877,7 @@ int FileStore::collection_getattr(coll_t c, const char *name, bufferlist& bl)
   dout(15) << "collection_getattr " << fn << " '" << name << "'" << dendl;
   char n[PATH_MAX];
   get_attrname(name, n, PATH_MAX);
-  buffer::ptr bp;
+  ceph::buffer::ptr bp;
   int r;
   int fd = ::open(fn, O_RDONLY);
   if (fd < 0) {
@@ -3885,7 +3888,8 @@ int FileStore::collection_getattr(coll_t c, const char *name, bufferlist& bl)
   bl.push_back(bp);
   VOID_TEMP_FAILURE_RETRY(::close(fd));
  out:
-  dout(10) << "collection_getattr " << fn << " '" << name << "' = " << r << dendl;
+  dout(10) << "collection_getattr " << fn << " '" << name << "' = " << r
+	   << dendl;
   assert(!m_filestore_fail_eio || r != -EIO);
   return r;
 }

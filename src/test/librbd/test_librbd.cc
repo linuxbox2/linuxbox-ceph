@@ -1,4 +1,4 @@
-// -*- mode:C; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -1547,7 +1547,7 @@ void scribble(librbd::Image& image, int n, int max, interval_set<uint64_t> *exis
 
     } else {
       bufferlist bl;
-      bl.append(buffer::create(len));
+      bl.append(ceph::buffer::create(len));
       bl.zero();
       ASSERT_EQ((int)len, image.write(off, len, bl));
       interval_set<uint64_t> w;

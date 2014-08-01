@@ -486,7 +486,7 @@ int RGWBucket::link(RGWBucketAdminOpState& op_state, std::string *err_msg)
      bufferlist::iterator iter = aclbl.begin();
      ::decode(policy, iter);
      owner = policy.get_owner();
-    } catch (buffer::error& err) {
+    } catch (ceph::buffer::error& err) {
       set_err_msg(err_msg, "couldn't decode policy");
       return -EIO;
     }
@@ -767,7 +767,7 @@ int RGWBucket::policy_bl_to_stream(bufferlist& bl, ostream& o)
   bufferlist::iterator iter = bl.begin();
   try {
     policy.decode(iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     dout(0) << "ERROR: caught buffer::error, could not decode policy" << dendl;
     return -EIO;
   }
@@ -1271,7 +1271,7 @@ int RGWDataChangesLog::list_entries(int shard, utime_t& start_time, utime_t& end
     bufferlist::iterator liter = iter->data.begin();
     try {
       ::decode(entry, liter);
-    } catch (buffer::error& err) {
+    } catch (ceph::buffer::error& err) {
       lderr(cct) << "ERROR: failed to decode data changes log entry" << dendl;
       return -EIO;
     }

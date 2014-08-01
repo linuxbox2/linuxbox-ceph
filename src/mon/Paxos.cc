@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include <sstream>
@@ -27,8 +27,9 @@
 #define dout_subsys ceph_subsys_paxos
 #undef dout_prefix
 #define dout_prefix _prefix(_dout, mon, mon->name, mon->rank, paxos_name, state, first_committed, last_committed)
+
 static ostream& _prefix(std::ostream *_dout, Monitor *mon, const string& name,
-		        int rank, const string& paxos_name, int state,
+			int rank, const string& paxos_name, int state,
 			version_t first_committed, version_t last_committed)
 {
   return *_dout << "mon." << name << "@" << rank

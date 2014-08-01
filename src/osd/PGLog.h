@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -10,15 +10,15 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 #ifndef CEPH_PG_LOG_H
 #define CEPH_PG_LOG_H
 
 // re-include our assert to clobber boost's
-#include "include/assert.h" 
+#include "include/assert.h"
 #include "osd_types.h"
 #include "os/ObjectStore.h"
 #include "common/ceph_context.h"
@@ -38,7 +38,7 @@ struct PGLog {
   };
 
   /* Exceptions */
-  class read_log_error : public buffer::error {
+  class read_log_error : public ceph::buffer::error {
   public:
     explicit read_log_error(const char *what) {
       snprintf(buf, sizeof(buf), "read_log_error: %s", what);

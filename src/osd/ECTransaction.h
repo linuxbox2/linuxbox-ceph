@@ -22,6 +22,8 @@
 #include <boost/optional.hpp>
 #include "erasure-code/ErasureCodeInterface.h"
 
+using ceph::ErasureCodeInterfaceRef;
+
 class ECTransaction : public PGBackend::PGTransaction {
 public:
   struct AppendOp {

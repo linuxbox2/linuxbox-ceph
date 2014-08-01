@@ -70,6 +70,21 @@ extern void __ceph_assert_fail(const char *assertion, const char *file, int line
   __attribute__ ((__noreturn__));
 extern void __ceph_assert_warn(const char *assertion, const char *file, int line, const char *function);
 
+
+#ifdef __cplusplus
+
+#define ceph_assert(expr)							\
+  ((expr)								\
+   ? __CEPH_ASSERT_VOID_CAST (0)					\
+     : ceph::__ceph_assert_fail (__STRING(expr), __FILE__, __LINE__, __CEPH_ASSERT_FUNCTION))
+
+#define assert_warn(expr)							\
+  ((expr)								\
+   ? __CEPH_ASSERT_VOID_CAST (0)					\
+   : ceph::__ceph_assert_warn (__STRING(expr), __FILE__, __LINE__, __CEPH_ASSERT_FUNCTION))
+
+#else /* ! __cplusplus  */
+
 #define ceph_assert(expr)							\
   ((expr)								\
    ? __CEPH_ASSERT_VOID_CAST (0)					\
@@ -79,6 +94,8 @@ extern void __ceph_assert_warn(const char *assertion, const char *file, int line
   ((expr)								\
    ? __CEPH_ASSERT_VOID_CAST (0)					\
    : __ceph_assert_warn (__STRING(expr), __FILE__, __LINE__, __CEPH_ASSERT_FUNCTION))
+
+#endif
 
 /*
 #define assert(expr)							\
@@ -103,8 +120,6 @@ extern void __ceph_assert_warn(const char *assertion, const char *file, int line
 #ifdef __cplusplus
 }
 
-using namespace ceph;
-
 #endif
 
 /*
@@ -115,7 +130,7 @@ using namespace ceph;
  */
 #define ceph_abort() assert(0)
 
-#endif
+#endif /* CEPH_ASSERT_H ?? XXXX very suspicous the following unguarded */
 
 // wipe any prior assert definition
 #ifdef assert
@@ -133,8 +148,19 @@ using namespace ceph;
 #undef __ASSERT_FUNCTION
 #define __ASSERT_FUNCTION
 
+
+#ifdef __cplusplus
+
+#define assert(expr)							\
+  ((expr)								\
+   ? __CEPH_ASSERT_VOID_CAST (0)					\
+   : ceph::__ceph_assert_fail (__STRING(expr), __FILE__, __LINE__, __CEPH_ASSERT_FUNCTION))
+
+#else /* ! __cplusplus */
+
 #define assert(expr)							\
   ((expr)								\
    ? __CEPH_ASSERT_VOID_CAST (0)					\
    : __ceph_assert_fail (__STRING(expr), __FILE__, __LINE__, __CEPH_ASSERT_FUNCTION))
 
+#endif

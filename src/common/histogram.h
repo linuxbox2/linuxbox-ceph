@@ -22,6 +22,8 @@ namespace ceph {
   class Formatter;
 }
 
+using ceph::Formatter;
+
 /**
  * power of 2 histogram
  */

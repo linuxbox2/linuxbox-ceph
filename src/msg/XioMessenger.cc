@@ -22,8 +22,11 @@
 #include "XioMsg.h"
 #include "XioMessenger.h"
 #include "common/address_helper.h"
+#include "include/buffer_xio.h"
 
 #define dout_subsys ceph_subsys_xio
+
+using namespace ceph;
 
 Mutex mtx("XioMessenger Package Lock");
 atomic_t initialized;

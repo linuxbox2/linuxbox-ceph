@@ -28,6 +28,8 @@
 #include "global/global_init.h"
 #include <gtest/gtest.h>
 
+using namespace ceph;
+
 class ThrottleTest : public ::testing::Test {
 protected:
 

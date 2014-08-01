@@ -95,7 +95,7 @@ static int read_lock(cls_method_context_t hctx, const string& name, lock_info_t 
   try {
     bufferlist::iterator it = bl.begin();
     ::decode(*lock, it);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     CLS_ERR("error decoding %s", key.c_str());
     return -EIO;
   }
@@ -255,7 +255,7 @@ static int lock_op(cls_method_context_t hctx,
   try {
     bufferlist::iterator iter = in->begin();
     ::decode(op, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -320,7 +320,7 @@ static int unlock_op(cls_method_context_t hctx,
   try {
     bufferlist::iterator iter = in->begin();
     ::decode(op, iter);
-  } catch (const buffer::error& err) {
+  } catch (const ceph::buffer::error& err) {
     return -EINVAL;
   }
 
@@ -348,7 +348,7 @@ static int break_lock(cls_method_context_t hctx,
   try {
     bufferlist::iterator iter = in->begin();
     ::decode(op, iter);
-  } catch (const buffer::error& err) {
+  } catch (const ceph::buffer::error& err) {
     return -EINVAL;
   }
 
@@ -374,7 +374,7 @@ static int get_info(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   try {
     bufferlist::iterator iter = in->begin();
     ::decode(op, iter);
-  } catch (const buffer::error& err) {
+  } catch (const ceph::buffer::error& err) {
     return -EINVAL;
   }
 

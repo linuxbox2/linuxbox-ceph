@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include <sys/socket.h>
@@ -340,7 +340,7 @@ int Pipe::accept()
 
     authorizer.clear();
     if (connect.authorizer_len) {
-      bp = buffer::create(connect.authorizer_len);
+      bp = ceph::buffer::create(connect.authorizer_len);
       if (tcp_read(bp.c_str(), connect.authorizer_len) < 0) {
         ldout(msgr->cct,10) << "accept couldn't read connect authorizer" << dendl;
         goto fail_unlocked;
@@ -976,7 +976,7 @@ int Pipe::connect()
 
     if (reply.authorizer_len) {
       ldout(msgr->cct,10) << "reply.authorizer_len=" << reply.authorizer_len << dendl;
-      bufferptr bp = buffer::create(reply.authorizer_len);
+      bufferptr bp = ceph::buffer::create(reply.authorizer_len);
       if (tcp_read(bp.c_str(), reply.authorizer_len) < 0) {
         ldout(msgr->cct,10) << "connect couldn't read connect authorizer_reply" << dendl;
 	goto fail;
@@ -1757,18 +1757,18 @@ static void alloc_aligned_buffer(bufferlist& data, unsigned len, unsigned off)
     // head
     unsigned head = 0;
     head = MIN(CEPH_PAGE_SIZE - (off & ~CEPH_PAGE_MASK), left);
-    bufferptr bp = buffer::create(head);
+    bufferptr bp = ceph::buffer::create(head);
     data.push_back(bp);
     left -= head;
   }
   unsigned middle = left & CEPH_PAGE_MASK;
   if (middle > 0) {
-    bufferptr bp = buffer::create_page_aligned(middle);
+    bufferptr bp = ceph::buffer::create_page_aligned(middle);
     data.push_back(bp);
     left -= middle;
   }
   if (left) {
-    bufferptr bp = buffer::create(left);
+    bufferptr bp = ceph::buffer::create(left);
     data.push_back(bp);
   }
 }
@@ -1855,7 +1855,7 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
   // read front
   front_len = header.front_len;
   if (front_len) {
-    bufferptr bp = buffer::create(front_len);
+    bufferptr bp = ceph::buffer::create(front_len);
     if (tcp_read(bp.c_str(), front_len) < 0)
       goto out_dethrottle;
     front.push_back(bp);
@@ -1865,7 +1865,7 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
   // read middle
   middle_len = header.middle_len;
   if (middle_len) {
-    bufferptr bp = buffer::create(middle_len);
+    bufferptr bp = ceph::buffer::create(middle_len);
     if (tcp_read(bp.c_str(), middle_len) < 0)
       goto out_dethrottle;
     middle.push_back(bp);
@@ -1901,7 +1901,7 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
 	  rxbuf_version = p->second.second;
 	  // make sure it's big enough
 	  if (rxbuf.length() < data_len)
-	    rxbuf.push_back(buffer::create(data_len - rxbuf.length()));
+	    rxbuf.push_back(ceph::buffer::create(data_len - rxbuf.length()));
 	  blp = p->second.first.begin();
 	  blp.advance(offset);
 	}

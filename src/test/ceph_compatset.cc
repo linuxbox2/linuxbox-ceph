@@ -32,6 +32,8 @@
 #include "gtest/gtest.h"
 #include <vector>
 
+using namespace ceph;
+
 TEST(CephCompatSet, AllSet) {
   CompatSet::FeatureSet compat;
   CompatSet::FeatureSet ro;

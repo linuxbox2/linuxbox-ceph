@@ -34,7 +34,7 @@ public:
     m_delay.to_timespec(&delay);
     nanosleep(&delay, NULL);
     if (m_bl) {
-      buffer::ptr bp(r);
+      ceph::buffer::ptr bp(r);
       bp.zero();
       m_bl->append(bp);
       ldout(m_cct, 20) << "finished read " << m_off << "~" << r << dendl;

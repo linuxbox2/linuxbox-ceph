@@ -76,7 +76,7 @@ int cls_rgw_list_op(IoCtx& io_ctx, string& oid, string& start_obj,
   try {
     bufferlist::iterator iter = out.begin();
     ::decode(ret, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EIO;
   }
 
@@ -101,7 +101,7 @@ int cls_rgw_bucket_check_index_op(IoCtx& io_ctx, string& oid,
   try {
     bufferlist::iterator iter = out.begin();
     ::decode(ret, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EIO;
   }
 
@@ -148,7 +148,7 @@ int cls_rgw_get_dir_header(IoCtx& io_ctx, string& oid, rgw_bucket_dir_header *he
   try {
     bufferlist::iterator iter = out.begin();
     ::decode(ret, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EIO;
   }
 
@@ -170,7 +170,7 @@ public:
     try {
       bufferlist::iterator iter = outbl.begin();
       ::decode(ret, iter);
-    } catch (buffer::error& err) {
+    } catch (ceph::buffer::error& err) {
       r = -EIO;
     }
 
@@ -212,7 +212,7 @@ int cls_rgw_bi_log_list(IoCtx& io_ctx, string& oid, string& marker, uint32_t max
   try {
     bufferlist::iterator iter = out.begin();
     ::decode(ret, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EIO;
   }
 
@@ -274,7 +274,7 @@ int cls_rgw_usage_log_read(IoCtx& io_ctx, string& oid, string& user,
       *is_truncated = result.truncated;
 
     usage = result.usage;
-  } catch (buffer::error& e) {
+  } catch (ceph::buffer::error& e) {
     return -EINVAL;
   }
 
@@ -341,7 +341,7 @@ int cls_rgw_gc_list(IoCtx& io_ctx, string& oid, string& marker, uint32_t max, bo
   try {
     bufferlist::iterator iter = out.begin();
     ::decode(ret, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EIO;
   }
 

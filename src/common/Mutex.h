@@ -17,12 +17,10 @@
 
 #include "include/assert.h"
 #include "lockdep.h"
-#include "common/ceph_context.h"
 
 #include <pthread.h>
 
-using namespace ceph;
-
+class CephContext;
 class PerfCounters;
 
 enum {

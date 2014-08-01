@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 
@@ -88,12 +88,14 @@
 #define dout_prefix _prefix(_dout, this)
 static ostream& _prefix(std::ostream *_dout, const Monitor *mon) {
   return *_dout << "mon." << mon->name << "@" << mon->rank
-		<< "(" << mon->get_state_name() << ") e" << mon->monmap->get_epoch() << " ";
+		<< "(" << mon->get_state_name() << ") e"
+		<< mon->monmap->get_epoch() << " ";
 }
 
 const string Monitor::MONITOR_NAME = "monitor";
 const string Monitor::MONITOR_STORE_PREFIX = "monitor_store";
 
+using ceph::new_formatter;
 
 #undef COMMAND
 MonCommand mon_commands[] = {
@@ -104,7 +106,6 @@ MonCommand mon_commands[] = {
 MonCommand classic_mon_commands[] = {
 #include <mon/DumplingMonCommands.h>
 };
-
 
 long parse_pos_long(const char *s, ostream *pss)
 {
@@ -3953,7 +3954,7 @@ int Monitor::mkfs(bufferlist& osdmapbl)
       OSDMap om;
       om.decode(osdmapbl);
     }
-    catch (buffer::error& e) {
+    catch (ceph::buffer::error& e) {
       derr << "error decoding provided osdmap: " << e.what() << dendl;
       return -EINVAL;
     }
@@ -3974,7 +3975,7 @@ int Monitor::mkfs(bufferlist& osdmapbl)
 	  bufferlist::iterator i = bl.begin();
 	  keyring.decode_plaintext(i);
 	}
-	catch (const buffer::error& e) {
+	catch (const ceph::buffer::error& e) {
 	  derr << "error decoding keyring " << keyring_plaintext
 	       << ": " << e.what() << dendl;
 	  return -EINVAL;

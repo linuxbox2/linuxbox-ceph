@@ -11,7 +11,7 @@
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
- * 
+ *
  */
 
 #include <errno.h>
@@ -23,6 +23,8 @@
 #define PLUGIN_PREFIX "libec_"
 #define PLUGIN_SUFFIX ".so"
 #define PLUGIN_INIT_FUNCTION "__erasure_code_init"
+
+using namespace ceph;
 
 ErasureCodePluginRegistry ErasureCodePluginRegistry::singleton;
 

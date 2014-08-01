@@ -9,6 +9,8 @@
 /* lock flags */
 #define LOCK_FLAG_RENEW 0x1        /* idempotent lock acquire */
 
+using ceph::Formatter;
+
 enum ClsLockType {
   LOCK_NONE      = 0,
   LOCK_EXCLUSIVE = 1,

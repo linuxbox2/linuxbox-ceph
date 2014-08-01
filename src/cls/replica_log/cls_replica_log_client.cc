@@ -80,7 +80,7 @@ int cls_replica_log_get_bounds(librados::IoCtx& io_ctx, const string& oid,
   try {
     bufferlist::iterator i = out.begin();
     ::decode(ret, i);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EIO;
   }
 

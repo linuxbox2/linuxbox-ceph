@@ -33,6 +33,9 @@ CEPH_HASH_NAMESPACE_START
 CEPH_HASH_NAMESPACE_END
 #endif
 
+using ceph::BackTrace;
+using ceph::unordered_map;
+
 /******* Constants **********/
 #undef DOUT_COND
 #define DOUT_COND(cct, l) cct && l <= XDOUT_CONDVAR(cct, dout_subsys)
@@ -51,11 +54,11 @@ struct lockdep_stopper_t {
 static pthread_mutex_t lockdep_mutex = PTHREAD_MUTEX_INITIALIZER;
 static CephContext *g_lockdep_ceph_ctx = NULL;
 static lockdep_stopper_t lockdep_stopper;
-static ceph::unordered_map<const char *, int> lock_ids;
+static unordered_map<const char *, int> lock_ids;
 static map<int, const char *> lock_names;
 static int last_id = 0;
-static ceph::unordered_map<pthread_t, map<int,BackTrace*> > held;
-static BackTrace *follows[MAX_LOCKS][MAX_LOCKS];       // follows[a][b] means b taken after a
+static unordered_map<pthread_t, map<int,BackTrace*> > held;
+static BackTrace *follows[MAX_LOCKS][MAX_LOCKS]; // follows[a][b] means b taken after a
 
 /******* Functions **********/
 void lockdep_register_ceph_context(CephContext *cct)
@@ -93,7 +96,7 @@ int lockdep_dump_locks()
 {
   pthread_mutex_lock(&lockdep_mutex);
 
-  for (ceph::unordered_map<pthread_t, map<int,BackTrace*> >::iterator p = held.begin();
+  for (unordered_map<pthread_t, map<int,BackTrace*> >::iterator p = held.begin();
        p != held.end();
        ++p) {
     lockdep_dout(0) << "--- thread " << p->first << " ---" << dendl;
@@ -111,7 +114,6 @@ int lockdep_dump_locks()
   return 0;
 }
 
-
 int lockdep_register(const char *name)
 {
   int id;
@@ -122,7 +124,7 @@ int lockdep_register(const char *name)
       for (int j=0; j<MAX_LOCKS; j++)
 	follows[i][j] = NULL;
 
-  ceph::unordered_map<const char *, int>::iterator p = lock_ids.find(name);
+  unordered_map<const char *, int>::iterator p = lock_ids.find(name);
   if (p == lock_ids.end()) {
     assert(last_id < MAX_LOCKS);
     id = last_id++;
@@ -138,7 +140,6 @@ int lockdep_register(const char *name)
 
   return id;
 }
-
 
 // does a follow b?
 static bool does_follow(int a, int b)

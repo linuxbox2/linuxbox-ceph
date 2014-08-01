@@ -17,6 +17,9 @@
 
 #define dout_subsys ceph_subsys_rgw
 
+using ceph::Formatter;
+using ceph::JSONFormatter;
+
 static list<string> roles_list;
 
 class RGWValidateSwiftToken : public RGWHTTPClient {

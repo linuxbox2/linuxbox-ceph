@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_MSG_TYPES_H
@@ -118,17 +118,17 @@ public:
     ::decode(_type, bl);
     ::decode(_num, bl);
   }
-  void dump(Formatter *f) const;
+  void dump(ceph::Formatter *f) const;
 
   static void generate_test_instances(list<entity_name_t*>& o);
 };
 WRITE_CLASS_ENCODER(entity_name_t)
 
-inline bool operator== (const entity_name_t& l, const entity_name_t& r) { 
+inline bool operator== (const entity_name_t& l, const entity_name_t& r) {
   return (l.type() == r.type()) && (l.num() == r.num()); }
-inline bool operator!= (const entity_name_t& l, const entity_name_t& r) { 
+inline bool operator!= (const entity_name_t& l, const entity_name_t& r) {
   return (l.type() != r.type()) || (l.num() != r.num()); }
-inline bool operator< (const entity_name_t& l, const entity_name_t& r) { 
+inline bool operator< (const entity_name_t& l, const entity_name_t& r) {
   return (l.type() < r.type()) || (l.type() == r.type() && l.num() < r.num()); }
 
 inline std::ostream& operator<<(std::ostream& out, const entity_name_t& addr) {
@@ -344,7 +344,7 @@ struct entity_addr_t {
     ::decode(addr, bl);
   }
 
-  void dump(Formatter *f) const;
+  void dump(ceph::Formatter *f) const;
 
   static void generate_test_instances(list<entity_addr_t*>& o);
 };

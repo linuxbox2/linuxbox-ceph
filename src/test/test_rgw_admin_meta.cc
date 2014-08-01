@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -43,9 +43,12 @@ extern "C"{
 #define EXPECT_EQ(v, s) ASSERT_EQ(v, s)
 #define ASSERT_TRUE(c) if(c)cout << "Error at " << __LINE__ << "(" << #c << ")" << "\n"; \
                           else cout << "(" << #c << ") PASSED\n";
-#define EXPECT_TRUE(c) ASSERT_TRUE(c) 
+#define EXPECT_TRUE(c) ASSERT_TRUE(c)
 #endif
+
 using namespace std;
+using ceph::Formatter;
+using ceph::JSONFormatter;
 
 #define CURL_VERBOSE 0
 #define HTTP_RESPONSE_STR "RespCode"
@@ -57,7 +60,7 @@ static string uid = CEPH_UID;
 static string display_name = "CEPH";
 static string meta_caps = "metadata";
 
-extern "C" int ceph_armor(char *dst, const char *dst_end, 
+extern "C" int ceph_armor(char *dst, const char *dst_end,
                           const char *src, const char *end);
 static void print_usage(char *exec){
   cout << "Usage: " << exec << " <Options>\n";

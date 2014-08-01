@@ -17,6 +17,8 @@
 #include "include/types.h"
 #include <errno.h>
 
+using ceph::Formatter;
+
 class JSONObj;
 
 struct cls_replica_log_item_marker {

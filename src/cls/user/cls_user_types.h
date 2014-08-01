@@ -8,6 +8,8 @@
 #include "include/types.h"
 #include "include/utime.h"
 
+using ceph::Formatter;
+
 /*
  * this needs to be compatible with with rgw_bucket, as it replaces it
  */

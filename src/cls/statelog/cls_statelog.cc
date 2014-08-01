@@ -90,7 +90,7 @@ static int get_existing_entry(cls_method_context_t hctx, const string& client_id
   try {
     bufferlist::iterator iter = bl.begin();
     ::decode(entry, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(0, "ERROR: failed to decode entry %s", obj_index.c_str());
     return -EIO;
   }
@@ -113,7 +113,7 @@ static int cls_statelog_add(cls_method_context_t hctx, bufferlist *in, bufferlis
   cls_statelog_add_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: cls_statelog_add_op(): failed to decode op");
     return -EINVAL;
   }
@@ -153,7 +153,7 @@ static int cls_statelog_list(cls_method_context_t hctx, bufferlist *in, bufferli
   cls_statelog_list_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: cls_statelog_list_op(): failed to decode op");
     return -EINVAL;
   }
@@ -206,7 +206,7 @@ static int cls_statelog_list(cls_method_context_t hctx, bufferlist *in, bufferli
       cls_statelog_entry e;
       ::decode(e, biter);
       entries.push_back(e);
-    } catch (buffer::error& err) {
+    } catch (ceph::buffer::error& err) {
       CLS_LOG(0, "ERROR: cls_statelog_list: could not decode entry, index=%s", index.c_str());
     }
   }
@@ -230,7 +230,7 @@ static int cls_statelog_remove(cls_method_context_t hctx, bufferlist *in, buffer
   cls_statelog_remove_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: cls_statelog_remove_op(): failed to decode op");
     return -EINVAL;
   }
@@ -269,7 +269,7 @@ static int cls_statelog_check_state(cls_method_context_t hctx, bufferlist *in, b
   cls_statelog_check_state_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: cls_statelog_check_state_op(): failed to decode op");
     return -EINVAL;
   }

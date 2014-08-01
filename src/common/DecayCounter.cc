@@ -15,6 +15,8 @@
 #include "DecayCounter.h"
 #include "Formatter.h"
 
+using namespace ceph;
+
 void DecayCounter::encode(bufferlist& bl) const
 {
   ENCODE_START(4, 4, bl);

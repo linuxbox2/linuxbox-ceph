@@ -28,6 +28,8 @@ static ostream& _prefix(std::ostream *_dout, ReplicatedBackend *pgb) {
   return *_dout << pgb->get_parent()->gen_dbg_prefix();
 }
 
+using namespace ceph;
+
 ReplicatedBackend::ReplicatedBackend(
   PGBackend::Listener *pg,
   coll_t coll,

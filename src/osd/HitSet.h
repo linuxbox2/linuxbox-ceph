@@ -23,6 +23,8 @@
 #include "common/hobject.h"
 #include "common/Formatter.h"
 
+using ceph::Formatter;
+
 /**
  * generic container for a HitSet
  *

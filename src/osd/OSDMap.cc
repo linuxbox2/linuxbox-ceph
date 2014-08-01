@@ -26,6 +26,9 @@
 
 #define dout_subsys ceph_subsys_osd
 
+using ceph::Formatter;
+using ceph::JSONFormatter;
+
 // ----------------------------------
 // osd_info_t
 

@@ -92,7 +92,7 @@ extern void class_fini(void);
 }
 
 typedef int (*cls_method_cxx_call_t)(cls_method_context_t ctx,
-				     class buffer::list *inbl, class buffer::list *outbl);
+				     class ceph::buffer::list *inbl, class ceph::buffer::list *outbl);
 
 extern int cls_register_cxx_method(cls_handle_t hclass, const char *method, int flags,
 				   cls_method_cxx_call_t class_call, cls_method_handle_t *handle);

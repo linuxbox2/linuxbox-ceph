@@ -206,7 +206,7 @@ int rgw_get_user_info_from_index(RGWRados *store, string& key, rgw_bucket& bucke
   try {
     ::decode(uid, iter);
     return rgw_get_user_info_by_uid(store, uid.user_id, info, objv_tracker);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     ldout(store->ctx(), 0) << "ERROR: failed to decode user info, caught buffer::error" << dendl;
     return -EIO;
   }
@@ -238,7 +238,7 @@ int rgw_get_user_info_by_uid(RGWRados *store, string& uid, RGWUserInfo& info,
     if (!iter.end()) {
       ::decode(info, iter);
     }
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     ldout(store->ctx(), 0) << "ERROR: failed to decode user info, caught buffer::error" << dendl;
     return -EIO;
   }

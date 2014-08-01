@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_MON_TYPES_H
@@ -39,6 +39,9 @@ inline const char *get_paxos_name(int p) {
 }
 
 #define CEPH_MON_ONDISK_MAGIC "ceph mon volume v012"
+
+using ceph::Formatter;
+using ceph::JSONFormatter;
 
 /**
  * leveldb store stats

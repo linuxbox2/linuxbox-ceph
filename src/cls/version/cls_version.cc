@@ -80,7 +80,7 @@ static int read_version(cls_method_context_t hctx, obj_version *objv, bool impli
   try {
     bufferlist::iterator iter = bl.begin();
     ::decode(*objv, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(0, "ERROR: read_version(): failed to decode version entry\n");
     return -EIO;
   }
@@ -95,7 +95,7 @@ static int cls_version_set(cls_method_context_t hctx, bufferlist *in, bufferlist
   cls_version_set_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: cls_version_get(): failed to decode entry\n");
     return -EINVAL;
   }
@@ -160,7 +160,7 @@ static int cls_version_inc(cls_method_context_t hctx, bufferlist *in, bufferlist
   cls_version_inc_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: cls_version_get(): failed to decode entry\n");
     return -EINVAL;
   }
@@ -189,7 +189,7 @@ static int cls_version_check(cls_method_context_t hctx, bufferlist *in, bufferli
   cls_version_check_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: cls_version_get(): failed to decode entry\n");
     return -EINVAL;
   }

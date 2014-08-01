@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,14 +7,14 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_REFCOUNTEDOBJ_H
 #define CEPH_REFCOUNTEDOBJ_H
- 
+
 #include "common/Mutex.h"
 #include "common/Cond.h"
 #include "include/atomic.h"
@@ -24,7 +24,7 @@ struct RefCountedObject {
   atomic_t nref;
   RefCountedObject() : nref(1) {}
   virtual ~RefCountedObject() {}
-  
+
   RefCountedObject *get() {
     //generic_dout(0) << "RefCountedObject::get " << this << " " << nref.read() << " -> " << (nref.read() + 1) << dendl;
     nref.inc();
@@ -84,8 +84,8 @@ struct RefCountedCond : public RefCountedObject {
  * immediately, a put_wait() will return only when the object is destroyed.
  * e.g., useful when we want to wait for a specific event completion. We
  * use RefCountedCond, as the condition can be referenced after the object
- * destruction. 
- *    
+ * destruction.
+ *
  */
 struct RefCountedWaitObject {
   atomic_t nref;

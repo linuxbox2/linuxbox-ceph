@@ -13,6 +13,8 @@
 #define DEFAULT_SWIFT_PREFIX "swift"
 
 using namespace ceph::crypto;
+using ceph::Formatter;
+using ceph::JSONFormatter;
 
 static int build_token(string& swift_user, string& key, uint64_t nonce, utime_t& expiration, bufferlist& bl)
 {
@@ -87,7 +89,7 @@ int rgw_swift_verify_signed_token(CephContext *cct, RGWRados *store, const char 
     ::decode(swift_user, iter);
     ::decode(nonce, iter);
     ::decode(expiration, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     dout(0) << "NOTICE: failed to decode token: caught exception" << dendl;
     return -EINVAL;
   }

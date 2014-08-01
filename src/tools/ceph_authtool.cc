@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include "common/config.h"
@@ -166,7 +166,7 @@ int main(int argc, const char **argv)
       try {
 	bufferlist::iterator iter = bl.begin();
 	::decode(keyring, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	cerr << "error reading file " << fn << std::endl;
 	exit(1);
       }
@@ -186,12 +186,13 @@ int main(int argc, const char **argv)
       try {
 	bufferlist::iterator iter = obl.begin();
 	::decode(other, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	cerr << "error reading file " << import_keyring << std::endl;
 	exit(1);
       }
-      
-      cout << "importing contents of " << import_keyring << " into " << fn << std::endl;
+
+      cout << "importing contents of " << import_keyring << " into " << fn
+	   << std::endl;
       //other.print(cout);
       keyring.import(g_ceph_context, other);
       modified = true;
@@ -210,7 +211,7 @@ int main(int argc, const char **argv)
     EntityAuth eauth;
     try {
       eauth.key.decode_base64(add_key);
-    } catch (const buffer::error &err) {
+    } catch (const ceph::buffer::error &err) {
       cerr << "can't decode key '" << add_key << "'" << std::endl;
       exit(1);
     }

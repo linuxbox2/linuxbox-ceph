@@ -134,20 +134,22 @@ void global_init(std::vector < const char * > *alt_def_args,
     int r = ::mkdir(g_conf->run_dir.c_str(), 0755);
     if (r < 0 && errno != EEXIST) {
       r = -errno;
-      derr << "warning: unable to create " << g_conf->run_dir << ": " << cpp_strerror(r) << dendl;
+      derr << "warning: unable to create " << g_conf->run_dir << ": "
+	   << cpp_strerror(r) << dendl;
     }
   }
 
   if (g_lockdep) {
     lockdep_register_ceph_context(g_ceph_context);
   }
-  register_assert_context(g_ceph_context);
+  ceph::register_assert_context(g_ceph_context);
 
   // call all observers now.  this has the side-effect of configuring
   // and opening the log file immediately.
   g_conf->call_all_observers();
 
-  if (code_env == CODE_ENVIRONMENT_DAEMON && !(flags & CINIT_FLAG_NO_DAEMON_ACTIONS))
+  if (code_env == CODE_ENVIRONMENT_DAEMON &&
+      !(flags & CINIT_FLAG_NO_DAEMON_ACTIONS))
     output_ceph_version();
 }
 

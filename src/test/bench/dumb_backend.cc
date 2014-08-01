@@ -5,6 +5,9 @@
 #include <unistd.h>
 #include "dumb_backend.h"
 
+using ceph::Formatter;
+using ceph::new_formatter;
+
 string DumbBackend::get_full_path(const string &oid)
 {
 	return path + "/" + oid;

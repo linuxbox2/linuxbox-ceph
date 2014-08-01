@@ -25,6 +25,12 @@
 class TrackedOp;
 typedef ceph::shared_ptr<TrackedOp> TrackedOpRef;
 
+namespace ceph {
+  class Formatter;
+}
+
+using ceph::Formatter;
+
 class OpTracker;
 class OpHistory {
   set<pair<utime_t, TrackedOpRef> > arrived;

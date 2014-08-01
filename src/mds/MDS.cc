@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include <unistd.h>
@@ -2085,7 +2085,7 @@ bool MDS::_dispatch(Message *m)
     mlogger->inc(l_mdm_capa, g_num_capa);  g_num_capa = 0;
     mlogger->inc(l_mdm_caps, g_num_caps);  g_num_caps = 0;
 
-    mlogger->set(l_mdm_buf, buffer::get_total_alloc());
+    mlogger->set(l_mdm_buf, ceph::buffer::get_total_alloc());
 
   }
 

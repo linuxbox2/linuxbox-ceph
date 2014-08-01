@@ -81,7 +81,7 @@ public:
     try {
       m_object->decode(p);
     }
-    catch (buffer::error& e) {
+    catch (ceph::buffer::error& e) {
       return e.what();
     }
     if (!stray_okay && !p.end()) {
@@ -185,7 +185,7 @@ public:
       m_object->put();
       m_object = static_cast<T *>(n);
     }
-    catch (buffer::error& e) {
+    catch (ceph::buffer::error& e) {
       return e.what();
     }
     if (!p.end()) {

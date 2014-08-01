@@ -248,7 +248,7 @@ struct ObjectOperation {
 	    *pmtime = mtime;
 	  if (ptime)
 	    *ptime = mtime.sec();
-	} catch (buffer::error& e) {
+	} catch (ceph::buffer::error& e) {
 	  if (prval)
 	    *prval = -EIO;
 	}
@@ -300,7 +300,7 @@ struct ObjectOperation {
 	try {
 	  ::decode(*extents, iter);
 	  ::decode(*data_bl, iter);
-	} catch (buffer::error& e) {
+	} catch (ceph::buffer::error& e) {
 	  if (prval)
 	    *prval = -EIO;
 	}
@@ -381,7 +381,7 @@ struct ObjectOperation {
 	  if (pattrs)
 	    ::decode(*pattrs, p);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  if (prval)
 	    *prval = -EIO;
 	}
@@ -401,11 +401,11 @@ struct ObjectOperation {
 	  if (pattrs)
 	    ::decode(*pattrs, p);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  if (prval)
 	    *prval = -EIO;
 	}
-      }	
+      }
     }
   };
   struct C_ObjectOperation_decodewatchers : public Context {
@@ -418,27 +418,27 @@ struct ObjectOperation {
       if (r >= 0) {
 	bufferlist::iterator p = bl.begin();
 	try {
-          obj_list_watch_response_t resp;
+	  obj_list_watch_response_t resp;
 	  ::decode(resp, p);
 	  if (pwatchers) {
-            for (list<watch_item_t>::iterator i = resp.entries.begin() ;
-                    i != resp.entries.end() ; ++i) {
-              obj_watch_t ow;
+	    for (list<watch_item_t>::iterator i = resp.entries.begin() ;
+		 i != resp.entries.end() ; ++i) {
+	      obj_watch_t ow;
 	      ostringstream sa;
 	      sa << i->addr;
 	      strncpy(ow.addr, sa.str().c_str(), 256);
-              ow.watcher_id = i->name.num();
-              ow.cookie = i->cookie;
-              ow.timeout_seconds = i->timeout_seconds;
-              pwatchers->push_back(ow);
-            }
-          }
+	      ow.watcher_id = i->name.num();
+	      ow.cookie = i->cookie;
+	      ow.timeout_seconds = i->timeout_seconds;
+	      pwatchers->push_back(ow);
+	    }
+	  }
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  if (prval)
 	    *prval = -EIO;
 	}
-      }	
+      }
     }
   };
   struct C_ObjectOperation_decodesnaps : public Context {
@@ -451,27 +451,28 @@ struct ObjectOperation {
       if (r >= 0) {
 	bufferlist::iterator p = bl.begin();
 	try {
-          obj_list_snap_response_t resp;
+	  obj_list_snap_response_t resp;
 	  ::decode(resp, p);
 	  if (psnaps) {
-            psnaps->clones.clear();
-            for (vector<clone_info>::iterator ci = resp.clones.begin(); 
-		 ci != resp.clones.end(); 
+	    psnaps->clones.clear();
+	    for (vector<clone_info>::iterator ci = resp.clones.begin();
+		 ci != resp.clones.end();
 		 ++ci) {
-              librados::clone_info_t clone;
+	      librados::clone_info_t clone;
 
-              clone.cloneid = ci->cloneid;
-              clone.snaps.reserve(ci->snaps.size());
-              clone.snaps.insert(clone.snaps.end(), ci->snaps.begin(), ci->snaps.end());
-              clone.overlap = ci->overlap;
-              clone.size = ci->size;
+	      clone.cloneid = ci->cloneid;
+	      clone.snaps.reserve(ci->snaps.size());
+	      clone.snaps.insert(clone.snaps.end(), ci->snaps.begin(),
+				 ci->snaps.end());
+	      clone.overlap = ci->overlap;
+	      clone.size = ci->size;
 
-              psnaps->clones.push_back(clone);
-            }
+	      psnaps->clones.push_back(clone);
+	    }
 	    psnaps->seq = resp.seq;
-          }
+	  }
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  if (prval)
 	    *prval = -EIO;
 	}
@@ -670,7 +671,7 @@ struct ObjectOperation {
 	if (out_snap_seq)
 	  *out_snap_seq = copy_reply.snap_seq;
 	*cursor = copy_reply.cursor;
-      } catch (buffer::error& e) {
+      } catch (ceph::buffer::error& e) {
 	if (prval)
 	  *prval = -EIO;
       }
@@ -722,7 +723,7 @@ struct ObjectOperation {
 	::decode(isdirty, p);
 	if (pisdirty)
 	  *pisdirty = isdirty;
-      } catch (buffer::error& e) {
+      } catch (ceph::buffer::error& e) {
 	if (prval)
 	  *prval = -EIO;
       }
@@ -757,13 +758,16 @@ struct ObjectOperation {
 	::decode(ls, p);
 	if (ptls) {
 	  ptls->clear();
-	  for (list< pair<utime_t,utime_t> >::iterator p = ls.begin(); p != ls.end(); ++p)
-	    // round initial timestamp up to the next full second to keep this a valid interval.
-	    ptls->push_back(make_pair(p->first.usec() ? p->first.sec() + 1 : p->first.sec(), p->second.sec()));
+	  for (list< pair<utime_t,utime_t> >::iterator p = ls.begin();
+	       p != ls.end(); ++p)
+	    /* round initial timestamp up to the next full second to keep this
+	     * a valid interval. */
+	    ptls->push_back(make_pair(p->first.usec() ? p->first.sec() + 1 :
+				      p->first.sec(), p->second.sec()));
 	}
 	if (putls)
 	  putls->swap(ls);
-      } catch (buffer::error& e) {
+      } catch (ceph::buffer::error& e) {
 	r = -EIO;
       }
       if (prval)
@@ -774,8 +778,8 @@ struct ObjectOperation {
   /**
    * list available HitSets.
    *
-   * We will get back a list of time intervals.  Note that the most recent range may have
-   * an empty end timestamp if it is still accumulating.
+   * We will get back a list of time intervals.  Note that the most recent
+   * range may have an empty end timestamp if it is still accumulating.
    *
    * @param pls [out] list of time intervals
    * @param prval [out] return value
@@ -789,6 +793,7 @@ struct ObjectOperation {
     out_bl[p] = &h->bl;
     out_handler[p] = h;
   }
+
   void hit_set_ls(std::list< std::pair<utime_t, utime_t> > *pls, int *prval) {
     add_op(CEPH_OSD_OP_PG_HITSET_LS);
     unsigned p = ops.size() - 1;
@@ -850,8 +855,8 @@ struct ObjectOperation {
     add_call(CEPH_OSD_OP_CALL, cname, method, indata, NULL, NULL, NULL);
   }
 
-  void call(const char *cname, const char *method, bufferlist &indata, bufferlist *outdata,
-	    Context *ctx, int *prval) {
+  void call(const char *cname, const char *method, bufferlist &indata,
+	    bufferlist *outdata, Context *ctx, int *prval) {
     add_call(CEPH_OSD_OP_CALL, cname, method, indata, outdata, ctx, prval);
   }
 
@@ -862,7 +867,7 @@ struct ObjectOperation {
   }
 
   void notify(uint64_t cookie, uint64_t ver, bufferlist& inbl) {
-    add_watch(CEPH_OSD_OP_NOTIFY, cookie, ver, 1, inbl); 
+    add_watch(CEPH_OSD_OP_NOTIFY, cookie, ver, 1, inbl);
   }
 
   void notify_ack(uint64_t notify_id, uint64_t ver, uint64_t cookie) {
@@ -901,7 +906,8 @@ struct ObjectOperation {
     OSDOp& osd_op = add_op(CEPH_OSD_OP_ASSERT_VER);
     osd_op.op.assert_ver.ver = ver;
   }
-  void assert_src_version(const object_t& srcoid, snapid_t srcsnapid, uint64_t ver) {
+  void assert_src_version(const object_t& srcoid, snapid_t srcsnapid,
+			  uint64_t ver) {
     bufferlist bl;
     add_watch(CEPH_OSD_OP_ASSERT_SRC_VERSION, 0, ver, 0, bl);
     ops.rbegin()->soid = sobject_t(srcoid, srcsnapid);
@@ -981,9 +987,9 @@ struct ObjectOperation {
   }
 
   void set_alloc_hint(uint64_t expected_object_size,
-                      uint64_t expected_write_size ) {
+		      uint64_t expected_write_size ) {
     add_alloc_hint(CEPH_OSD_OP_SETALLOCHINT, expected_object_size,
-                   expected_write_size);
+		   expected_write_size);
 
     // CEPH_OSD_OP_SETALLOCHINT op is advisory and therefore deemed
     // not worth a feature bit.  Set FAILOK per-op flag to make
@@ -1033,7 +1039,7 @@ private:
   SafeTimer &timer;
 
   PerfCounters *logger;
-  
+
   class C_Tick : public Context {
     Objecter *ob;
   public:

@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_AUTHTYPES_H
@@ -20,6 +20,7 @@
 
 #include "common/config.h"
 #include "common/entity_name.h"
+
 
 class Cond;
 
@@ -50,7 +51,8 @@ struct EntityAuth {
 WRITE_CLASS_ENCODER(EntityAuth)
 
 static inline ostream& operator<<(ostream& out, const EntityAuth& a) {
-  return out << "auth(auid = " << a.auid << " key=" << a.key << " with " << a.caps.size() << " caps)";
+  return out << "auth(auid = " << a.auid << " key=" << a.key << " with "
+	     << a.caps.size() << " caps)";
 }
 
 struct AuthCapsInfo {

@@ -993,7 +993,7 @@ void CrushWrapper::decode(bufferlist::iterator& blp)
   __u32 magic;
   ::decode(magic, blp);
   if (magic != CRUSH_MAGIC)
-    throw buffer::malformed_input("bad magic number");
+    throw ceph::buffer::malformed_input("bad magic number");
 
   ::decode(crush->max_buckets, blp);
   ::decode(crush->max_rules, blp);
@@ -1083,7 +1083,7 @@ void CrushWrapper::decode_crush_bucket(crush_bucket** bptr, bufferlist::iterator
     {
       char str[128];
       snprintf(str, sizeof(str), "unsupported bucket algorithm: %d", alg);
-      throw buffer::malformed_input(str);
+      throw ceph::buffer::malformed_input(str);
     }
   }
   crush_bucket *bucket = (crush_bucket*)calloc(1, size);

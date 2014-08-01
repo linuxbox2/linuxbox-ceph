@@ -22,11 +22,14 @@
 
 #include "include/assert.h"
 #include "common/dout.h"
+#include "include/buffer_xio.h"
 
 extern struct xio_mempool *xio_msgr_mpool;
 extern struct xio_mempool *xio_msgr_noreg_mpool;
 
 #define dout_subsys ceph_subsys_xio
+
+using namespace ceph;
 
 void print_xio_msg_hdr(const char *tag, const XioMsgHdr &hdr,
 		       const struct xio_msg *msg)

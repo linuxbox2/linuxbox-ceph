@@ -166,7 +166,7 @@ static int read_key(cls_method_context_t hctx, const string &key, T *out)
   try {
     bufferlist::iterator it = bl.begin();
     ::decode(*out, it);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     CLS_ERR("error decoding %s", key.c_str());
     return -EIO;
   }
@@ -214,7 +214,7 @@ int create(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
     ::decode(order, iter);
     ::decode(features, iter);
     ::decode(object_prefix, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -286,7 +286,7 @@ int get_features(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   bufferlist::iterator iter = in->begin();
   try {
     ::decode(snap_id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -356,7 +356,7 @@ int get_size(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   bufferlist::iterator iter = in->begin();
   try {
     ::decode(snap_id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -405,7 +405,7 @@ int set_size(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   bufferlist::iterator iter = in->begin();
   try {
     ::decode(size, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -486,7 +486,7 @@ int get_protection_status(cls_method_context_t hctx, bufferlist *in,
   bufferlist::iterator iter = in->begin();
   try {
     ::decode(snap_id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     CLS_LOG(20, "get_protection_status: invalid decode");
     return -EINVAL;
   }
@@ -541,7 +541,7 @@ int set_protection_status(cls_method_context_t hctx, bufferlist *in,
   try {
     ::decode(snap_id, iter);
     ::decode(status, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     CLS_LOG(20, "set_protection_status: invalid decode");
     return -EINVAL;
   }
@@ -658,7 +658,7 @@ int set_stripe_unit_count(cls_method_context_t hctx, bufferlist *in, bufferlist 
   try {
     ::decode(stripe_unit, iter);
     ::decode(stripe_count, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     CLS_LOG(20, "set_stripe_unit_count: invalid decode");
     return -EINVAL;
   }
@@ -728,7 +728,7 @@ int get_parent(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   bufferlist::iterator iter = in->begin();
   try {
     ::decode(snap_id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -787,7 +787,7 @@ int set_parent(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
     ::decode(id, iter);
     ::decode(snapid, iter);
     ::decode(size, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     CLS_LOG(20, "cls_rbd::set_parent: invalid decode");
     return -EINVAL;
   }
@@ -887,7 +887,7 @@ static int decode_parent_common(bufferlist::iterator& it, uint64_t *pool_id,
     ::decode(*pool_id, it);
     ::decode(*image_id, it);
     ::decode(*snap_id, it);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     CLS_ERR("error decoding parent spec");
     return -EINVAL;
   }
@@ -911,7 +911,7 @@ static int decode_parent_and_child(bufferlist *in, uint64_t *pool_id,
     return r;
   try {
     ::decode(*c_image_id, it);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     CLS_ERR("error decoding child image id");
     return -EINVAL;
   }
@@ -1168,7 +1168,7 @@ int get_snapshot_name(cls_method_context_t hctx, bufferlist *in, bufferlist *out
   bufferlist::iterator iter = in->begin();
   try {
     ::decode(snap_id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -1210,7 +1210,7 @@ int snapshot_add(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
     bufferlist::iterator iter = in->begin();
     ::decode(snap_meta.name, iter);
     ::decode(snap_meta.id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -1258,7 +1258,7 @@ int snapshot_add(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
       bufferlist::iterator iter = it->second.begin();
       try {
 	::decode(old_meta, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	snapid_t snap_id = snap_id_from_key(it->first);
 	CLS_ERR("error decoding snapshot metadata for snap_id: %llu",
 	        (unsigned long long)snap_id.val);
@@ -1319,7 +1319,7 @@ int snapshot_remove(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   try {
     bufferlist::iterator iter = in->begin();
     ::decode(snap_id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -1417,7 +1417,7 @@ int get_id(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   try {
     bufferlist::iterator iter = read_bl.begin();
     ::decode(id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EIO;
   }
 
@@ -1445,7 +1445,7 @@ int set_id(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   try {
     bufferlist::iterator iter = in->begin();
     ::decode(id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -1587,7 +1587,7 @@ int dir_rename_image(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
     ::decode(src, iter);
     ::decode(dest, iter);
     ::decode(id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -1616,7 +1616,7 @@ int dir_get_id(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   try {
     bufferlist::iterator iter = in->begin();
     ::decode(name, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -1650,7 +1650,7 @@ int dir_get_name(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   try {
     bufferlist::iterator iter = in->begin();
     ::decode(id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -1688,7 +1688,7 @@ int dir_list(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
     bufferlist::iterator iter = in->begin();
     ::decode(start_after, iter);
     ::decode(max_return, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -1713,7 +1713,7 @@ int dir_list(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
       bufferlist::iterator iter = it->second.begin();
       try {
 	::decode(id, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	CLS_ERR("could not decode id of image '%s'", it->first.c_str());
 	return -EIO;
       }
@@ -1758,7 +1758,7 @@ int dir_add_image(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
     bufferlist::iterator iter = in->begin();
     ::decode(name, iter);
     ::decode(id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -1783,7 +1783,7 @@ int dir_remove_image(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
     bufferlist::iterator iter = in->begin();
     ::decode(name, iter);
     ::decode(id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
 
@@ -1852,7 +1852,7 @@ int old_snapshot_add(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   try {
     ::decode(s, iter);
     ::decode(snap_id, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
   snap_name = s.c_str();
@@ -1929,7 +1929,7 @@ int old_snapshot_remove(cls_method_context_t hctx, bufferlist *in, bufferlist *o
 
   try {
     ::decode(s, iter);
-  } catch (const buffer::error &err) {
+  } catch (const ceph::buffer::error &err) {
     return -EINVAL;
   }
   snap_name = s.c_str();

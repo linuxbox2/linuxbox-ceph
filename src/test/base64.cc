@@ -93,7 +93,7 @@ TEST(FuzzEncoding, BadDecode2) {
     cl.decode_base64(bl);
     cl.hexdump(std::cerr);
   }
-  catch (const buffer::error &err) {
+  catch (const ceph::buffer::error &err) {
     failed = true;
   }
   ASSERT_EQ(failed, true);

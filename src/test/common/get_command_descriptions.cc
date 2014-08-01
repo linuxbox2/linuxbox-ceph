@@ -25,6 +25,9 @@
 #include "common/ceph_argparse.h"
 #include "global/global_init.h"
 
+using ceph::Formatter;
+using ceph::new_formatter;
+
 static void usage(ostream &out)
 {
   out << "usage: get_command_descriptions [options ...]" << std::endl;

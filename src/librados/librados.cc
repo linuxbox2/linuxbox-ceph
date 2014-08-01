@@ -2370,7 +2370,7 @@ extern "C" int rados_read(rados_ioctx_t io, const char *o, char *buf, size_t len
   object_t oid(o);
 
   bufferlist bl;
-  bufferptr bp = buffer::create_static(len, buf);
+  bufferptr bp = ceph::buffer::create_static(len, buf);
   bl.push_back(bp);
 
   ret = ctx->read(oid, bl, len, off);
@@ -3002,7 +3002,7 @@ int rados_notify(rados_ioctx_t io, const char *o, uint64_t ver, const char *buf,
   object_t oid(o);
   bufferlist bl;
   if (buf) {
-    bufferptr p = buffer::create(buf_len);
+    bufferptr p = ceph::buffer::create(buf_len);
     memcpy(p.c_str(), buf, buf_len);
     bl.push_back(p);
   }
@@ -3414,7 +3414,7 @@ extern "C" void rados_read_op_read(rados_read_op_t read_op,
 				   int *prval)
 {
   C_bl_to_buf *ctx = new C_bl_to_buf(buf, len, bytes_read, prval);
-  ctx->out_bl.push_back(buffer::create_static(len, buf));
+  ctx->out_bl.push_back(ceph::buffer::create_static(len, buf));
   ((::ObjectOperation *)read_op)->read(offset, len, &ctx->out_bl, prval, ctx);
 }
 

@@ -28,6 +28,8 @@
 #include "global/global_init.h"
 #include <gtest/gtest.h>
 
+using namespace ceph;
+
 #define LARGE_BLOCK_LEN CHAIN_XATTR_MAX_BLOCK_LEN + 1024
 
 TEST(chain_xattr, get_and_set) {

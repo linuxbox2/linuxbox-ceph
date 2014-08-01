@@ -183,7 +183,7 @@ TEST(TestFileJournal, WriteManyVecs) {
 
   bufferlist bl;
   for (int i=0; i<IOV_MAX * 2; i++) {
-    bufferptr bp = buffer::create_page_aligned(4096);
+    bufferptr bp = ceph::buffer::create_page_aligned(4096);
     memset(bp.c_str(), (char)i, 4096);
     bl.append(bp);
   }
@@ -334,7 +334,7 @@ TEST(TestFileJournal, WriteTrim) {
 
   for (unsigned i=0; i<size_mb*2; i++) {
     bl.clear();
-    bl.push_back(buffer::copy(foo, sizeof(foo)));
+    bl.push_back(ceph::buffer::copy(foo, sizeof(foo)));
     bl.zero();
     ls.push_back(new C_Sync);
     j.submit_entry(seq++, bl, 0, ls.back()->c);
@@ -373,7 +373,7 @@ TEST(TestFileJournal, WriteTrimSmall) {
   for (unsigned i=0; i<size_mb*2; i++) {
     bl.clear();
     for (int k=0; k<128; k++)
-      bl.push_back(buffer::copy(foo, sizeof(foo) / 128));
+      bl.push_back(ceph::buffer::copy(foo, sizeof(foo) / 128));
     bl.zero();
     ls.push_back(new C_Sync);
     j.submit_entry(seq++, bl, 0, ls.back()->c);

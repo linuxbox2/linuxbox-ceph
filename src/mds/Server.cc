@@ -3834,7 +3834,7 @@ void Server::handle_client_setxattr(MDRequestRef& mdr)
   pi->xattr_version++;
   px->erase(name);
   if (!(flags & CEPH_XATTR_REMOVE)) {
-    (*px)[name] = buffer::create(len);
+    (*px)[name] = ceph::buffer::create(len);
     if (len)
       req->get_data().copy(0, len, (*px)[name].c_str());
   }

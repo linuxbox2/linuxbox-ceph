@@ -1,3 +1,5 @@
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
+// vim: ts=8 sw=2 smarttab
 #include <iostream>
 #include <include/types.h>
 #include <limits.h>
@@ -11,6 +13,7 @@
 
 using namespace std;
 using namespace json_spirit;
+using ceph::Formatter;
 
 #define dout_subsys ceph_subsys_rgw
 
@@ -22,7 +25,8 @@ JSONObjIter::~JSONObjIter()
 {
 }
 
-void JSONObjIter::set(const JSONObjIter::map_iter_t &_cur, const JSONObjIter::map_iter_t &_last)
+void JSONObjIter::set(const JSONObjIter::map_iter_t &_cur,
+		      const JSONObjIter::map_iter_t &_last)
 {
   cur = _cur;
   last = _last;
@@ -53,7 +57,6 @@ JSONObj::~JSONObj()
     delete obj;
   }
 }
-
 
 void JSONObj::add_child(string el, JSONObj *obj)
 {
@@ -433,7 +436,7 @@ void decode_json_obj(bufferlist& val, JSONObj *obj)
   bl.append(s.c_str(), s.size());
   try {
     val.decode_base64(bl);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
    throw JSONDecoder::err("failed to decode base64");
   }
 }

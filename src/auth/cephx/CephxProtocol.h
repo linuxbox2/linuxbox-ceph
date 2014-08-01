@@ -202,7 +202,7 @@ struct CephXChallengeBlob {
 };
 WRITE_CLASS_ENCODER(CephXChallengeBlob)
 
-void cephx_calc_client_server_challenge(CephContext *cct, 
+void cephx_calc_client_server_challenge(CephContext *cct,
 					CryptoKey& secret, uint64_t server_challenge, uint64_t client_challenge,
 					uint64_t *key, std::string &error);
 
@@ -223,7 +223,7 @@ struct CephXSessionAuthInfo {
 extern bool cephx_build_service_ticket_blob(CephContext *cct,
 					    CephXSessionAuthInfo& ticket_info, CephXTicketBlob& blob);
 
-extern void cephx_build_service_ticket_request(CephContext *cct, 
+extern void cephx_build_service_ticket_request(CephContext *cct,
 					       uint32_t keys,
 					       bufferlist& request);
 
@@ -474,7 +474,7 @@ int decode_decrypt(CephContext *cct, T& t, const CryptoKey& key,
     ::decode(bl_enc, iter);
     decode_decrypt_enc_bl(cct, t, key, bl_enc, error);
   }
-  catch (buffer::error &e) {
+  catch (ceph::buffer::error &e) {
     error = "error decoding block for decryption";
   }
   if (!error.empty())

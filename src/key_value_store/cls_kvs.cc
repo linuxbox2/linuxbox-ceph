@@ -84,7 +84,7 @@ static int get_idata_from_key_op(cls_method_context_t hctx,
   bufferlist::iterator it = in->begin();
   try {
     ::decode(op, it);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(20, "error decoding idata_from_key_args.");
     return -EINVAL;
   }
@@ -136,7 +136,7 @@ static int get_next_idata_op(cls_method_context_t hctx,
   bufferlist::iterator it = in->begin();
   try {
     ::decode(op, it);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EINVAL;
   }
   int r = get_next_idata(hctx, op.idata, op.next_idata);
@@ -197,7 +197,7 @@ static int get_prev_idata_op(cls_method_context_t hctx,
   bufferlist::iterator it = in->begin();
   try {
     ::decode(op, it);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EINVAL;
   }
   int r = get_prev_idata(hctx, op.idata, op.next_idata);
@@ -240,7 +240,7 @@ static int read_many_op(cls_method_context_t hctx, bufferlist *in,
   bufferlist::iterator it = in->begin();
   try {
     ::decode(op, it);
-  } catch (buffer::error & err) {
+  } catch (ceph::buffer::error & err) {
     return -EINVAL;
   }
   int r = read_many(hctx, op, &outmap);
@@ -327,7 +327,7 @@ static int assert_size_in_bound_op(cls_method_context_t hctx,
   bufferlist::iterator it = in->begin();
   try {
     ::decode(op, it);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EINVAL;
   }
   return assert_size_in_bound(hctx, op.bound, op.comparator);
@@ -425,7 +425,7 @@ static int omap_insert_op(cls_method_context_t hctx,
   bufferlist::iterator it = in->begin();
   try {
     ::decode(op, it);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EINVAL;
   }
   return omap_insert(hctx, op.omap, op.bound, op.exclusive);
@@ -479,7 +479,7 @@ static int create_with_omap_op(cls_method_context_t hctx,
   bufferlist::iterator it = in->begin();
   try {
     ::decode(omap, it);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EINVAL;
   }
   return create_with_omap(hctx, omap);
@@ -570,7 +570,7 @@ static int omap_remove_op(cls_method_context_t hctx,
   bufferlist::iterator it = in->begin();
   try {
     ::decode(op, it);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EINVAL;
   }
   return omap_remove(hctx, op.omap, op.bound);
@@ -633,7 +633,7 @@ static int maybe_read_for_balance_op(cls_method_context_t hctx,
   bufferlist::iterator it = in->begin();
   try {
     ::decode(op, it);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EINVAL;
   }
   int r = maybe_read_for_balance(hctx, op.odata, op.bound, op.comparator);

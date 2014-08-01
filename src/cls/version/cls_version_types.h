@@ -4,8 +4,9 @@
 #include "include/encoding.h"
 #include "include/types.h"
 
-class JSONObj;
+using ceph::Formatter;
 
+class JSONObj;
 
 struct obj_version {
   uint64_t ver;

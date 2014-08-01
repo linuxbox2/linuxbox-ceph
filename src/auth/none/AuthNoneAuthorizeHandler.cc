@@ -17,9 +17,11 @@
 
 #define dout_subsys ceph_subsys_auth
 
-bool AuthNoneAuthorizeHandler::verify_authorizer(CephContext *cct, KeyStore *keys,
-						 bufferlist& authorizer_data, bufferlist& authorizer_reply,
-						 EntityName& entity_name, uint64_t& global_id, AuthCapsInfo& caps_info, CryptoKey& session_key,
+bool AuthNoneAuthorizeHandler::verify_authorizer(
+  CephContext *cct, KeyStore *keys,
+  bufferlist& authorizer_data, bufferlist& authorizer_reply,
+  EntityName& entity_name, uint64_t& global_id, AuthCapsInfo& caps_info,
+  CryptoKey& session_key,
 uint64_t *auid)
 {
   if (authorizer_data.length() > 0) {
@@ -29,7 +31,7 @@ uint64_t *auid)
       ::decode(struct_v, iter);
       ::decode(entity_name, iter);
       ::decode(global_id, iter);
-    } catch (const buffer::error &err) {
+    } catch (const ceph::buffer::error &err) {
       ldout(cct, 0) << "AuthNoneAuthorizeHandle::verify_authorizer() failed to decode" << dendl;
       return false;
     }
@@ -42,7 +44,7 @@ uint64_t *auid)
 
 // Return type of crypto used for this session's data;  for none, no crypt used
 
-int AuthNoneAuthorizeHandler::authorizer_session_crypto() 
+int AuthNoneAuthorizeHandler::authorizer_session_crypto()
 {
   return SESSION_CRYPTO_NONE;
 }

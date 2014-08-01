@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -10,9 +10,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include <sstream>
@@ -60,6 +60,12 @@
 #define dout_subsys ceph_subsys_mon
 #undef dout_prefix
 #define dout_prefix _prefix(_dout, mon, osdmap)
+
+using ceph::Formatter;
+using ceph::JSONFormatter;
+using ceph::new_formatter;
+using ceph::ErasureCodePluginRegistry;
+
 static ostream& _prefix(std::ostream *_dout, Monitor *mon, OSDMap& osdmap) {
   return *_dout << "mon." << mon->name << "@" << mon->rank
 		<< "(" << mon->get_state_name()
@@ -609,7 +615,7 @@ int OSDMonitor::dump_osd_metadata(int osd, Formatter *f, ostream *err)
     bufferlist::iterator p = bl.begin();
     ::decode(m, p);
   }
-  catch (buffer::error& e) {
+  catch (ceph::buffer::error& e) {
     if (err)
       *err << "osd." << osd << " metadata is corrupt";
     return -EIO;

@@ -91,6 +91,8 @@ using namespace std;
 #define  tout(cct)       if (!cct->_conf->client_trace.empty()) traceout
 
 
+using ceph::Formatter;
+using ceph::new_formatter;
 
 void client_flush_set_callback(void *p, ObjectCacher::ObjectSet *oset)
 {
@@ -6480,7 +6482,7 @@ int Client::_write(Fh *f, int64_t offset, uint64_t size, const char *buf)
 
   // copy into fresh buffer (since our write may be resub, async)
   bufferptr bp;
-  if (size > 0) bp = buffer::copy(buf, size);
+  if (size > 0) bp = ceph::buffer::copy(buf, size);
   bufferlist bl;
   bl.push_back( bp );
 
@@ -8469,7 +8471,7 @@ int Client::ll_write_block(Inode *in, uint64_t blockid,
   object_t oid = file_object_t(vino.ino, blockid);
   SnapContext fakesnap;
   bufferptr bp;
-  if (length > 0) bp = buffer::copy(buf, length);
+  if (length > 0) bp = ceph::buffer::copy(buf, length);
   bufferlist bl;
   bl.push_back(bp);
 

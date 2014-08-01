@@ -10,6 +10,12 @@
 #include <map>
 #include <ostream>
 
+namespace ceph {
+  class Formatter;
+}
+
+using ceph::Formatter;
+
 /**
  * SloppyCRCMap
  *

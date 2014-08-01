@@ -33,6 +33,8 @@ namespace ceph {
   class Formatter;
 }
 
+using ceph::Formatter;
+
 WRITE_RAW_ENCODER(crush_rule_mask)   // it's all u8's
 
 inline static void encode(const crush_rule_step &s, bufferlist &bl)

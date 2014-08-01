@@ -258,7 +258,7 @@ int ClassHandler::ClassMethod::exec(cls_method_context_t ctx, bufferlist& indata
     ret = func(ctx, indata.c_str(), indata.length(), &out, &olen);
     if (out) {
       // assume *out was allocated via cls_alloc (which calls malloc!)
-      buffer::ptr bp = buffer::claim_malloc(olen, out);
+      ceph::buffer::ptr bp = ceph::buffer::claim_malloc(olen, out);
       outdata.push_back(bp);
     }
   }

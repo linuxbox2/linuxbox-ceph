@@ -26,6 +26,9 @@
 
 namespace po = boost::program_options;
 using namespace std;
+using ceph::Formatter;
+using ceph::JSONFormatter;
+
 class Queueable {
 public:
   virtual void queue(unsigned *) = 0;

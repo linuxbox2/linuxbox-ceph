@@ -26,6 +26,8 @@
 
 namespace po = boost::program_options;
 using namespace std;
+using ceph::Formatter;
+using ceph::new_formatter;
 
 struct MorePrinting : public DetailedStatCollector::AdditionalPrinting {
   CephContext *cct;

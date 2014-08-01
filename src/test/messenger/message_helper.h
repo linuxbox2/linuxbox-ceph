@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef MESSAGE_HELPER_H_
@@ -18,6 +18,9 @@
 #include "msg/msg_types.h"
 #include "messages/MDataPing.h"
 #include "msg/XioMessenger.h"
+
+using ceph::Formatter;
+using ceph::JSONFormatter;
 
 static inline Message* new_ping_monstyle(const char *tag, int mult)
 {
@@ -70,7 +73,7 @@ static inline Message* new_ping_with_data(const char *tag, uint32_t size)
   uint32_t* t = (uint32_t* ) (((char*) p) + size - 32);
   *t = counter;
 
-  bl.append(buffer::create_static(size, (char*) p));
+  bl.append(ceph::buffer::create_static(size, (char*) p));
   m->set_data(bl);
 
   return static_cast<Message*>(m);
@@ -113,7 +116,7 @@ static inline Message* new_simple_ping_with_data(const char *tag,
     *t = counter;
     t[1] = i;
 
-    bl.append(buffer::create_static(segsize, (char*) p));
+    bl.append(ceph::buffer::create_static(segsize, (char*) p));
   }
   m->set_data(bl);
 

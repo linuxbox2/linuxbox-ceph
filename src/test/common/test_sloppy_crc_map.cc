@@ -5,6 +5,9 @@
 #include "common/Formatter.h"
 #include <gtest/gtest.h>
 
+using ceph::Formatter;
+using ceph::new_formatter;
+
 void dump(const SloppyCRCMap& scm)
 {
   Formatter *f = new_formatter("json-pretty");

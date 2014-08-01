@@ -59,6 +59,9 @@ using ceph::crypto::SHA1;
 
 #define dout_subsys ceph_subsys_keyvaluestore
 
+using ceph::Formatter;
+using ceph::JSONFormatter;
+
 const string KeyValueStore::OBJECT_STRIP_PREFIX = "_STRIP_";
 const string KeyValueStore::OBJECT_XATTR = "__OBJATTR__";
 const string KeyValueStore::OBJECT_OMAP = "__OBJOMAP__";

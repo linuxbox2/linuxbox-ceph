@@ -649,7 +649,7 @@ int librados::IoCtxImpl::aio_read(const object_t oid, AioCompletionImpl *c,
   c->is_read = true;
   c->io = this;
   c->bl.clear();
-  c->bl.push_back(buffer::create_static(len, buf));
+  c->bl.push_back(ceph::buffer::create_static(len, buf));
   c->blp = &c->bl;
 
   Mutex::Locker l(*lock);

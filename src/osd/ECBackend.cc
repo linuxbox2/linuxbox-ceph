@@ -30,6 +30,8 @@ static ostream& _prefix(std::ostream *_dout, ECBackend *pgb) {
   return *_dout << pgb->get_parent()->gen_dbg_prefix();
 }
 
+using namespace ceph;
+
 struct ECRecoveryHandle : public PGBackend::RecoveryHandle {
   list<ECBackend::RecoveryOp> ops;
 };

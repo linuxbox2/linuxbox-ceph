@@ -8,6 +8,8 @@
 #include "common/Formatter.h"
 #include "librbd/parent_types.h"
 
+using ceph::Formatter;
+
 /// information about our parent image, if any
 struct cls_rbd_parent {
   int64_t pool;        ///< parent pool id

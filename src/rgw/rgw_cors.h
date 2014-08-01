@@ -35,6 +35,8 @@
 
 #define CORS_MAX_AGE_INVALID ((uint32_t)-1)
 
+using ceph::Formatter;
+
 class RGWCORSRule
 {
 protected:

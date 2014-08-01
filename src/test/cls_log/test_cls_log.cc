@@ -35,7 +35,7 @@ static int read_bl(bufferlist& bl, int *i)
 
   try {
     ::decode(*i, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     std::cout << "failed to decode buffer" << std::endl;
     return -EIO;
   }

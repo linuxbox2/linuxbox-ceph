@@ -21,7 +21,6 @@
 #include <string>
 
 using namespace librados;
-using ceph::buffer;
 using std::map;
 using std::ostringstream;
 using std::string;
@@ -500,13 +499,13 @@ TEST_F(LibRadosMiscPP, BigAttrPP) {
   if (g_conf->osd_max_attr_size) {
     bl.clear();
     got.clear();
-    bl.append(buffer::create(g_conf->osd_max_attr_size));
+    bl.append(ceph::buffer::create(g_conf->osd_max_attr_size));
     ASSERT_EQ(0, ioctx.setxattr("foo", "one", bl));
     ASSERT_EQ((int)bl.length(), ioctx.getxattr("foo", "one", got));
     ASSERT_TRUE(bl.contents_equal(got));
 
     bl.clear();
-    bl.append(buffer::create(g_conf->osd_max_attr_size+1));
+    bl.append(ceph::buffer::create(g_conf->osd_max_attr_size+1));
     ASSERT_EQ(-EFBIG, ioctx.setxattr("foo", "one", bl));
   } else {
     cout << "osd_max_attr_size == 0; skipping test" << std::endl;
@@ -515,7 +514,7 @@ TEST_F(LibRadosMiscPP, BigAttrPP) {
   for (int i=0; i<1000; i++) {
     bl.clear();
     got.clear();
-    bl.append(buffer::create(MIN(g_conf->osd_max_attr_size, 1024)));
+    bl.append(ceph::buffer::create(MIN(g_conf->osd_max_attr_size, 1024)));
     char n[10];
     snprintf(n, sizeof(n), "a%d", i);
     ASSERT_EQ(0, ioctx.setxattr("foo", n, bl));
@@ -574,7 +573,7 @@ TEST_F(LibRadosMiscPP, CopyPP) {
   }
 
   // do a big object
-  bl.append(buffer::create(g_conf->osd_copyfrom_max_chunk * 3));
+  bl.append(ceph::buffer::create(g_conf->osd_copyfrom_max_chunk * 3));
   bl.zero();
   bl.append("tail");
   blc = bl;

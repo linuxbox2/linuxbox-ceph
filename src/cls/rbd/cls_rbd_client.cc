@@ -39,7 +39,7 @@ namespace librbd {
 	::decode(size, iter);
 	// get_object_prefix
 	::decode(*object_prefix, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -110,7 +110,7 @@ namespace librbd {
 	  return r;
 
 	*exclusive_lock = (lock_type == LOCK_EXCLUSIVE);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -143,7 +143,7 @@ namespace librbd {
       try {
 	bufferlist::iterator iter = outbl.begin();
 	::decode(*features, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -161,7 +161,7 @@ namespace librbd {
       try {
 	bufferlist::iterator iter = outbl.begin();
 	::decode(*object_prefix, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -182,7 +182,7 @@ namespace librbd {
 	bufferlist::iterator iter = outbl.begin();
 	::decode(*order, iter);
 	::decode(*size, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -215,7 +215,7 @@ namespace librbd {
 	::decode(pspec->image_id, iter);
 	::decode(pspec->snap_id, iter);
 	::decode(*parent_overlap, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -278,7 +278,7 @@ namespace librbd {
       bufferlist::iterator it = out.begin();
       try {
 	::decode(children, it);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
       return 0;
@@ -315,7 +315,7 @@ namespace librbd {
       try {
 	bufferlist::iterator iter = outbl.begin();
 	::decode(*snapc, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -387,7 +387,7 @@ namespace librbd {
 	  // get_protection_status
 	  ::decode((*protection_statuses)[i], iter);
 	}
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -438,7 +438,7 @@ namespace librbd {
 	  ::decode((*sizes)[i], iter);
 	  ::decode((*names)[i], iter);
 	}
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -464,7 +464,7 @@ namespace librbd {
       try {
 	bufferlist::iterator iter = out.begin();
 	::decode(*protection_status, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -499,7 +499,7 @@ namespace librbd {
 	bufferlist::iterator iter = outbl.begin();
 	::decode(*stripe_unit, iter);
 	::decode(*stripe_count, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -528,7 +528,7 @@ namespace librbd {
       bufferlist::iterator iter = out.begin();
       try {
 	::decode(*id, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -556,7 +556,7 @@ namespace librbd {
       bufferlist::iterator iter = out.begin();
       try {
 	::decode(*id, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -575,7 +575,7 @@ namespace librbd {
       bufferlist::iterator iter = out.begin();
       try {
 	::decode(*name, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 
@@ -596,7 +596,7 @@ namespace librbd {
       bufferlist::iterator iter = out.begin();
       try {
 	::decode(*images, iter);
-      } catch (const buffer::error &err) {
+      } catch (const ceph::buffer::error &err) {
 	return -EBADMSG;
       }
 

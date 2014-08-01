@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -216,12 +216,12 @@ handle_bad_get(CephContext *cct, string k, const char *tname)
   ostringstream errstr;
   int status;
   const char *typestr = abi::__cxa_demangle(tname, 0, 0, &status);
-  if (status != 0) 
+  if (status != 0)
     typestr = tname;
   errstr << "bad boost::get: key " << k << " is not type " << typestr;
   lderr(cct) << errstr.str() << dendl;
 
-  BackTrace bt(1);
+  ceph::BackTrace bt(1);
   ostringstream oss;
   bt.print(oss);
   lderr(cct) << oss << dendl;

@@ -194,7 +194,7 @@ int rgw_bucket_list(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   struct rgw_cls_list_op op;
   try {
     ::decode(op, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bucket_list(): failed to decode request\n");
     return -EINVAL;
   }
@@ -208,7 +208,7 @@ int rgw_bucket_list(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   bufferlist::iterator header_iter = header_bl.begin();
   try {
     ::decode(new_dir.header, header_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bucket_list(): failed to decode header\n");
     return -EINVAL;
   }
@@ -238,7 +238,7 @@ int rgw_bucket_list(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
     bufferlist::iterator eiter = entrybl.begin();
     try {
       ::decode(entry, eiter);
-    } catch (buffer::error& err) {
+    } catch (ceph::buffer::error& err) {
       CLS_LOG(1, "ERROR: rgw_bucket_list(): failed to decode entry, key=%s\n", kiter->first.c_str());
       return -EINVAL;
     }
@@ -261,7 +261,7 @@ static int check_index(cls_method_context_t hctx, struct rgw_bucket_dir_header *
   bufferlist::iterator header_iter = header_bl.begin();
   try {
     ::decode(*existing_header, header_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bucket_list(): failed to decode header\n");
     return -EINVAL;
   }
@@ -294,7 +294,7 @@ static int check_index(cls_method_context_t hctx, struct rgw_bucket_dir_header *
       bufferlist::iterator eiter = kiter->second.begin();
       try {
         ::decode(entry, eiter);
-      } catch (buffer::error& err) {
+      } catch (ceph::buffer::error& err) {
         CLS_LOG(1, "ERROR: rgw_bucket_list(): failed to decode entry, key=%s\n", kiter->first.c_str());
         return -EIO;
       }
@@ -379,7 +379,7 @@ int rgw_bucket_set_tag_timeout(cls_method_context_t hctx, bufferlist *in, buffer
   bufferlist::iterator iter = in->begin();
   try {
     ::decode(op, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bucket_set_tag_timeout(): failed to decode request\n");
     return -EINVAL;
   }
@@ -392,7 +392,7 @@ int rgw_bucket_set_tag_timeout(cls_method_context_t hctx, bufferlist *in, buffer
   bufferlist::iterator header_iter = header_bl.begin();
   try {
     ::decode(header, header_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bucket_complete_op(): failed to decode header\n");
     return -EINVAL;
   }
@@ -409,7 +409,7 @@ int rgw_bucket_prepare_op(cls_method_context_t hctx, bufferlist *in, bufferlist 
   bufferlist::iterator iter = in->begin();
   try {
     ::decode(op, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bucket_prepare_op(): failed to decode request\n");
     return -EINVAL;
   }
@@ -437,7 +437,7 @@ int rgw_bucket_prepare_op(cls_method_context_t hctx, bufferlist *in, bufferlist 
     try {
       bufferlist::iterator biter = cur_value.begin();
       ::decode(entry, biter);
-    } catch (buffer::error& err) {
+    } catch (ceph::buffer::error& err) {
       CLS_LOG(1, "ERROR: rgw_bucket_prepare_op(): failed to decode entry\n");
       /* ignoring error */
 
@@ -468,7 +468,7 @@ int rgw_bucket_prepare_op(cls_method_context_t hctx, bufferlist *in, bufferlist 
   bufferlist::iterator header_iter = header_bl.begin();
   try {
     ::decode(header, header_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bucket_complete_op(): failed to decode header\n");
     return -EINVAL;
   }
@@ -509,7 +509,7 @@ static int read_index_entry(cls_method_context_t hctx, string& name, struct rgw_
   bufferlist::iterator cur_iter = current_entry.begin();
   try {
     ::decode(*entry, cur_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: read_index_entry(): failed to decode entry\n");
     return -EIO;
   }
@@ -527,7 +527,7 @@ int rgw_bucket_complete_op(cls_method_context_t hctx, bufferlist *in, bufferlist
   bufferlist::iterator iter = in->begin();
   try {
     ::decode(op, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bucket_complete_op(): failed to decode request\n");
     return -EINVAL;
   }
@@ -544,7 +544,7 @@ int rgw_bucket_complete_op(cls_method_context_t hctx, bufferlist *in, bufferlist
   bufferlist::iterator header_iter = header_bl.begin();
   try {
     ::decode(header, header_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bucket_complete_op(): failed to decode header\n");
     return -EINVAL;
   }
@@ -702,7 +702,7 @@ int rgw_dir_suggest_changes(cls_method_context_t hctx, bufferlist *in, bufferlis
   try {
     bufferlist::iterator header_iter = header_bl.begin();
     ::decode(header, header_iter);
-  } catch (buffer::error& error) {
+  } catch (ceph::buffer::error& error) {
     CLS_LOG(1, "ERROR: rgw_dir_suggest_changes(): failed to decode header\n");
     return -EINVAL;
   }
@@ -718,7 +718,7 @@ int rgw_dir_suggest_changes(cls_method_context_t hctx, bufferlist *in, bufferlis
     try {
       ::decode(op, in_iter);
       ::decode(cur_change, in_iter);
-    } catch (buffer::error& err) {
+    } catch (ceph::buffer::error& err) {
       CLS_LOG(1, "ERROR: rgw_dir_suggest_changes(): failed to decode request\n");
       return -EINVAL;
     }
@@ -732,7 +732,7 @@ int rgw_dir_suggest_changes(cls_method_context_t hctx, bufferlist *in, bufferlis
       bufferlist::iterator cur_disk_iter = cur_disk_bl.begin();
       try {
         ::decode(cur_disk, cur_disk_iter);
-      } catch (buffer::error& error) {
+      } catch (ceph::buffer::error& error) {
         CLS_LOG(1, "ERROR: rgw_dir_suggest_changes(): failed to decode cur_disk\n");
         return -EINVAL;
       }
@@ -798,7 +798,7 @@ int bi_log_record_decode(bufferlist& bl, rgw_bi_log_entry& e)
   bufferlist::iterator iter = bl.begin();
   try {
     ::decode(e, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(0, "ERROR: failed to decode rgw_bi_log_entry");
     return -EIO;
   }
@@ -921,7 +921,7 @@ static int rgw_bi_log_list(cls_method_context_t hctx, bufferlist *in, bufferlist
   cls_rgw_bi_log_list_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bi_log_list(): failed to decode entry\n");
     return -EINVAL;
   }
@@ -972,7 +972,7 @@ static int rgw_bi_log_trim(cls_method_context_t hctx, bufferlist *in, bufferlist
   cls_rgw_bi_log_trim_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_bi_log_list(): failed to decode entry\n");
     return -EINVAL;
   }
@@ -1033,7 +1033,7 @@ static int usage_record_decode(bufferlist& record_bl, rgw_usage_log_entry& e)
   bufferlist::iterator kiter = record_bl.begin();
   try {
     ::decode(e, kiter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: usage_record_decode(): failed to decode record_bl\n");
     return -EINVAL;
   }
@@ -1050,7 +1050,7 @@ int rgw_user_usage_log_add(cls_method_context_t hctx, bufferlist *in, bufferlist
 
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_user_usage_log_add(): failed to decode request\n");
     return -EINVAL;
   }
@@ -1205,7 +1205,7 @@ int rgw_user_usage_log_read(cls_method_context_t hctx, bufferlist *in, bufferlis
 
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_user_usage_log_read(): failed to decode request\n");
     return -EINVAL;
   }
@@ -1255,7 +1255,7 @@ int rgw_user_usage_log_trim(cls_method_context_t hctx, bufferlist *in, bufferlis
 
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_user_log_usage_log_trim(): failed to decode request\n");
     return -EINVAL;
   }
@@ -1298,7 +1298,7 @@ static int gc_omap_get(cls_method_context_t hctx, int type, const string& key, c
   try {
     bufferlist::iterator iter = bl.begin();
     ::decode(*info, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(0, "ERROR: rgw_cls_gc_omap_get(): failed to decode index=%s\n", index.c_str());
   }
 
@@ -1390,7 +1390,7 @@ int gc_record_decode(bufferlist& bl, cls_rgw_gc_obj_info& e)
   bufferlist::iterator iter = bl.begin();
   try {
     ::decode(e, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(0, "ERROR: failed to decode cls_rgw_gc_obj_info");
     return -EIO;
   }
@@ -1404,7 +1404,7 @@ static int rgw_cls_gc_set_entry(cls_method_context_t hctx, bufferlist *in, buffe
   cls_rgw_gc_set_entry_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_cls_gc_set_entry(): failed to decode entry\n");
     return -EINVAL;
   }
@@ -1419,7 +1419,7 @@ static int rgw_cls_gc_defer_entry(cls_method_context_t hctx, bufferlist *in, buf
   cls_rgw_gc_defer_entry_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_cls_gc_defer_entry(): failed to decode entry\n");
     return -EINVAL;
   }
@@ -1531,7 +1531,7 @@ static int rgw_cls_gc_list(cls_method_context_t hctx, bufferlist *in, bufferlist
   cls_rgw_gc_list_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_cls_gc_list(): failed to decode entry\n");
     return -EINVAL;
   }
@@ -1586,7 +1586,7 @@ static int rgw_cls_gc_remove(cls_method_context_t hctx, bufferlist *in, bufferli
   cls_rgw_gc_remove_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(1, "ERROR: rgw_cls_gc_remove(): failed to decode entry\n");
     return -EINVAL;
   }

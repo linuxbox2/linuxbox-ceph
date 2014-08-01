@@ -722,7 +722,7 @@ Message *decode_message(CephContext *cct, int crcflags,
   try {
     m->decode_payload();
   }
-  catch (const buffer::error &e) {
+  catch (const ceph::buffer::error &e) {
     if (cct) {
       lderr(cct) << "failed to decode message of type " << type
 		 << " v" << header.version

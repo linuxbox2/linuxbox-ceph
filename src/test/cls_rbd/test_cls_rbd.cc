@@ -863,8 +863,8 @@ TEST(cls_rbd, snapid_race)
   ASSERT_EQ("", create_one_pool_pp(pool_name, rados));
   ASSERT_EQ(0, rados.ioctx_create(pool_name.c_str(), ioctx));
 
-  buffer::list bl;
-  buffer::ptr bp(4096);
+  ceph::buffer::list bl;
+  ceph::buffer::ptr bp(4096);
   bp.zero();
   bl.append(bp);
 

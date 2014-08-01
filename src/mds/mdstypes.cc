@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 
 #include "mdstypes.h"
@@ -408,7 +408,8 @@ void old_inode_t::dump(Formatter *f) const
   f->dump_unsigned("first", first);
   inode.dump(f);
   f->open_object_section("xattrs");
-  for (map<string,bufferptr>::const_iterator p = xattrs.begin(); p != xattrs.end(); ++p) {
+  for (map<string,bufferptr>::const_iterator p = xattrs.begin();
+       p != xattrs.end(); ++p) {
     string v(p->second.c_str(), p->second.length());
     f->dump_string(p->first.c_str(), v);
   }
@@ -423,8 +424,9 @@ void old_inode_t::generate_test_instances(list<old_inode_t*>& ls)
   list<inode_t*> ils;
   inode_t::generate_test_instances(ils);
   ls.back()->inode = *ils.back();
-  ls.back()->xattrs["user.foo"] = buffer::copy("asdf", 4);
-  ls.back()->xattrs["user.unprintable"] = buffer::copy("\000\001\002", 3);
+  ls.back()->xattrs["user.foo"] = ceph::buffer::copy("asdf", 4);
+  ls.back()->xattrs["user.unprintable"] =
+    ceph::buffer::copy("\000\001\002", 3);
 }
 
 

@@ -12,6 +12,12 @@ using std::ostream;
 
 class CephContext;
 
+namespace ceph {
+  class Formatter;
+}
+
+using ceph::Formatter;
+
 static const __u8 MON_CAP_R     = (1 << 1);      // read
 static const __u8 MON_CAP_W     = (1 << 2);      // write
 static const __u8 MON_CAP_X     = (1 << 3);      // execute

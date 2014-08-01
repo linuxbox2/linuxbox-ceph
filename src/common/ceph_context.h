@@ -56,7 +56,7 @@ public:
   // ref count!
 private:
   ~CephContext();
-  atomic_t nref;
+  ceph::atomic_t nref;
 public:
   CephContext *get() {
     nref.inc();

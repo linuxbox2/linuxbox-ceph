@@ -32,6 +32,10 @@
 #undef dout_prefix
 #define dout_prefix *_dout << "memstore(" << path << ") "
 
+using ceph::Formatter;
+using ceph::JSONFormatter;
+using ceph::new_formatter;
+
 // for comparing collections for lock ordering
 bool operator>(const MemStore::CollectionRef& l,
 	       const MemStore::CollectionRef& r)

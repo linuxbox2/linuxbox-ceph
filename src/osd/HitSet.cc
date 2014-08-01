@@ -77,7 +77,7 @@ void HitSet::decode(bufferlist::iterator &bl)
     impl.reset(NULL);
     break;
   default:
-    throw buffer::malformed_input("unrecognized HitMap type");
+    throw ceph::buffer::malformed_input("unrecognized HitMap type");
   }
   if (impl)
     impl->decode(bl);
@@ -175,7 +175,7 @@ void HitSet::Params::decode(bufferlist::iterator &bl)
   __u8 type;
   ::decode(type, bl);
   if (!create_impl((impl_type_t)type))
-    throw buffer::malformed_input("unrecognized HitMap type");
+    throw ceph::buffer::malformed_input("unrecognized HitMap type");
   if (impl)
     impl->decode(bl);
   DECODE_FINISH(bl);

@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include "include/int_types.h"
@@ -49,6 +49,10 @@
 
 
 using std::ostringstream;
+
+using ceph::Formatter;
+using ceph::JSONFormatter;
+using ceph::new_formatter;
 
 /*
  * UNIX domain sockets created by an application persist even after that
@@ -404,7 +408,7 @@ int AdminSocket::register_command(std::string command, std::string cmddesc, Admi
     m_descs[command] = cmddesc;
     m_help[command] = help;
     ret = 0;
-  }  
+  }
   m_lock.Unlock();
   return ret;
 }
@@ -422,7 +426,7 @@ int AdminSocket::unregister_command(std::string command)
   } else {
     ldout(m_cct, 5) << "unregister_command " << command << " ENOENT" << dendl;
     ret = -ENOENT;
-  }  
+  }
   m_lock.Unlock();
   return ret;
 }

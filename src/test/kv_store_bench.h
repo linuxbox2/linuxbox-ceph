@@ -28,6 +28,8 @@
 
 using namespace std;
 using ceph::bufferlist;
+using ceph::Formatter;
+using ceph::JSONFormatter;
 
 /**
  * stores pairings from op type to time taken for that op (for latency), and to

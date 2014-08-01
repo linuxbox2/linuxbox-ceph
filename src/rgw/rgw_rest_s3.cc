@@ -20,6 +20,8 @@
 #define dout_subsys ceph_subsys_rgw
 
 using namespace ceph::crypto;
+using ceph::Formatter;
+using ceph::JSONFormatter;
 
 void list_all_buckets_start(struct req_state *s)
 {
@@ -997,7 +999,7 @@ int RGWPostObj_ObjStore_S3::get_policy()
     bufferlist decoded_policy;
     try {
       decoded_policy.decode_base64(encoded_policy);
-    } catch (buffer::error& err) {
+    } catch (ceph::buffer::error& err) {
       ldout(s->cct, 0) << "failed to decode_base64 policy" << dendl;
       err_msg = "Could not decode policy";
       return -EINVAL;

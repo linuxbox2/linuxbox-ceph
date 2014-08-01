@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_UTIME_H
@@ -34,8 +34,8 @@ public:
   } tv;
 
   friend class Clock;
- 
- public:
+
+public:
   bool is_zero() const {
     return (tv.tv_sec == 0) && (tv.tv_nsec == 0);
   }
@@ -62,13 +62,13 @@ public:
     ts->tv_sec = tv.tv_sec;
     ts->tv_nsec = tv.tv_nsec;
   }
-  void set_from_double(double d) { 
+  void set_from_double(double d) {
     tv.tv_sec = (__u32)trunc(d);
     tv.tv_nsec = (__u32)((d - (double)tv.tv_sec) * (double)1000000000.0);
   }
 
   // accessors
-  time_t        sec()  const { return tv.tv_sec; } 
+  time_t        sec()  const { return tv.tv_sec; }
   long          usec() const { return tv.tv_nsec/1000; }
   int           nsec() const { return tv.tv_nsec; }
 
@@ -191,14 +191,14 @@ public:
       asctime_r(&bdt, buf);
       int len = strlen(buf);
       if (buf[len - 1] == '\n')
-        buf[len - 1] = '\0';
+	buf[len - 1] = '\0';
       out << buf;
     }
     out.fill(oldfill);
     out.unsetf(std::ios::right);
     return out;
   }
-  
+
   ostream& localtime(ostream& out) const {
     out.setf(std::ios::right);
     char oldfill = out.fill();
@@ -239,7 +239,7 @@ public:
   }
 
   static int parse_date(const string& date, uint64_t *epoch, uint64_t *nsec,
-                        string *out_date=NULL, string *out_time=NULL) {
+			string *out_date=NULL, string *out_time=NULL) {
     struct tm tm;
     memset(&tm, 0, sizeof(tm));
 
@@ -253,23 +253,23 @@ public:
 	p = strptime(p, " %H:%M:%S", &tm);
 	if (!p)
 	  return -EINVAL;
-        if (nsec && *p == '.') {
-          ++p;
-          unsigned i;
-          char buf[10]; /* 9 digit + null termination */
-          for (i = 0; (i < sizeof(buf) - 1) && isdigit(*p); ++i, ++p) {
-            buf[i] = *p;
-          }
-          for (; i < sizeof(buf) - 1; ++i) {
-            buf[i] = '0';
-          }
-          buf[i] = '\0';
-          string err;
-          *nsec = (uint64_t)strict_strtol(buf, 10, &err);
-          if (!err.empty()) {
-            return -EINVAL;
-          }
-        }
+	if (nsec && *p == '.') {
+	  ++p;
+	  unsigned i;
+	  char buf[10]; /* 9 digit + null termination */
+	  for (i = 0; (i < sizeof(buf) - 1) && isdigit(*p); ++i, ++p) {
+	    buf[i] = *p;
+	  }
+	  for (; i < sizeof(buf) - 1; ++i) {
+	    buf[i] = '0';
+	  }
+	  buf[i] = '\0';
+	  string err;
+	  *nsec = (uint64_t)strict_strtol(buf, 10, &err);
+	  if (!err.empty()) {
+	    return -EINVAL;
+	  }
+	}
       }
     } else {
       return -EINVAL;
@@ -298,7 +298,7 @@ WRITE_CLASS_ENCODER(utime_t)
 // arithmetic operators
 inline utime_t operator+(const utime_t& l, const utime_t& r) {
   return utime_t( l.sec() + r.sec() + (l.nsec()+r.nsec())/1000000000L,
-                  (l.nsec()+r.nsec())%1000000000L );
+		  (l.nsec()+r.nsec())%1000000000L );
 }
 inline utime_t& operator+=(utime_t& l, const utime_t& r) {
   l.sec_ref() += r.sec() + (l.nsec()+r.nsec())/1000000000L;
@@ -317,7 +317,7 @@ inline utime_t& operator+=(utime_t& l, double f) {
 
 inline utime_t operator-(const utime_t& l, const utime_t& r) {
   return utime_t( l.sec() - r.sec() - (l.nsec()<r.nsec() ? 1:0),
-                  l.nsec() - r.nsec() + (l.nsec()<r.nsec() ? 1000000000:0) );
+		  l.nsec() - r.nsec() + (l.nsec()<r.nsec() ? 1000000000:0) );
 }
 inline utime_t& operator-=(utime_t& l, const utime_t& r) {
   l.sec_ref() -= r.sec();

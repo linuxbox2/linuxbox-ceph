@@ -75,6 +75,10 @@ map<string, string> map_options; // -o / --options map
 
 #define dout_subsys ceph_subsys_rbd
 
+using ceph::Formatter;
+using ceph::JSONFormatter;
+using ceph::XMLFormatter;
+
 void usage()
 {
   cout <<
@@ -1555,7 +1559,7 @@ static int do_import_diff(librbd::Image &image, const char *path)
       ::decode(len, p);
 
       if (tag == 'w') {
-	bufferptr bp = buffer::create(len);
+	bufferptr bp = ceph::buffer::create(len);
 	r = safe_read_exact(fd, bp.c_str(), len);
 	if (r < 0)
 	  goto done;

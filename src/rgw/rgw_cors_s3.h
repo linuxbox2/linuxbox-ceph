@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -26,6 +26,8 @@
 #include "rgw_cors.h"
 
 using namespace std;
+using ceph::Formatter;
+using ceph::XMLFormatter;
 
 class RGWCORSRule_S3 : public RGWCORSRule, public XMLObj
 {

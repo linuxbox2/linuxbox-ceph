@@ -8,6 +8,8 @@
 
 #include "common/Formatter.h"
 
+using ceph::Formatter;
+
 void entity_name_t::dump(Formatter *f) const
 {
   f->dump_string("type", type_str());

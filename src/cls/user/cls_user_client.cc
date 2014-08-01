@@ -61,7 +61,7 @@ public:
           *truncated = ret.truncated;
         if (marker)
           *marker = ret.marker;
-      } catch (buffer::error& err) {
+      } catch (ceph::buffer::error& err) {
         r = -EIO;
       }
     }
@@ -104,7 +104,7 @@ public:
         ::decode(ret, iter);
         if (header)
 	  *header = ret.header;
-      } catch (buffer::error& err) {
+      } catch (ceph::buffer::error& err) {
         r = -EIO;
       }
       if (ret_ctx) {

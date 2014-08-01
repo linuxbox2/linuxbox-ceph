@@ -1,3 +1,5 @@
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
+// vim: ts=8 sw=2 smarttab
 
 #include "MonMap.h"
 
@@ -241,7 +243,6 @@ void MonMap::set_initial_members(CephContext *cct,
   }
 }
 
-
 int MonMap::build_initial(CephContext *cct, ostream& errout)
 {
   const md_config_t *conf = cct->_conf;
@@ -251,7 +252,7 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
     try {
       r = read(conf->monmap.c_str());
     }
-    catch (const buffer::error &e) {
+    catch (const ceph::buffer::error &e) {
       r = -EINVAL;
     }
     if (r >= 0)

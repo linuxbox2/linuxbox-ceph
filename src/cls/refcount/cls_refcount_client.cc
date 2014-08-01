@@ -50,7 +50,7 @@ int cls_refcount_read(librados::IoCtx& io_ctx, string& oid, list<string> *refs, 
   try {
     bufferlist::iterator iter = out.begin();
     ::decode(ret, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EIO;
   }
 

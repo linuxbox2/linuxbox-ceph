@@ -9,7 +9,6 @@
 #include "include/stringify.h"
 
 
-
 // ----
 // LogEntryKey
 

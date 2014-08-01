@@ -43,6 +43,8 @@ enum {
 struct config_option;
 class CephContext;
 
+using ceph::Formatter;
+
 extern const char *CEPH_CONF_FILE_DEFAULT;
 
 #define LOG_TO_STDERR_NONE 0

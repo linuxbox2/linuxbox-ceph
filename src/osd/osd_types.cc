@@ -2533,7 +2533,7 @@ void pg_log_entry_t::decode_with_checksum(bufferlist::iterator& p)
   __u32 crc;
   ::decode(crc, p);
   if (crc != bl.crc32c(0))
-    throw buffer::malformed_input("bad checksum on pg_log_entry_t");
+    throw ceph::buffer::malformed_input("bad checksum on pg_log_entry_t");
   bufferlist::iterator q = bl.begin();
   decode(q);
 }
@@ -4258,8 +4258,8 @@ void ScrubMap::generate_test_instances(list<ScrubMap*>& o)
   o.push_back(new ScrubMap);
   o.back()->valid_through = eversion_t(1, 2);
   o.back()->incr_since = eversion_t(3, 4);
-  o.back()->attrs["foo"] = buffer::copy("foo", 3);
-  o.back()->attrs["bar"] = buffer::copy("barval", 6);
+  o.back()->attrs["foo"] = ceph::buffer::copy("foo", 3);
+  o.back()->attrs["bar"] = ceph::buffer::copy("barval", 6);
   list<object*> obj;
   object::generate_test_instances(obj);
   o.back()->objects[hobject_t(object_t("foo"), "fookey", 123, 456, 0, "")] = *obj.back();
@@ -4334,8 +4334,8 @@ void ScrubMap::object::generate_test_instances(list<object*>& o)
   o.back()->negative = true;
   o.push_back(new object);
   o.back()->size = 123;
-  o.back()->attrs["foo"] = buffer::copy("foo", 3);
-  o.back()->attrs["bar"] = buffer::copy("barval", 6);
+  o.back()->attrs["foo"] = ceph::buffer::copy("foo", 3);
+  o.back()->attrs["bar"] = ceph::buffer::copy("barval", 6);
 }
 
 // -- OSDOp --

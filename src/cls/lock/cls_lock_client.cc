@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include "include/types.h"
@@ -116,7 +116,7 @@ namespace rados {
         bufferlist::iterator iter = out.begin();
         try {
           ::decode(ret, iter);
-        } catch (buffer::error& err) {
+        } catch (ceph::buffer::error& err) {
 	  return -EBADMSG;
         }
 
@@ -142,7 +142,7 @@ namespace rados {
         cls_lock_get_info_reply ret;
         try {
           ::decode(ret, *iter);
-        } catch (buffer::error& err) {
+        } catch (ceph::buffer::error& err) {
 	  return -EBADMSG;
         }
 

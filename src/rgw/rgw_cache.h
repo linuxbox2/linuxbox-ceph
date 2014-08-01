@@ -9,6 +9,8 @@
 #include "include/assert.h"
 #include "common/RWLock.h"
 
+using ceph::Formatter;
+
 enum {
   UPDATE_OBJ,
   REMOVE_OBJ,
@@ -549,11 +551,11 @@ int RGWCache<T>::watch_cb(int opcode, uint64_t ver, bufferlist& bl)
   try {
     bufferlist::iterator iter = bl.begin();
     ::decode(info, iter);
-  } catch (buffer::end_of_buffer& err) {
+  } catch (ceph::buffer::end_of_buffer& err) {
     mydout(0) << "ERROR: got bad notification" << dendl;
     return -EIO;
-  } catch (buffer::error& err) {
-    mydout(0) << "ERROR: buffer::error" << dendl;
+  } catch (ceph::buffer::error& err) {
+    mydout(0) << "ERROR: ceph::buffer::error" << dendl;
     return -EIO;
   }
 

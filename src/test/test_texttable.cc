@@ -16,6 +16,8 @@
 #include <iostream>
 #include "gtest/gtest.h"
 
+using namespace ceph;
+
 TEST(TextTable, Alignment) {
   TextTable t;
 

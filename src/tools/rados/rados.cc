@@ -44,6 +44,10 @@ using namespace librados;
 #include "cls/lock/cls_lock_client.h"
 #include "include/compat.h"
 
+using ceph::Formatter;
+using ceph::JSONFormatter;
+using ceph::XMLFormatter;
+
 int rados_tool_sync(const std::map < std::string, std::string > &opts,
                              std::vector<const char*> &args);
 
@@ -467,7 +471,7 @@ public:
     try {
       bufferlist::iterator iter = bl.begin();
       ::decode(s, iter);
-    } catch (buffer::error *err) {
+    } catch (ceph::buffer::error *err) {
       cout << "could not decode bufferlist, buffer length=" << bl.length() << std::endl;
     }
     cout << name << " got notification opcode=" << (int)opcode << " ver=" << ver << " msg='" << s << "'" << std::endl;
@@ -639,7 +643,7 @@ int LoadGen::bootstrap(const char *pool)
   }
 
   int buf_len = 1;
-  bufferptr p = buffer::create(buf_len);
+  bufferptr p = ceph::buffer::create(buf_len);
   bufferlist bl;
   memset(p.c_str(), 0, buf_len);
   bl.push_back(p);
@@ -699,7 +703,7 @@ void LoadGen::run_op(LoadGenOp *op)
     io_ctx.aio_read(op->oid, op->completion, &op->bl, op->len, op->off);
     break;
   case OP_WRITE:
-    bufferptr p = buffer::create(op->len);
+    bufferptr p = ceph::buffer::create(op->len);
     memset(p.c_str(), 0, op->len);
     op->bl.push_back(p);
     
@@ -1998,7 +2002,7 @@ static int rados_tool_common(const std::map < std::string, std::string > &opts,
 	::decode(header, p);
 	::decode(kv, p);
       }
-      catch (buffer::error& e) {
+      catch (ceph::buffer::error& e) {
 	cerr << "error decoding tmap " << pool_name << "/" << oid << std::endl;
 	ret = -EINVAL;
 	goto out;
@@ -2049,7 +2053,7 @@ static int rados_tool_common(const std::map < std::string, std::string > &opts,
       ::decode(hdr, p);
       ::decode(kv, p);
     }
-    catch (buffer::error& e) {
+    catch (ceph::buffer::error& e) {
       cerr << "error decoding tmap " << pool_name << "/" << oid << std::endl;
       ret = -EINVAL;
       goto out;

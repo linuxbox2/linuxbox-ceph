@@ -37,7 +37,7 @@ static int get_bounds(cls_method_context_t hctx, cls_replica_log_bound& bound)
   try {
     bufferlist::iterator bounds_bl_i = bounds_bl.begin();
     ::decode(bound, bounds_bl_i);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     bound = cls_replica_log_bound();
     CLS_LOG(0, "ERROR: get_bounds(): failed to decode on-disk bounds object");
     return -EIO;
@@ -62,7 +62,7 @@ static int cls_replica_log_set(cls_method_context_t hctx,
   cls_replica_log_set_marker_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(0, "ERROR: cls_replica_log_set(): failed to decode op");
     return -EINVAL;
   }
@@ -89,7 +89,7 @@ static int cls_replica_log_delete(cls_method_context_t hctx,
   cls_replica_log_delete_marker_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(0, "ERROR: cls_replica_log_delete(): failed to decode op");
     return -EINVAL;
   }
@@ -116,7 +116,7 @@ static int cls_replica_log_get(cls_method_context_t hctx,
   cls_replica_log_get_bounds_op op;
   try {
     ::decode(op, in_iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     CLS_LOG(0, "ERROR: cls_replica_log_get(): failed to decode op");
     return -EINVAL;
   }

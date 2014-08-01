@@ -45,6 +45,7 @@ static const unsigned char bit_mask[bits_per_char] = {
   0x80   //10000000
 };
 
+using ceph::Formatter;
 
 class bloom_filter
 {

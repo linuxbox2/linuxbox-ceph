@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -10,9 +10,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include "boost/tuple/tuple.hpp"
@@ -62,6 +62,10 @@
 #define DOUT_PREFIX_ARGS this, osd->whoami, get_osdmap()
 #undef dout_prefix
 #define dout_prefix _prefix(_dout, this)
+
+using ceph::Formatter;
+using ceph::new_formatter;
+
 template <typename T>
 static ostream& _prefix(std::ostream *_dout, T *pg) {
   return *_dout << pg->gen_prefix();
@@ -557,7 +561,7 @@ int ReplicatedPG::get_pgls_filter(bufferlist::iterator& iter, PGLSFilter **pfilt
   try {
     ::decode(type, iter);
   }
-  catch (buffer::error& e) {
+  catch (ceph::buffer::error& e) {
     return -EINVAL;
   }
 
@@ -794,7 +798,7 @@ void ReplicatedPG::do_pg_op(OpRequestRef op)
 	::decode(cname, bp);
 	::decode(mname, bp);
       }
-      catch (const buffer::error& e) {
+      catch (const ceph::buffer::error& e) {
 	dout(0) << "unable to decode PGLS_FILTER description in " << *m << dendl;
 	result = -EINVAL;
 	break;
@@ -821,7 +825,7 @@ void ReplicatedPG::do_pg_op(OpRequestRef op)
 	try {
 	  ::decode(response.handle, bp);
 	}
-	catch (const buffer::error& e) {
+	catch (const ceph::buffer::error& e) {
 	  dout(0) << "unable to decode PGLS handle in " << *m << dendl;
 	  result = -EINVAL;
 	  break;
@@ -2788,7 +2792,7 @@ int ReplicatedPG::do_tmapup(OpContext *ctx, bufferlist::iterator& bp, OSDOp& osd
 	::decode(op, bp);
 	::decode(key, bp);
       }
-      catch (buffer::error& e) {
+      catch (ceph::buffer::error& e) {
 	return -EINVAL;
       }
       if (key < last_in_key) {
@@ -2831,7 +2835,7 @@ int ReplicatedPG::do_tmapup(OpContext *ctx, bufferlist::iterator& bp, OSDOp& osd
 	try {
 	  ::decode(val, bp);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  return -EINVAL;
 	}
 	::encode(key, newkeydata);
@@ -2846,7 +2850,7 @@ int ReplicatedPG::do_tmapup(OpContext *ctx, bufferlist::iterator& bp, OSDOp& osd
 	try {
 	  ::decode(val, bp);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  return -EINVAL;
 	}
 	::encode(key, newkeydata);
@@ -3183,7 +3187,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	  bp.copy(op.cls.class_len, cname);
 	  bp.copy(op.cls.method_len, mname);
 	  bp.copy(op.cls.indata_len, indata);
-	} catch (buffer::error& e) {
+	} catch (ceph::buffer::error& e) {
 	  dout(10) << "call unable to decode class + method + indata" << dendl;
 	  dout(30) << "in dump: ";
 	  osd_op.indata.hexdump(*_dout);
@@ -3438,7 +3442,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	    try {
 	      ::decode(u64val, bp);
 	    }
-	    catch (buffer::error& e) {
+	    catch (ceph::buffer::error& e) {
 	      result = -EINVAL;
 	      goto fail;
 	    }
@@ -3608,7 +3612,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
           ::decode(ver, bp);
 	  ::decode(timeout, bp);
           ::decode(bl, bp);
-	} catch (const buffer::error &e) {
+	} catch (const ceph::buffer::error &e) {
 	  timeout = 0;
 	}
 	if (!timeout)
@@ -3632,7 +3636,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	  ::decode(watch_cookie, bp);
 	  OpContext::NotifyAck ack(notify_id, watch_cookie);
 	  ctx->notify_acks.push_back(ack);
-	} catch (const buffer::error &e) {
+	} catch (const ceph::buffer::error &e) {
 	  OpContext::NotifyAck ack(
 	    // op.watch.cookie is actually the notify_id for historical reasons
 	    op.watch.cookie
@@ -3841,7 +3845,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	    try {
 	      ::decode(category, p);
 	    }
-	    catch (buffer::error& e) {
+	    catch (ceph::buffer::error& e) {
 	      result = -EINVAL;
 	      goto fail;
 	    }
@@ -4192,7 +4196,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	  ::decode(start_after, bp);
 	  ::decode(max_return, bp);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  result = -EINVAL;
 	  goto fail;
 	}
@@ -4227,7 +4231,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	  ::decode(max_return, bp);
 	  ::decode(filter_prefix, bp);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  result = -EINVAL;
 	  goto fail;
 	}
@@ -4277,7 +4281,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	try {
 	  ::decode(keys_to_get, bp);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  result = -EINVAL;
 	  goto fail;
 	}
@@ -4302,7 +4306,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	try {
 	  ::decode(assertions, bp);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  result = -EINVAL;
 	  goto fail;
 	}
@@ -4379,7 +4383,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	try {
 	  ::decode(to_set, bp);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  result = -EINVAL;
 	  goto fail;
 	}
@@ -4450,7 +4454,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	try {
 	  ::decode(to_rm, bp);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  result = -EINVAL;
 	  goto fail;
 	}
@@ -4485,7 +4489,7 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	  ::decode(src_name, bp);
 	  ::decode(src_oloc, bp);
 	}
-	catch (buffer::error& e) {
+	catch (ceph::buffer::error& e) {
 	  result = -EINVAL;
 	  goto fail;
 	}
@@ -5395,7 +5399,7 @@ int ReplicatedPG::fill_in_copy_get(
     ::decode(cursor, bp);
     ::decode(out_max, bp);
   }
-  catch (buffer::error& e) {
+  catch (ceph::buffer::error& e) {
     result = -EINVAL;
     return result;
   }

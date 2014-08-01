@@ -68,7 +68,7 @@ public:
         bufferlist::iterator iter = outbl.begin();
         ::decode(ret, iter);
 	*objv = ret.objv;
-      } catch (buffer::error& err) {
+      } catch (ceph::buffer::error& err) {
         // nothing we can do about it atm
       }
     }
@@ -92,7 +92,7 @@ int cls_version_read(librados::IoCtx& io_ctx, string& oid, obj_version *ver)
   try {
     bufferlist::iterator iter = out.begin();
     ::decode(ret, iter);
-  } catch (buffer::error& err) {
+  } catch (ceph::buffer::error& err) {
     return -EIO;
   }
 

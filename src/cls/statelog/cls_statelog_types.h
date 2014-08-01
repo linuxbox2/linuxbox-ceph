@@ -6,6 +6,8 @@
 
 #include "include/utime.h"
 
+using ceph::Formatter;
+
 class JSONObj;
 
 struct cls_statelog_entry {

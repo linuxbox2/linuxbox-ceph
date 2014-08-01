@@ -299,7 +299,7 @@ public:
     memcpy(ptr, tx_buffer_it.get_current_ptr().c_str(), l);
     try {
       tx_buffer_it.advance(l);
-    } catch (buffer::end_of_buffer &e) {
+    } catch (ceph::buffer::end_of_buffer &e) {
       assert(0);
     }
 

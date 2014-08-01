@@ -32,6 +32,9 @@ const uint64_t CHUNK_INFO = 8;
 const uint64_t CHUNK_PADDING = 8;
 const uint64_t CHUNK_OVERHEAD = 16; // INFO + PADDING
 
+using ceph::Formatter;
+using ceph::ErasureCodeInterfaceRef;
+
 class stripe_info_t {
   const uint64_t stripe_size;
   const uint64_t stripe_width;

@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 #include "acconfig.h"
 
@@ -135,6 +135,10 @@
 #define dout_subsys ceph_subsys_osd
 #undef dout_prefix
 #define dout_prefix _prefix(_dout, whoami, get_osdmap())
+
+using ceph::Formatter;
+using ceph::JSONFormatter;
+using ceph::new_formatter;
 
 static ostream& _prefix(std::ostream* _dout, int whoami, OSDMapRef osdmap) {
   return *_dout << "osd." << whoami << " "
@@ -3263,7 +3267,7 @@ void OSD::tick()
   assert(osd_lock.is_locked());
   dout(5) << "tick" << dendl;
 
-  logger->set(l_osd_buf, buffer::get_total_alloc());
+  logger->set(l_osd_buf, ceph::buffer::get_total_alloc());
 
   if (is_active() || is_waiting_for_healthy()) {
     map_lock.get_read();
@@ -4879,7 +4883,7 @@ bool OSD::ms_verify_authorizer(Connection *con, int peer_type,
       try {
 	::decode(str, p);
       }
-      catch (buffer::error& e) {
+      catch (ceph::buffer::error& e) {
       }
       bool success = s->caps.parse(str);
       if (success)
@@ -4998,7 +5002,7 @@ void OSD::_dispatch(Message *m)
 
   Session *session = NULL;
 
-  logger->set(l_osd_buf, buffer::get_total_alloc());
+  logger->set(l_osd_buf, ceph::buffer::get_total_alloc());
 
   switch (m->get_type()) {
 
@@ -5066,7 +5070,7 @@ void OSD::_dispatch(Message *m)
     }
   }
 
-  logger->set(l_osd_buf, buffer::get_total_alloc());
+  logger->set(l_osd_buf, ceph::buffer::get_total_alloc());
 
 }
 

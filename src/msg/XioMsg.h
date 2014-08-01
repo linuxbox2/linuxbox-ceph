@@ -31,12 +31,12 @@ class XioMsgCnt
 {
 public:
   __le32 msg_cnt;
-  buffer::list bl;
+  bufferlist bl;
 public:
-  XioMsgCnt(buffer::ptr p)
+  XioMsgCnt(bufferptr p)
     {
       bl.append(p);
-      buffer::list::iterator bl_iter = bl.begin();
+      bufferlist::iterator bl_iter = bl.begin();
       ::decode(msg_cnt, bl_iter);
     }
 };
@@ -49,23 +49,23 @@ public:
   entity_addr_t addr; /* XXX hack! */
   ceph_msg_header* hdr;
   ceph_msg_footer* ftr;
-  buffer::list bl;
+  bufferlist bl;
 public:
   XioMsgHdr(ceph_msg_header& _hdr, ceph_msg_footer& _ftr)
     : msg_cnt(0), hdr(&_hdr), ftr(&_ftr)
     { }
 
-  XioMsgHdr(ceph_msg_header& _hdr, ceph_msg_footer &_ftr, buffer::ptr p)
+  XioMsgHdr(ceph_msg_header& _hdr, ceph_msg_footer &_ftr, bufferptr p)
     : hdr(&_hdr), ftr(&_ftr)
     {
       bl.append(p);
-      buffer::list::iterator bl_iter = bl.begin();
+      bufferlist::iterator bl_iter = bl.begin();
       decode(bl_iter);
     }
 
-  const buffer::list& get_bl() { encode(bl); return bl; };
+  const bufferlist& get_bl() { encode(bl); return bl; };
 
-  inline void encode_hdr(buffer::list& bl) const {
+  inline void encode_hdr(bufferlist& bl) const {
     ::encode(msg_cnt, bl);
     ::encode(peer_type, bl);
     ::encode(addr, bl);
@@ -84,7 +84,7 @@ public:
     ::encode(hdr->crc, bl);
   }
 
-  inline void encode_ftr(buffer::list& bl) const {
+  inline void encode_ftr(bufferlist& bl) const {
     ::encode(ftr->front_crc, bl);
     ::encode(ftr->middle_crc, bl);
     ::encode(ftr->data_crc, bl);
@@ -92,12 +92,12 @@ public:
     ::encode(ftr->flags, bl);
   }
 
-  inline void encode(buffer::list& bl) const {
+  inline void encode(bufferlist& bl) const {
     encode_hdr(bl);
     encode_ftr(bl);
   }
 
-  inline void decode_hdr(buffer::list::iterator& bl) {
+  inline void decode_hdr(bufferlist::iterator& bl) {
     ::decode(msg_cnt, bl);
     ::decode(peer_type, bl);
     ::decode(addr, bl);
@@ -116,7 +116,7 @@ public:
     ::decode(hdr->crc, bl);
   }
 
-  inline void decode_ftr(buffer::list::iterator& bl) {
+  inline void decode_ftr(bufferlist::iterator& bl) {
     ::decode(ftr->front_crc, bl);
     ::decode(ftr->middle_crc, bl);
     ::decode(ftr->data_crc, bl);
@@ -124,7 +124,7 @@ public:
     ::decode(ftr->flags, bl);
   }
 
-  inline void decode(buffer::list::iterator& bl) {
+  inline void decode(bufferlist::iterator& bl) {
     decode_hdr(bl);
     decode_ftr(bl);
   }

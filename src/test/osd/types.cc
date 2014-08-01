@@ -23,6 +23,8 @@
 
 #include <sstream>
 
+using namespace ceph;
+
 TEST(hobject, prefixes0)
 {
   uint32_t mask = 0xE947FA20;

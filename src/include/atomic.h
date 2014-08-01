@@ -140,4 +140,7 @@ namespace ceph {
 }
 
 #endif
+
+using ceph::atomic_t;
+
 #endif

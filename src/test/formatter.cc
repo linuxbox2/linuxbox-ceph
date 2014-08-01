@@ -19,6 +19,9 @@
 #include <string>
 
 using std::ostringstream;
+using ceph::Formatter;
+using ceph::JSONFormatter;
+using ceph::XMLFormatter;
 
 TEST(JsonFormatter, Simple1) {
   ostringstream oss;

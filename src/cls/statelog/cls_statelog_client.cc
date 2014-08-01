@@ -86,7 +86,7 @@ public:
           *truncated = ret.truncated;
         if (marker)
           *marker = ret.marker;
-      } catch (buffer::error& err) {
+      } catch (ceph::buffer::error& err) {
         // nothing we can do about it atm
       }
     }

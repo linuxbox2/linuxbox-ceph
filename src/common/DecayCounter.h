@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_DECAYCOUNTER_H
@@ -21,10 +21,10 @@
 
 /**
  *
- * TODO: normalize value based on some fucntion of half_life, 
+ * TODO: normalize value based on some fucntion of half_life,
  *  so that it can be interpreted as an approximation of a
  *  moving average of N seconds.  currently, changing half-life
- *  skews the scale of the value, even at steady state.  
+ *  skews the scale of the value, even at steady state.
  *
  */
 
@@ -38,7 +38,7 @@ public:
   DecayRate(double hl) { set_halflife(hl); }
   void set_halflife(double hl) {
     k = ::log(.5) / hl;
-  }    
+  }
 };
 
 class DecayCounter {
@@ -53,7 +53,7 @@ public:
 
   void encode(bufferlist& bl) const;
   void decode(const utime_t &t, bufferlist::iterator& p);
-  void dump(Formatter *f) const;
+  void dump(ceph::Formatter *f) const;
   static void generate_test_instances(list<DecayCounter*>& ls);
 
   DecayCounter(const utime_t &now)
