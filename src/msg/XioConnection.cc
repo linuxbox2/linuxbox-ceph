@@ -197,7 +197,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
   buffer::list payload, middle, data;
 
   struct timeval t1, t2;
-  uint64_t seq;
 
   dout(4) << __func__ << " " << "msg_seq.size()="  << msg_seq.size() <<
     dendl;
@@ -323,7 +322,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
     }
   }
 
-  seq = treq->sn;
   uint_to_timeval(t2, treq->timestamp);
 
   /* update connection timestamp */
@@ -347,7 +345,10 @@ int XioConnection::on_msg_req(struct xio_session *session,
     /* update timestamps */
     m->set_recv_stamp(t1);
     m->set_recv_complete_stamp(t2);
-    m->set_seq(seq);
+    m->set_seq(header.seq);
+
+    /* MP-SAFE */
+    state.set_in_seq(header.seq);
 
     /* XXXX validate peer type */
     if (peer_type != (int) hdr.peer_type) { /* XXX isn't peer_type -1? */

@@ -652,8 +652,10 @@ int XioMessenger::send_message(Message *m, Connection *con)
   if (con == &loop_con) {
     m->set_connection(con);
     m->set_src(get_myinst().name);
+    XioLoopbackConnection *xlcon = static_cast<XioLoopbackConnection*>(con);
+    m->set_seq(xlcon->next_seq());
     ds_dispatch(m);
-    return true;
+    return 0;
   }
 
   XioConnection *xcon = static_cast<XioConnection*>(con);
@@ -662,12 +664,11 @@ int XioMessenger::send_message(Message *m, Connection *con)
 
   int code = 0;
 
-  m->set_seq(0); /* XIO handles seq */
-  m->encode(xcon->get_features(), this->crcflags);
-
-  /* trace flag */
-  m->set_magic(magic);
+  m->set_seq(xcon->state.next_out_seq());
+  m->set_magic(magic); // trace flag
   m->set_special_handling(special_handling);
+
+  m->encode(xcon->get_features(), this->crcflags);
 
   buffer::list &payload = m->get_payload();
   buffer::list &middle = m->get_middle();

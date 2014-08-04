@@ -39,6 +39,7 @@ class XioConnection : public Connection
 {
 public:
   enum type { ACTIVE, PASSIVE };
+
 private:
   XioConnection::type xio_conn_type;
   XioPortal *portal;
@@ -51,6 +52,34 @@ private:
   atomic_t recv;
   uint32_t magic;
   uint32_t special_handling;
+
+  struct lifecycle {
+    // different from Pipe states?
+    enum lf_state {
+      INIT,
+      LOCAL_DISCON,
+      REMOTE_DISCON,
+      RECONNECTING,
+      UP,
+      DEAD } state;
+
+    /* XXX */
+    uint32_t reconnects;
+    uint32_t connect_seq, peer_global_seq;
+    uint32_t in_seq, out_seq_acked; // atomic<uint64_t>, got receipt
+    atomic_t out_seq; // atomic<uint32_t>
+
+    lifecycle() : state(lifecycle::INIT), in_seq(0), out_seq(0) {}
+
+    void set_in_seq(uint32_t seq) {
+      in_seq = seq;
+    }
+
+    uint32_t next_out_seq() {
+      return out_seq.inc();
+    };
+
+  } state;
 
   /* batching */
   XioInSeq in_seq;
@@ -164,18 +193,29 @@ public:
 class XioLoopbackConnection : public Connection
 {
 private:
+  atomic_t seq;
 public:
-  XioLoopbackConnection(Messenger *m) : Connection(m)
+  XioLoopbackConnection(Messenger *m) : Connection(m), seq(0)
     {
       const entity_inst_t& m_inst = m->get_myinst();
       peer_addr = m_inst.addr;
       peer_type = m_inst.name.type();
       set_features(XIO_ALL_FEATURES); /* XXXX set to ours */
     }
+
   XioLoopbackConnection* get() {
     return static_cast<XioLoopbackConnection*>(RefCountedObject::get());
   }
+
   virtual bool is_connected() { return true; }
+
+  uint32_t get_seq() {
+    return seq.read();
+  }
+
+  uint32_t next_seq() {
+    return seq.inc();
+  }
 };
 
 typedef boost::intrusive_ptr<XioLoopbackConnection> LoopbackConnectionRef;

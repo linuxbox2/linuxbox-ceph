@@ -411,7 +411,7 @@ public:
   void set_tid(uint64_t t) { header.tid = t; }
 
   unsigned get_seq() const { return header.seq; }
-  void set_seq(unsigned s) { header.seq = s; }
+  void set_seq(unsigned s) { header.seq = s; } // XXX unsigned?
 
   unsigned get_priority() const { return header.priority; }
   void set_priority(__s16 p) { header.priority = p; }
