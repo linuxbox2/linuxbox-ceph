@@ -304,7 +304,11 @@ public:
     cl_flag(false),
     mp_this(_mp)
     {}
-  virtual void finish(int r);
+
+  virtual void finish(int r) {
+    this->put();
+  }
+
   virtual void complete(int r) {
     finish(r);
   }
@@ -344,7 +348,12 @@ public:
 
   XioPool& get_pool() { return rsp_pool; }
 
-  void on_err_finalize(XioConnection *xcon);
+  void on_err_finalize(XioConnection *xcon) {
+    /* can't decode message; even with one-way must free
+     * xio_msg structures, and then xiopool
+     */
+    this->finish(-1);
+  }
 
   ~XioCompletionHook() {
     xcon->put();

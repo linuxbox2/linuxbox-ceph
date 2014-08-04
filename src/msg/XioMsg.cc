@@ -36,16 +36,3 @@ int XioCompletionHook::release_msgs()
   assert(r);
   return r;
 }
-
-void XioCompletionHook::finish(int r)
-{
-  this->put();
-}
-
-void XioCompletionHook::on_err_finalize(XioConnection *xcon)
-{
-  /* can't decode message; even with one-way must free
-   * xio_msg structures, and then xiopool
-   */
-  this->finish(-1);
-}
