@@ -49,15 +49,6 @@
 #include "page.h"
 #include "crc32c.h"
 
-#if defined(HAVE_XIO)
-extern "C" {
-#include "libxio.h"
-}
-
-class XioCompletionHook;
-
-#endif /* HAVE_XIO */
-
 namespace ceph {
 
 #ifdef BUFFER_DEBUG
@@ -151,8 +142,6 @@ namespace ceph {
     class raw_hack_aligned;
     class raw_char;
     class raw_pipe;
-    class xio_mempool;
-    class xio_msg_buffer;
 
     /*
      * named constructors
@@ -165,10 +154,6 @@ namespace ceph {
     raw* create_static(unsigned len, char *buf);
     raw* create_page_aligned(unsigned len);
     raw* create_zero_copy(unsigned len, int fd, int64_t *offset);
-
-#if defined(HAVE_XIO)
-    raw* create_msg(unsigned len, char *buf, XioCompletionHook *m_hook);
-#endif
 
     /*
      * nested utility classes

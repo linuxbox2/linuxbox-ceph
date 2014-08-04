@@ -69,7 +69,6 @@ namespace ceph {
       return bp;
     }
 
-#if defined(HAVE_XIO)
   inline struct xio_mempool_obj* get_xio_mp(const ptr& bp)
   {
     buffer::xio_mempool *mb =
@@ -79,7 +78,6 @@ namespace ceph {
       }
     return NULL;
   }
-#endif /* HAVE_XIO */
 
   } /* namespace buffer */
 
