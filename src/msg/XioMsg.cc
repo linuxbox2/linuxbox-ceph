@@ -24,8 +24,6 @@ int XioCompletionHook::release_msgs()
   int r = msg_seq.size();
   cl_flag = true;
 
-  XioConnection *xcon = get_xcon();
-
   /* queue for release */
   xrsp = (XioRsp *) rsp_pool.alloc(sizeof(XioRsp));
   new (xrsp) XioRsp(xcon, this);

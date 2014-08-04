@@ -340,8 +340,6 @@ public:
     put(1);
   }
 
-  XioConnection* get_xcon() { return xcon; }
-
   XioInSeq& get_seq() { return msg_seq; }
 
   void claim(int r) {}
@@ -365,9 +363,8 @@ struct XioRsp : public XioSubmit
   XioCompletionHook *xhook;
 public:
   XioRsp(XioConnection *_xcon, XioCompletionHook *_xhook)
-    : XioSubmit(XioSubmit::INCOMING_MSG_RELEASE, _xhook->get_xcon()),
-      xhook(_xhook->get())
-    {
+    : XioSubmit(XioSubmit::INCOMING_MSG_RELEASE, _xcon /* not xcon! */),
+      xhook(_xhook->get()) {
       // submit queue ref
       xcon->get();
     };
@@ -378,11 +375,10 @@ public:
 
   XioCompletionHook *get_xhook() { return xhook; }
 
-  void finalize()
-    {
-      xcon->put();
-      xhook->put();
-    }
+  void finalize() {
+    xcon->put();
+    xhook->put();
+  }
 };
 
 void print_xio_msg_hdr(const char *tag,  const XioMsgHdr &hdr,
