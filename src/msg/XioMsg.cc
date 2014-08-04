@@ -17,7 +17,6 @@
 #include "XioConnection.h"
 #include "XioMsg.h"
 
-extern XioPool *xrp_pool;
 
 int XioCompletionHook::release_msgs()
 {
