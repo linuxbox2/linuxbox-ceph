@@ -8,8 +8,7 @@
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License version 2.1, as published by the Free Software 
- * Foundation.  See file COPYING.
- * 
+ * Foundation.  See file COPYING. * 
  */
 
 #ifndef CEPH_CONNECTION_H
@@ -49,9 +48,6 @@ private:
 public:
   bool failed; // true if we are a lossy connection that has failed.
 
-  int rx_buffers_version;
-  map<ceph_tid_t,pair<bufferlist,int> > rx_buffers;
-
   friend class boost::intrusive_ptr<Connection>;
   friend class PipeConnection;
 
@@ -62,8 +58,7 @@ public:
       priv(NULL),
       peer_type(-1),
       features(0),
-      failed(false),
-      rx_buffers_version(0) {
+      failed(false) {
     // we are managed exlusively by ConnectionRef; make it so you can
     //   ConnectionRef foo = new Connection;
     nref.set(0);
@@ -113,16 +108,9 @@ public:
   void set_features(uint64_t f) { features = f; }
   void set_feature(uint64_t f) { features |= f; }
 
-  void post_rx_buffer(ceph_tid_t tid, bufferlist& bl) {
-    Mutex::Locker l(lock);
-    ++rx_buffers_version;
-    rx_buffers[tid] = pair<bufferlist,int>(bl, rx_buffers_version);
-  }
-
-  void revoke_rx_buffer(ceph_tid_t tid) {
-    Mutex::Locker l(lock);
-    rx_buffers.erase(tid);
-  }
+  virtual bool post_buffers_p() { return false; }
+  virtual void post_rx_buffer(ceph_tid_t tid, bufferlist& bl) {}
+  virtual void revoke_rx_buffer(ceph_tid_t tid) {}
 
   utime_t get_last_keepalive_ack() const {
     return last_keepalive_ack;
@@ -135,6 +123,8 @@ class Pipe;
 
 struct PipeConnection : public Connection {
   Pipe* pipe;
+  int rx_buffers_version;
+  map<ceph_tid_t,pair<bufferlist,int> > rx_buffers;
 
   friend class boost::intrusive_ptr<PipeConnection>;
   friend class Pipe;
@@ -143,7 +133,8 @@ public:
 
   PipeConnection(Messenger *m)
     : Connection(m),
-      pipe(NULL) { }
+      pipe(NULL),
+      rx_buffers_version(0) { }
 
   ~PipeConnection();
 
@@ -158,6 +149,20 @@ public:
   bool is_connected() {
     Mutex::Locker l(lock);
     return pipe != NULL;
+  }
+
+  /* rx_buffers */
+  virtual bool post_buffers_p() { return true; }
+
+  void post_rx_buffer(ceph_tid_t tid, bufferlist& bl) {
+    Mutex::Locker l(lock);
+    ++rx_buffers_version;
+    rx_buffers[tid] = pair<bufferlist,int>(bl, rx_buffers_version);
+  }
+
+  void revoke_rx_buffer(ceph_tid_t tid) {
+    Mutex::Locker l(lock);
+    rx_buffers.erase(tid);
   }
 
 }; /* PipeConnection */
