@@ -171,7 +171,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
       << " msg_cnt " << msg_cnt.msg_cnt
       << " iov_base " << treq->in.header.iov_base
       << " iov_len " << (int) treq->in.header.iov_len
-      << " data_iovlen " << treq->in.data_iovlen
+      << " nents " << treq->in.pdata_iov.nents
       << " conn " << conn << " sess " << session
       << " sn " << treq->sn << dendl;
     assert(session == this->session);
@@ -225,9 +225,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = msg_iter;
-    xio_ptr = (req->in.data_type == XIO_DATA_TYPE_PTR);
-    iov_len = treq->in.data_iovlen;
-    iovs = (xio_ptr) ? treq->in.pdata_iov : treq->in.data_iov;
+    xio_ptr = (req->in.sgl_type == XIO_SGL_TYPE_IOV_PTR);
+    iov_len = (xio_ptr) ? treq->in.pdata_iov.nents : treq->in.data_iov.nents;
+    iovs = (xio_ptr) ? treq->in.pdata_iov.sglist : treq->in.data_iov.sglist;
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &iovs[ix];
 
@@ -273,9 +273,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = msg_iter;
-    xio_ptr = (req->in.data_type == XIO_DATA_TYPE_PTR);
-    iov_len = treq->in.data_iovlen;
-    iovs = (xio_ptr) ? treq->in.pdata_iov : treq->in.data_iov;
+    xio_ptr = (req->in.sgl_type == XIO_SGL_TYPE_IOV_PTR);
+    iov_len = (xio_ptr) ? treq->in.pdata_iov.nents : treq->in.data_iov.nents;
+    iovs = (xio_ptr) ? treq->in.pdata_iov.sglist : treq->in.data_iov.sglist;
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &iovs[ix];
       take_len = MIN(blen, msg_iov->iov_len);
@@ -306,9 +306,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = msg_iter;
-    xio_ptr = (req->in.data_type == XIO_DATA_TYPE_PTR);
-    iov_len = treq->in.data_iovlen;
-    iovs = (xio_ptr) ? treq->in.pdata_iov : treq->in.data_iov;
+    xio_ptr = (req->in.sgl_type == XIO_SGL_TYPE_IOV_PTR);
+    iov_len = (xio_ptr) ? treq->in.pdata_iov.nents : treq->in.data_iov.nents;
+    iovs = (xio_ptr) ? treq->in.pdata_iov.sglist : treq->in.data_iov.sglist;
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &iovs[ix];
       data.append(

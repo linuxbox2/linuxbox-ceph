@@ -166,6 +166,7 @@ struct xio_msg_ex
 {
   struct xio_msg msg;
   struct xio_iovec_ex iovs[XIO_MSGR_IOVLEN];
+  struct xio_iovec_ex iovs1[XIO_MSGR_IOVLEN];
 
   xio_msg_ex(void* user_context) {
     // minimal initialize an "out" msg
@@ -179,16 +180,21 @@ struct xio_msg_ex
     // minimal zero "in" side
     msg.in.header.iov_len = 0;
     msg.in.header.iov_base = NULL;  /* XXX Accelio requires this currently */
-    msg.in.data_iovsz = 0;
-    msg.in.data_iovlen = 0;
+
+    msg.in.sgl_type = XIO_SGL_TYPE_IOV_PTR;
+    msg.in.pdata_iov.max_nents = XIO_MSGR_IOVLEN;
+    msg.in.pdata_iov.nents = 0;
+    msg.in.pdata_iov.sglist = iovs1;
+
     // minimal zero "out" side
     msg.out.header.iov_len = 0;
     msg.out.header.iov_base = NULL;  /* XXX Accelio requires this currently,
 				      * against spec */
     // out (some members adjusted later)
-    msg.out.data_type = XIO_DATA_TYPE_PTR;
-    msg.out.data_iovsz = XIO_MSGR_IOVLEN;
-    msg.out.pdata_iov = iovs;
+    msg.out.sgl_type = XIO_SGL_TYPE_IOV_PTR;
+    msg.out.pdata_iov.max_nents = XIO_MSGR_IOVLEN;
+    msg.out.pdata_iov.nents = XIO_MSGR_IOVLEN;
+    msg.out.pdata_iov.sglist = iovs;
   }
 };
 
