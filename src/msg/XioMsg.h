@@ -174,7 +174,6 @@ struct xio_msg_ex
     msg.type = XIO_MSG_TYPE_ONE_WAY;
     msg.request = NULL;
     msg.more_in_batch = 0;
-    msg.status = 0;
     // for now, we DO NEED receipts for every msg
     msg.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT;
     msg.user_context = user_context;
