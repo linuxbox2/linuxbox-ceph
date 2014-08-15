@@ -139,7 +139,8 @@ public:
       }
     }
 
-  int bind(struct xio_session_ops *ops, const string &_uri);
+  int bind(struct xio_session_ops *ops, const string &base_uri,
+	   uint16_t port, uint16_t *assigned_port);
 
   inline void release_xio_rsp(XioRsp* xrsp) {
     struct xio_msg *msg = xrsp->dequeue();
@@ -299,7 +300,7 @@ public:
     }
 
   int bind(struct xio_session_ops *ops, const string& base_uri,
-	   const int base_port);
+	   uint16_t port, uint16_t *port0);
 
     int accept(struct xio_session *session,
 		 struct xio_new_session_req *req,

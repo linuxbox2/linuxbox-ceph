@@ -602,10 +602,8 @@ int XioMessenger::bind(const entity_addr_t& addr)
     }
   }
 
-  set_myaddr(*a);
-
   entity_addr_t shift_addr = *a;
-  if (port_shift) {
+  if (port_shift && shift_addr.get_port() > 0) { // don't shift port 0
     shift_addr.set_port(shift_addr.get_port() + port_shift);
   }
 
@@ -613,7 +611,13 @@ int XioMessenger::bind(const entity_addr_t& addr)
   dout(4) << "XioMessenger " << this << " bind: xio_uri "
     << base_uri << ':' << shift_addr.get_port() << dendl;
 
-  return portals.bind(&xio_msgr_ops, base_uri, shift_addr.get_port());
+  uint16_t port0;
+  int r = portals.bind(&xio_msgr_ops, base_uri, shift_addr.get_port(), &port0);
+  if (r == 0) {
+    shift_addr.set_port(port0 - port_shift);
+    set_myaddr(shift_addr);
+  }
+  return r;
 } /* bind */
 
 int XioMessenger::rebind(const set<int>& avoid_ports)

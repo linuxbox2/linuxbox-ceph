@@ -13,44 +13,62 @@
  */
 
 #include "XioPortal.h"
+#include "common/PrebufferedStreambuf.h"
+
 #define dout_subsys ceph_subsys_xio
 
-int XioPortal::bind(struct xio_session_ops *ops, const string &_uri)
+int XioPortal::bind(struct xio_session_ops *ops, const string &base_uri,
+		    uint16_t port, uint16_t *assigned_port)
 {
-  xio_uri = _uri;
-  portal_id = strdup(xio_uri.c_str());
-  server = xio_bind(ctx, ops, portal_id, NULL, 0, msgr);
-  dout(4) << "xio_bind: portal " << this << ' ' << xio_uri
+  // format uri
+  PrebufferedStreambuf buf(base_uri.size() + 7);
+  ostream(&buf) << base_uri << ':' << port;
+
+  uint16_t assigned;
+  server = xio_bind(ctx, ops, buf.get_str().c_str(), &assigned, 0, msgr);
+  if (server == NULL) {
+    int err = xio_errno();
+    derr << "xp::bind: portal " << buf.get_str()
+      << " failed to bind: " << xio_strerror(err) << dendl;
+    return err;
+  }
+
+  // update uri if port changed
+  if (port != assigned) {
+    buf.pubseekpos(0); // rewind
+    ostream(&buf) << base_uri << ':' << assigned;
+  }
+
+  xio_uri = buf.get_str();
+  portal_id = const_cast<char*>(xio_uri.c_str());
+  if (assigned_port)
+    *assigned_port = assigned;
+  dout(20) << "xio_bind: portal " << xio_uri
     << " returned server " << server << dendl;
-  return (!!server);
+  return 0;
 }
 
 int XioPortals::bind(struct xio_session_ops *ops, const string& base_uri,
-       const int base_port)
+		     uint16_t port, uint16_t *port0)
 {
-#define PORT_STRIDE 30	// XXX need to find out who else needs to know this
   /* a server needs at least 1 portal */
   if (n < 1)
     return EINVAL;
 
-  XioPortal *portal;
-  int bind_size = portals.size();
+  /* bind the portals */
+  for (size_t i = 0; i < portals.size(); i++) {
 
-  /* bind a consecutive range of ports */
-  for (int bind_ix = 0, bind_port = base_port; bind_ix < bind_size; ++bind_ix,
-	 bind_port += PORT_STRIDE) {
-    string xio_uri = base_uri;
-    xio_uri += ":";
-    xio_uri += boost::lexical_cast<std::string>(bind_port);
-    portal = portals[bind_ix];
-    int r = portal->bind(ops, xio_uri);
-    if (r)  {
-      derr << "xp::bind: portal " << portal << " bind OK: " << xio_uri
-	<< " (ix=" << bind_ix << " port=" << bind_port << ')' << dendl;
-    } else {
-      derr << "xp::bind: portal " << portal << " cannot bind: " << xio_uri
-	<< " (ix=" << bind_ix << " port=" << bind_port << ')' << dendl;
-    }
+    uint16_t result_port;
+    int r = portals[i]->bind(ops, base_uri, port, &result_port);
+    if (r != 0)
+      return r;
+
+    dout(5) << "xp::bind: portal " << i << " bind OK: "
+      << portals[i]->xio_uri << dendl;
+
+    if (i == 0 && port0 != NULL)
+      *port0 = result_port;
+    port = 0; // use port 0 for all subsequent portals
   }
 
   return 0;
