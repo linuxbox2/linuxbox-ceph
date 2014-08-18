@@ -278,6 +278,11 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_OUT_IOVLEN,
 		  &xopt, sizeof(unsigned));
 
+#define XMSG_QUEUE_DEPTH 512
+      xopt = XMSG_QUEUE_DEPTH;
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_QUEUE_DEPTH,
+		  &xopt, sizeof(unsigned));
+
       /* and unregisterd one */
 #define XMSG_MEMPOOL_MIN 4096
 #define XMSG_MEMPOOL_MAX 4096
@@ -812,18 +817,21 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
     dout(4) << "XioMessenger " << this << " get_connection: xio_uri "
       << xio_uri << dendl;
 
-    /* XXX client session attributes */
-    struct xio_session_attr attr = {
-      &xio_msgr_ops,
-      NULL, /* XXX server private data? */
-      0     /* XXX? */
+    /* XXX client session creation parameters */
+    struct xio_session_params params = {
+      .type		= XIO_SESSION_CLIENT,
+      .initial_sn	= 0,
+      .ses_ops		= &xio_msgr_ops,
+      .user_context	= this,
+      .private_data	= NULL,
+      .private_data_len = 0,
+      .uri		= (char *)xio_uri.c_str()
     };
 
     XioConnection *xcon = new XioConnection(this, XioConnection::ACTIVE,
 					    _dest);
 
-    xcon->session = xio_session_create(XIO_SESSION_REQ, &attr, xio_uri.c_str(),
-				       0, 0, this);
+    xcon->session = xio_session_create(&params);
     if (! xcon->session) {
       delete xcon;
       return NULL;

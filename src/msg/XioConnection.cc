@@ -162,6 +162,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   if (! in_seq.p()) {
     if (!treq->in.header.iov_len) {
 	derr << __func__ << " empty header: packet out of sequence?" << dendl;
+	xio_release_msg(req);
 	return 0;
     }
     XioMsgCnt msg_cnt(
