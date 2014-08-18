@@ -256,11 +256,6 @@ public:
 	_shutdown = true;
 	pthread_spin_unlock(&sp);
     }
-
-  ~XioPortal()
-    {
-      free(portal_id);
-    }
 };
 
 class XioPortals
