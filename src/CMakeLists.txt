@@ -766,6 +766,7 @@ if(${WITH_RBD})
     set_target_properties(librbd PROPERTIES VERSION "1.0.0" SOVERSION "1"
       OUTPUT_NAME rbd)
   endif(${ENABLE_SHARED})
+  install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/include/rbd" DESTINATION include)
   install(TARGETS librados librbd DESTINATION lib)
   set(rbd_srcs
     rbd.cc common/TextTable.cc)
