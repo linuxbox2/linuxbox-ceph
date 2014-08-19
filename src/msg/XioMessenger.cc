@@ -278,7 +278,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_OUT_IOVLEN,
 		  &xopt, sizeof(unsigned));
 
-#define XMSG_QUEUE_DEPTH 512
+#define XMSG_QUEUE_DEPTH 1024
       xopt = XMSG_QUEUE_DEPTH;
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_QUEUE_DEPTH,
 		  &xopt, sizeof(unsigned));
