@@ -640,6 +640,9 @@ target_link_libraries(ceph_mon_store_converter os global)
 configure_file(${CMAKE_SOURCE_DIR}/src/ceph-coverage.in
   ${CMAKE_BINARY_DIR}/ceph-coverage @ONLY)
 
+configure_file(${CMAKE_SOURCE_DIR}/src/mkcephfs.in
+  ${CMAKE_BINARY_DIR}/mkcephfs @ONLY)
+
 configure_file(${CMAKE_SOURCE_DIR}/src/ceph-debugpack.in
   ${CMAKE_BINARY_DIR}/ceph-debugpack @ONLY)
 
@@ -650,10 +653,10 @@ configure_file(${CMAKE_SOURCE_DIR}/src/ceph-crush-location.in
   ${CMAKE_BINARY_DIR}/ceph-crush-location @ONLY)
 
 add_custom_target(shell_scripts ALL
-  COMMAND chmod 755
+  COMMAND chmod 755 ${CMAKE_BINARY_DIR}/mkcephfs
   ${CMAKE_BINARY_DIR}/init-ceph ${CMAKE_BINARY_DIR}/ceph-debugpack
   ${CMAKE_BINARY_DIR}/ceph-coverage ${CMAKE_BINARY_DIR}/ceph
-  DEPENDS ${CMAKE_BINARY_DIR}/init-ceph
+  DEPENDS ${CMAKE_BINARY_DIR}/mkcephfs ${CMAKE_BINARY_DIR}/init-ceph
   ${CMAKE_BINARY_DIR}/ceph-debugpack ${CMAKE_BINARY_DIR}/ceph-coverage
   ${CMAKE_BINARY_DIR}/ceph COMMENT "Shell Scripts have permission")
 
@@ -692,6 +695,7 @@ install(PROGRAMS
   ${CMAKE_SOURCE_DIR}/src/ceph-disk-activate
   ${CMAKE_SOURCE_DIR}/src/ceph-disk-prepare
   ${CMAKE_SOURCE_DIR}/src/ceph-disk-udev
+  ${CMAKE_BINARY_DIR}/mkcephfs
   DESTINATION sbin)
 
 if(WITH_LIBCEPHFS)
