@@ -396,6 +396,7 @@ set(libos_srcs
   os/FileStore.cc
   os/chain_xattr.cc
   os/ObjectStore.cc
+  os/Transaction.cc
   os/JournalingObjectStore.cc
   os/LFNIndex.cc
   os/IndexManager.cc
@@ -819,6 +820,7 @@ if(${WITH_RADOSGW})
     rgw/rgw_acl_s3.cc
     rgw/rgw_acl_swift.cc
     rgw/rgw_client_io.cc
+    rgw/rgw_dencoder.cc
     rgw/rgw_fcgi.cc
     rgw/rgw_xml.cc
     rgw/rgw_usage.cc
