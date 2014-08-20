@@ -130,6 +130,9 @@ int MonClient::get_monmap_privately()
 
   while (monmap.fsid.is_zero()) {
     cur_mon = _pick_random_mon();
+
+    /* XXX note, MonClient doesn't have multi-messenger problems, because
+     * a Messenger of desired type is already selected */
     cur_con = messenger->get_connection(monmap.get_inst(cur_mon));
     ldout(cct, 10) << "querying mon." << cur_mon << " " << cur_con->get_peer_addr() << dendl;
     messenger->send_message(new MMonGetMap, cur_con);
@@ -313,18 +316,30 @@ void MonClient::handle_monmap(MMonMap *m)
   ldout(cct, 10) << "handle_monmap " << *m << dendl;
   bufferlist::iterator p = m->monmapbl.begin();
   ::decode(monmap, p);
+  uint64_t epoch = monmap.get_epoch();
 
   assert(!cur_mon.empty());
   ldout(cct, 10) << " got monmap " << monmap.epoch
-		 << ", mon." << cur_mon << " is now rank " << monmap.get_rank(cur_mon)
+		 << ", mon." << cur_mon << " is now rank "
+		 << monmap.get_rank(cur_mon)
 		 << dendl;
   ldout(cct, 10) << "dump:\n";
   monmap.print(*_dout);
   *_dout << dendl;
 
-  _sub_got("monmap", monmap.get_epoch());
+  _sub_got("monmap", epoch);
 
-  if (!monmap.get_addr_name(cur_con->get_peer_addr(), cur_mon)) {
+  /* XXXX
+   *
+   * For the moment, this check always fails when cur_con is an
+   * XioConnection, probably because the shifted port isn't advertised
+   * in the MonMap.  We could fix this a couple of ways, probably the
+   * correct one is publishing Xio endpoints in the MonMap.  However,
+   * this requires running down several loose ends, so deferring for
+   * now.
+   */
+
+  if (false /* !monmap.get_addr_name(cur_con->get_peer_addr(), cur_mon) */) {
     ldout(cct, 10) << "mon." << cur_mon << " went away" << dendl;
     _reopen_session();  // can't find the mon we were talking to (above)
   }
@@ -416,7 +431,7 @@ void MonClient::shutdown()
   monc_lock.Lock();
   timer.shutdown();
 
-  messenger->mark_down(cur_con);
+  cur_con->get_messenger()->mark_down(cur_con);
   cur_con.reset(NULL);
 
   monc_lock.Unlock();
@@ -464,6 +479,7 @@ int MonClient::authenticate(double timeout)
 
 void MonClient::handle_auth(MAuthReply *m)
 {
+  ldout(cct, 5) << "handle_auth " << *m << dendl;
   Context *cb = NULL;
   bufferlist::iterator p = m->result_bl.begin();
   if (state == MC_STATE_NEGOTIATING) {
@@ -550,7 +566,7 @@ void MonClient::_send_mon_message(Message *m, bool force)
   assert(!cur_mon.empty());
   if (force || state == MC_STATE_HAVE_SESSION) {
     assert(cur_con);
-    ldout(cct, 10) << "_send_mon_message to mon." << cur_mon
+    ldout(cct, 10) << "_send_mon_message " << *m <<  " to mon." << cur_mon
 		   << " at " << cur_con->get_peer_addr() << dendl;
     messenger->send_message(m, cur_con);
   } else {
@@ -593,7 +609,7 @@ void MonClient::_reopen_session(int rank, string name)
   }
 
   if (cur_con) {
-    messenger->mark_down(cur_con);
+    cur_con->get_messenger()->mark_down(cur_con);
   }
   cur_con = messenger->get_connection(monmap.get_inst(cur_mon));
 	

@@ -53,6 +53,7 @@ public:
    *  from this value.
    */
   CephContext *cct;
+  int crcflags;
 
   /**
    * A Policy describes the rules of a Connection. Is there a limit on how
@@ -125,7 +126,8 @@ public:
   Messenger(CephContext *cct_, entity_name_t w)
     : my_inst(),
       default_send_priority(CEPH_MSG_PRIO_DEFAULT), started(false),
-      cct(cct_)
+      cct(cct_),
+      crcflags(get_default_crc_flags(cct->_conf))
   {
     my_inst.name = w;
   }
@@ -173,7 +175,7 @@ protected:
   /**
    * set messenger's address
    */
-  void set_myaddr(const entity_addr_t& a) { my_inst.addr = a; }
+  virtual void set_myaddr(const entity_addr_t& a) { my_inst.addr = a; }
 public:
   /**
    * Retrieve the Messenger's name.
@@ -213,6 +215,11 @@ public:
    * (0 if the queue is empty)
    */
   virtual double get_dispatch_queue_max_age(utime_t now) = 0;
+  /**
+   * Get the default crc flags for this messenger.
+   * but not yet dispatched.
+   */
+  static int get_default_crc_flags(md_config_t *);
 
   /**
    * @} // Accessors
@@ -580,6 +587,15 @@ public:
    *  one reference to it.
    */
   void ms_deliver_dispatch(Message *m) {
+
+#if 0
+    /* XXX delete me */
+    ConnectionRef con = m->get_connection();
+    std::cout << "ms_deliver_dispatch con " << con << " " <<
+      typeid(*con).name() << " has peer_addr " << con->get_peer_addr()
+	      << std::endl;
+#endif
+
     m->set_dispatch_stamp(ceph_clock_now(cct));
     for (list<Dispatcher*>::iterator p = dispatchers.begin();
 	 p != dispatchers.end();

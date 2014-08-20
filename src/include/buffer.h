@@ -14,11 +14,7 @@
 #ifndef CEPH_BUFFER_H
 #define CEPH_BUFFER_H
 
-#if defined(__linux__)
-#include <stdlib.h>
-#include <linux/types.h>
-#elif defined(__FreeBSD__)
-#include <sys/types.h>
+#if defined(__linux__) || defined(__FreeBSD__)
 #include <stdlib.h>
 #endif
 
@@ -50,11 +46,19 @@
 #include "page.h"
 #include "crc32c.h"
 
+#if defined(HAVE_XIO)
+extern "C" {
+#include "libxio.h"
+}
+#endif /* HAVE_XIO */
+
 #ifdef __CEPH__
 # include "include/assert.h"
 #else
 # include <assert.h>
 #endif
+
+class XioCompletionHook;
 
 namespace ceph {
 
@@ -123,6 +127,7 @@ private:
    * an abstract raw buffer.  with a reference count.
    */
   class raw;
+  class raw_crc;
   class raw_malloc;
   class raw_static;
   class raw_mmap_pages;
@@ -130,6 +135,10 @@ private:
   class raw_hack_aligned;
   class raw_char;
   class raw_pipe;
+
+public:
+  class xio_mempool;
+  class xio_msg_buffer;
 
   friend std::ostream& operator<<(std::ostream& out, const raw &r);
 
@@ -146,6 +155,10 @@ public:
   static raw* create_static(unsigned len, char *buf);
   static raw* create_page_aligned(unsigned len);
   static raw* create_zero_copy(unsigned len, int fd, int64_t *offset);
+
+#if defined(HAVE_XIO)
+ static raw* create_msg(unsigned len, char *buf, XioCompletionHook *m_hook);
+#endif
 
   /*
    * a buffer pointer.  references (a subsequence of) a raw buffer.
@@ -273,7 +286,7 @@ public:
 
       /// get current iterator offset in buffer::list
       unsigned get_off() { return off; }
-      
+
       /// get number of bytes remaining from iterator position to the end of the buffer::list
       unsigned get_remaining() { return bl->length() - off; }
 
@@ -283,24 +296,182 @@ public:
 	//return off == bl->length();
       }
 
-      void advance(int o);
-      void seek(unsigned o);
-      char operator*();
-      iterator& operator++();
-      ptr get_current_ptr();
+      // the inline keyword is optional, but here to remind folks not
+      // to move these
+      inline void advance(int o) {
+	  //cout << this << " advance " << o << " from " << off << " (p_off " << p_off << " in " << p->length() << ")" << std::endl;
+	  if (o > 0) {
+	    p_off += o;
+	    while (p_off > 0) {
+	      if (p == ls->end())
+		throw end_of_buffer();
+	      if (p_off >= p->length()) {
+		// skip this buffer
+		p_off -= p->length();
+		p++;
+	      } else {
+		// somewhere in this buffer!
+		break;
+	      }
+	    }
+	    off += o;
+	    return;
+	  }
+	  while (o < 0) {
+	    if (p_off) {
+	      unsigned d = -o;
+	      if (d > p_off)
+		d = p_off;
+	      p_off -= d;
+	      off -= d;
+	      o += d;
+	    } else if (off > 0) {
+	      assert(p != ls->begin());
+	      p--;
+	      p_off = p->length();
+	    } else {
+	      throw end_of_buffer();
+	    }
+	  }
+	}
+
+      inline void seek(unsigned o) {
+	  //cout << this << " seek " << o << std::endl;
+	  p = ls->begin();
+	  off = p_off = 0;
+	  advance(o);
+	}
+
+      inline char operator*() {
+	  if (p == ls->end())
+	    throw end_of_buffer();
+	  return (*p)[p_off];
+	}
+
+      inline buffer::list::iterator& operator++() {
+	  if (p == ls->end())
+	    throw end_of_buffer();
+	  advance(1);
+	  return *this;
+	}
+
+      inline buffer::ptr get_current_ptr() {
+	  if (p == ls->end())
+	    throw end_of_buffer();
+	  return ptr(*p, p_off, p->length() - p_off);
+	}
 
       // copy data out.
       // note that these all _append_ to dest!
-      void copy(unsigned len, char *dest);
-      void copy(unsigned len, ptr &dest);
-      void copy(unsigned len, list &dest);
-      void copy(unsigned len, std::string &dest);
-      void copy_all(list &dest);
+      inline void copy(unsigned len, char *dest) {
+	  if (p == ls->end()) seek(off);
+	  while (len > 0) {
+	    if (p == ls->end())
+	      throw end_of_buffer();
+	    assert(p->length() > 0);
+
+	    unsigned howmuch = p->length() - p_off;
+	    if (len < howmuch) howmuch = len;
+	    p->copy_out(p_off, howmuch, dest);
+	    dest += howmuch;
+
+	    len -= howmuch;
+	    advance(howmuch);
+	  }
+	}
+
+      inline void copy(unsigned len, ptr &dest) {
+	  dest = create(len);
+	  copy(len, dest.c_str());
+	}
+
+      inline void copy(unsigned len, list &dest) {
+	  if (p == ls->end())
+	    seek(off);
+	  while (len > 0) {
+	    if (p == ls->end())
+	      throw end_of_buffer();
+
+	    unsigned howmuch = p->length() - p_off;
+	    if (len < howmuch)
+	      howmuch = len;
+	    dest.append(*p, p_off, howmuch);
+
+	    len -= howmuch;
+	    advance(howmuch);
+	  }
+	}
+
+      inline void copy(unsigned len, std::string &dest) {
+	  if (p == ls->end())
+	    seek(off);
+	  while (len > 0) {
+	    if (p == ls->end())
+	      throw end_of_buffer();
+
+	    unsigned howmuch = p->length() - p_off;
+	    const char *c_str = p->c_str();
+	    if (len < howmuch)
+	      howmuch = len;
+	    dest.append(c_str + p_off, howmuch);
+
+	    len -= howmuch;
+	    advance(howmuch);
+	  }
+	}
+
+      inline void copy_all(list &dest) {
+	  if (p == ls->end())
+	    seek(off);
+	  while (1) {
+	    if (p == ls->end())
+	      return;
+	    assert(p->length() > 0);
+
+	    unsigned howmuch = p->length() - p_off;
+	    const char *c_str = p->c_str();
+	    dest.append(c_str + p_off, howmuch);
+
+	    advance(howmuch);
+	  }
+	}
 
       // copy data in
-      void copy_in(unsigned len, const char *src);
-      void copy_in(unsigned len, const list& otherl);
+      inline void copy_in(unsigned len, const char *src) {
+	  // copy
+	  if (p == ls->end())
+	    seek(off);
+	  while (len > 0) {
+	    if (p == ls->end())
+	      throw end_of_buffer();
 
+	    unsigned howmuch = p->length() - p_off;
+	    if (len < howmuch)
+	      howmuch = len;
+	    p->copy_in(p_off, howmuch, src);
+
+	    src += howmuch;
+	    len -= howmuch;
+	    advance(howmuch);
+	  }
+	}
+
+      inline void copy_in(unsigned len, const list& otherl) {
+	  if (p == ls->end())
+	    seek(off);
+	  unsigned left = len;
+	  for (std::list<ptr>::const_iterator i = otherl._buffers.begin();
+	       i != otherl._buffers.end();
+	       ++i) {
+	    unsigned l = (*i).length();
+	    if (left < l)
+	      l = left;
+	    copy_in(l, i->c_str());
+	    left -= l;
+	    if (left == 0)
+	      break;
+	  }
+	}
     };
 
   private:
@@ -315,7 +486,7 @@ public:
       append_buffer.set_length(0);   // unused, so far.
     }
     ~list() {}
-    
+
     list(const list& other) : _buffers(other._buffers), _len(other._len), last_p(this) { }
     list& operator= (const list& other) {
       if (this != &other) {
@@ -326,7 +497,7 @@ public:
     }
 
     const std::list<ptr>& buffers() const { return _buffers; }
-    
+
     void swap(list& other);
     unsigned length() const {
 #if 0
@@ -414,7 +585,7 @@ public:
     void append(const list& bl);
     void append(std::istream& in);
     void append_zero(unsigned len);
-    
+
     /*
      * get a char
      */
@@ -460,10 +631,13 @@ public:
   };
 };
 
+#if defined(HAVE_XIO)
+  struct xio_mempool_obj* get_xio_mp(const buffer::ptr& bp);
+#endif
+
 typedef buffer::ptr bufferptr;
 typedef buffer::list bufferlist;
 typedef buffer::hash bufferhash;
-
 
 inline bool operator>(bufferlist& l, bufferlist& r) {
   for (unsigned p = 0; ; p++) {
@@ -503,7 +677,7 @@ inline bool operator<=(bufferlist& l, bufferlist& r) {
 inline std::ostream& operator<<(std::ostream& out, const buffer::ptr& bp) {
   if (bp.have_raw())
     out << "buffer::ptr(" << bp.offset() << "~" << bp.length()
-	<< " " << (void*)bp.c_str() 
+	<< " " << (void*)bp.c_str()
 	<< " in raw " << (void*)bp.raw_c_str()
 	<< " len " << bp.raw_length()
 	<< " nref " << bp.raw_nref() << ")";

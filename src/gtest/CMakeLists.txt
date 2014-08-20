@@ -123,7 +123,7 @@ function(cxx_library_with_type name type cxx_flags)
     PROPERTIES
     COMPILE_FLAGS "${cxx_flags}")
     if (CMAKE_USE_PTHREADS_INIT)
-      target_link_libraries(${name} ${CMAKE_THREAD_LIBS_INIT})
+      target_link_libraries(${name} PRIVATE ${CMAKE_THREAD_LIBS_INIT})
     endif()
 endfunction()
 
@@ -145,7 +145,7 @@ endfunction()
 # gtest can be compiled by a user aggressive about warnings.
 cxx_static_library(gtest "${cxx_strict}" src/gtest-all.cc)
 cxx_static_library(gtest_main "${cxx_strict}" src/gtest_main.cc)
-target_link_libraries(gtest_main gtest)
+target_link_libraries(gtest_main PRIVATE gtest)
 
 ########################################################################
 #

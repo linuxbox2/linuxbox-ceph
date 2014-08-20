@@ -23,6 +23,9 @@
 #include "common/Mutex.h"
 #include "include/types.h"
 #include "include/compat.h"
+#if defined(HAVE_XIO)
+#include "msg/XioMsg.h"
+#endif
 
 #include <errno.h>
 #include <fstream>
@@ -123,16 +126,10 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     unsigned len;
     atomic_t nref;
 
-    mutable Mutex crc_lock;
-    map<pair<size_t, size_t>, pair<uint32_t, uint32_t> > crc_map;
-
-    raw(unsigned l)
-      : data(NULL), len(l), nref(0),
-	crc_lock("buffer::raw::crc_lock", false, false)
+    raw(unsigned l) : data(NULL), len(l), nref(0)
     { }
     raw(char *c, unsigned l)
-      : data(c), len(l), nref(0),
-	crc_lock("buffer::raw::crc_lock", false, false)
+      : data(c), len(l), nref(0)
     { }
     virtual ~raw() {};
 
@@ -161,7 +158,34 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     bool is_n_page_sized() {
       return (len & ~CEPH_PAGE_MASK) == 0;
     }
-    bool get_crc(const pair<size_t, size_t> &fromto,
+
+    virtual bool get_crc(const pair<size_t, size_t> &fromto,
+			 pair<uint32_t, uint32_t> *crc) const {
+      return false;
+    }
+
+    virtual void set_crc(const pair<size_t, size_t> &fromto,
+		 const pair<uint32_t, uint32_t> &crc) {}
+    virtual void invalidate_crc() {}
+
+  };
+
+  class buffer::raw_crc : public buffer::raw {
+  public:
+    mutable Mutex crc_lock;
+    map<pair<size_t, size_t>, pair<uint32_t, uint32_t> > crc_map;
+
+    raw_crc(unsigned l) :
+    raw(l),
+    crc_lock("buffer::raw::crc_lock", false, false)
+      {}
+    raw_crc(char *c, unsigned l) :
+      raw(c, l),
+      crc_lock("buffer::raw::crc_lock", false, false)
+      {}
+    virtual ~raw_crc() {};
+
+    virtual bool get_crc(const pair<size_t, size_t> &fromto,
 		 pair<uint32_t, uint32_t> *crc) const {
       Mutex::Locker l(crc_lock);
       map<pair<size_t, size_t>, pair<uint32_t, uint32_t> >::const_iterator i =
@@ -171,31 +195,33 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
       *crc = i->second;
       return true;
     }
-    void set_crc(const pair<size_t, size_t> &fromto,
+
+    virtual void set_crc(const pair<size_t, size_t> &fromto,
 		 const pair<uint32_t, uint32_t> &crc) {
       Mutex::Locker l(crc_lock);
       crc_map[fromto] = crc;
     }
-    void invalidate_crc() {
+
+    virtual void invalidate_crc() {
       Mutex::Locker l(crc_lock);
       crc_map.clear();
     }
   };
 
-  class buffer::raw_malloc : public buffer::raw {
+  class buffer::raw_malloc : public buffer::raw_crc {
   public:
-    raw_malloc(unsigned l) : raw(l) {
+    raw_malloc(unsigned l) : raw_crc(l) {
       if (len) {
 	data = (char *)malloc(len);
-        if (!data)
-          throw bad_alloc();
+	if (!data)
+	  throw bad_alloc();
       } else {
 	data = 0;
       }
       inc_total_alloc(len);
       bdout << "raw_malloc " << this << " alloc " << (void *)data << " " << l << " " << buffer::get_total_alloc() << bendl;
     }
-    raw_malloc(unsigned l, char *b) : raw(b, l) {
+    raw_malloc(unsigned l, char *b) : raw_crc(b, l) {
       inc_total_alloc(len);
       bdout << "raw_malloc " << this << " alloc " << (void *)data << " " << l << " " << buffer::get_total_alloc() << bendl;
     }
@@ -210,9 +236,9 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
   };
 
 #ifndef __CYGWIN__
-  class buffer::raw_mmap_pages : public buffer::raw {
+  class buffer::raw_mmap_pages : public buffer::raw_crc {
   public:
-    raw_mmap_pages(unsigned l) : raw(l) {
+    raw_mmap_pages(unsigned l) : raw_crc(l) {
       data = (char*)::mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
       if (!data)
 	throw bad_alloc();
@@ -229,9 +255,9 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     }
   };
 
-  class buffer::raw_posix_aligned : public buffer::raw {
+  class buffer::raw_posix_aligned : public buffer::raw_crc {
   public:
-    raw_posix_aligned(unsigned l) : raw(l) {
+    raw_posix_aligned(unsigned l) : raw_crc(l) {
 #ifdef DARWIN
       data = (char *) valloc (len);
 #else
@@ -257,10 +283,10 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
 #endif
 
 #ifdef __CYGWIN__
-  class buffer::raw_hack_aligned : public buffer::raw {
+  class buffer::raw_hack_aligned : public buffer::raw_crc {
     char *realdata;
   public:
-    raw_hack_aligned(unsigned l) : raw(l) {
+    raw_hack_aligned(unsigned l) : raw_crc(l) {
       realdata = new char[len+CEPH_PAGE_SIZE-1];
       unsigned off = ((unsigned)realdata) & ~CEPH_PAGE_MASK;
       if (off)
@@ -467,9 +493,9 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
   /*
    * primitive buffer types
    */
-  class buffer::raw_char : public buffer::raw {
+  class buffer::raw_char : public buffer::raw_crc {
   public:
-    raw_char(unsigned l) : raw(l) {
+    raw_char(unsigned l) : raw_crc(l) {
       if (len)
 	data = new char[len];
       else
@@ -477,7 +503,7 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
       inc_total_alloc(len);
       bdout << "raw_char " << this << " alloc " << (void *)data << " " << l << " " << buffer::get_total_alloc() << bendl;
     }
-    raw_char(unsigned l, char *b) : raw(b, l) {
+    raw_char(unsigned l, char *b) : raw_crc(b, l) {
       inc_total_alloc(len);
       bdout << "raw_char " << this << " alloc " << (void *)data << " " << l << " " << buffer::get_total_alloc() << bendl;
     }
@@ -491,14 +517,65 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     }
   };
 
-  class buffer::raw_static : public buffer::raw {
+  class buffer::raw_static : public buffer::raw_crc {
   public:
-    raw_static(const char *d, unsigned l) : raw((char*)d, l) { }
+    raw_static(const char *d, unsigned l) : raw_crc((char*)d, l) { }
     ~raw_static() {}
     raw* clone_empty() {
       return new buffer::raw_char(len);
     }
   };
+
+#if defined(HAVE_XIO)
+  class buffer::xio_msg_buffer : public buffer::raw {
+  private:
+    XioCompletionHook* m_hook;
+  public:
+    xio_msg_buffer(XioCompletionHook* _m_hook, const char *d, unsigned l) :
+      raw((char*)d, l), m_hook(_m_hook->get()) {}
+
+    static void operator delete(void *p)
+    {
+      xio_msg_buffer *buf = static_cast<xio_msg_buffer*>(p);
+      // return hook ref (counts against pool);  it appears illegal
+      // to do this in our dtor, because this fires after that
+      buf->m_hook->put();
+    }
+    raw* clone_empty() {
+      return new buffer::raw_char(len);
+    }
+  };
+
+  class buffer::xio_mempool : public buffer::raw {
+  public:
+    struct xio_mempool_obj *mp;
+    xio_mempool(struct xio_mempool_obj *_mp, unsigned l) :
+      raw((char*)mp->addr, l), mp(_mp)
+      { }
+    ~xio_mempool() {}
+    raw* clone_empty() {
+      return new buffer::raw_char(len);
+    }
+  };
+
+  struct xio_mempool_obj* get_xio_mp(const buffer::ptr& bp)
+  {
+    buffer::xio_mempool *mb = dynamic_cast<buffer::xio_mempool*>(bp.get_raw());
+    if (mb) {
+      return mb->mp;
+    }
+    return NULL;
+  }
+
+  buffer::raw* buffer::create_msg(
+    unsigned len, char *buf, XioCompletionHook *m_hook) {
+    XioPool& pool = m_hook->get_pool();
+    buffer::raw* bp =
+      static_cast<buffer::raw*>(pool.alloc(sizeof(xio_msg_buffer)));
+    new (bp) xio_msg_buffer(m_hook, buf, len);
+    return bp;
+  }
+#endif /* HAVE_XIO */
 
   buffer::raw* buffer::copy(const char *c, unsigned len) {
     raw* r = new raw_char(len);
@@ -755,196 +832,6 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     }
     return *this;
     }*/
-
-  void buffer::list::iterator::advance(int o)
-  {
-    //cout << this << " advance " << o << " from " << off << " (p_off " << p_off << " in " << p->length() << ")" << std::endl;
-    if (o > 0) {
-      p_off += o;
-      while (p_off > 0) {
-	if (p == ls->end())
-	  throw end_of_buffer();
-	if (p_off >= p->length()) {
-	  // skip this buffer
-	  p_off -= p->length();
-	  p++;
-	} else {
-	  // somewhere in this buffer!
-	  break;
-	}
-      }
-      off += o;
-      return;
-    }
-    while (o < 0) {
-      if (p_off) {
-	unsigned d = -o;
-	if (d > p_off)
-	  d = p_off;
-	p_off -= d;
-	off -= d;
-	o += d;
-      } else if (off > 0) {
-	assert(p != ls->begin());
-	p--;
-	p_off = p->length();
-      } else {
-	throw end_of_buffer();
-      }
-    }
-  }
-
-  void buffer::list::iterator::seek(unsigned o)
-  {
-    //cout << this << " seek " << o << std::endl;
-    p = ls->begin();
-    off = p_off = 0;
-    advance(o);
-  }
-
-  char buffer::list::iterator::operator*()
-  {
-    if (p == ls->end())
-      throw end_of_buffer();
-    return (*p)[p_off];
-  }
-  
-  buffer::list::iterator& buffer::list::iterator::operator++()
-  {
-    if (p == ls->end())
-      throw end_of_buffer();
-    advance(1);
-    return *this;
-  }
-
-  buffer::ptr buffer::list::iterator::get_current_ptr()
-  {
-    if (p == ls->end())
-      throw end_of_buffer();
-    return ptr(*p, p_off, p->length() - p_off);
-  }
-  
-  // copy data out.
-  // note that these all _append_ to dest!
-  
-  void buffer::list::iterator::copy(unsigned len, char *dest)
-  {
-    if (p == ls->end()) seek(off);
-    while (len > 0) {
-      if (p == ls->end())
-	throw end_of_buffer();
-      assert(p->length() > 0); 
-      
-      unsigned howmuch = p->length() - p_off;
-      if (len < howmuch) howmuch = len;
-      p->copy_out(p_off, howmuch, dest);
-      dest += howmuch;
-
-      len -= howmuch;
-      advance(howmuch);
-    }
-  }
-  
-  void buffer::list::iterator::copy(unsigned len, ptr &dest)
-  {
-    dest = create(len);
-    copy(len, dest.c_str());
-  }
-
-  void buffer::list::iterator::copy(unsigned len, list &dest)
-  {
-    if (p == ls->end())
-      seek(off);
-    while (len > 0) {
-      if (p == ls->end())
-	throw end_of_buffer();
-      
-      unsigned howmuch = p->length() - p_off;
-      if (len < howmuch)
-	howmuch = len;
-      dest.append(*p, p_off, howmuch);
-      
-      len -= howmuch;
-      advance(howmuch);
-    }
-  }
-
-  void buffer::list::iterator::copy(unsigned len, std::string &dest)
-  {
-    if (p == ls->end())
-      seek(off);
-    while (len > 0) {
-      if (p == ls->end())
-	throw end_of_buffer();
-      
-      unsigned howmuch = p->length() - p_off;
-      const char *c_str = p->c_str();
-      if (len < howmuch)
-	howmuch = len;
-      dest.append(c_str + p_off, howmuch);
-
-      len -= howmuch;
-      advance(howmuch);
-    }
-  }
-
-  void buffer::list::iterator::copy_all(list &dest)
-  {
-    if (p == ls->end())
-      seek(off);
-    while (1) {
-      if (p == ls->end())
-	return;
-      assert(p->length() > 0);
-      
-      unsigned howmuch = p->length() - p_off;
-      const char *c_str = p->c_str();
-      dest.append(c_str + p_off, howmuch);
-      
-      advance(howmuch);
-    }
-  }
-  
-  // copy data in
-
-  void buffer::list::iterator::copy_in(unsigned len, const char *src)
-  {
-    // copy
-    if (p == ls->end())
-      seek(off);
-    while (len > 0) {
-      if (p == ls->end())
-	throw end_of_buffer();
-      
-      unsigned howmuch = p->length() - p_off;
-      if (len < howmuch)
-	howmuch = len;
-      p->copy_in(p_off, howmuch, src);
-	
-      src += howmuch;
-      len -= howmuch;
-      advance(howmuch);
-    }
-  }
-  
-  void buffer::list::iterator::copy_in(unsigned len, const list& otherl)
-  {
-    if (p == ls->end())
-      seek(off);
-    unsigned left = len;
-    for (std::list<ptr>::const_iterator i = otherl._buffers.begin();
-	 i != otherl._buffers.end();
-	 ++i) {
-      unsigned l = (*i).length();
-      if (left < l)
-	l = left;
-      copy_in(l, i->c_str());
-      left -= l;
-      if (left == 0)
-	break;
-    }
-  }
-
 
   // -- buffer::list --
 

@@ -19,6 +19,8 @@ OPTION(public_addr, OPT_ADDR, entity_addr_t())
 OPTION(cluster_addr, OPT_ADDR, entity_addr_t())
 OPTION(public_network, OPT_STR, "")
 OPTION(cluster_network, OPT_STR, "")
+OPTION(cluster_rdma, OPT_BOOL, false)
+OPTION(client_rdma, OPT_BOOL, false)
 OPTION(num_client, OPT_INT, 1)
 OPTION(monmap, OPT_STR, "")
 OPTION(mon_host, OPT_STR, "")
@@ -43,6 +45,9 @@ OPTION(log_to_syslog, OPT_BOOL, false)
 OPTION(err_to_syslog, OPT_BOOL, false)
 OPTION(log_flush_on_exit, OPT_BOOL, true) // default changed by common_preinit()
 OPTION(log_stop_at_utilization, OPT_FLOAT, .97)  // stop logging at (near) full
+
+OPTION(xio_trace_xcon, OPT_BOOL, false) // Xio message encode/decode trace
+OPTION(xio_queue_depth, OPT_INT, 512) // depth of Accelio msg queue
 
 OPTION(clog_to_monitors, OPT_BOOL, true)
 OPTION(clog_to_syslog, OPT_BOOL, false)
@@ -95,6 +100,7 @@ SUBSYS(rgw, 1, 5)                 // log level for the Rados gateway
 SUBSYS(javaclient, 1, 5)
 SUBSYS(asok, 1, 5)
 SUBSYS(throttle, 1, 1)
+SUBSYS(xio, 1, 5)
 
 OPTION(key, OPT_STR, "")
 OPTION(keyfile, OPT_STR, "")
@@ -108,7 +114,9 @@ OPTION(ms_tcp_nodelay, OPT_BOOL, true)
 OPTION(ms_tcp_rcvbuf, OPT_INT, 0)
 OPTION(ms_initial_backoff, OPT_DOUBLE, .2)
 OPTION(ms_max_backoff, OPT_DOUBLE, 15.0)
-OPTION(ms_nocrc, OPT_BOOL, false)
+// ms_datacrc&&!ms_headercrc == special, see Messenger::get_default_crc_flags
+OPTION(ms_datacrc, OPT_BOOL, true)
+OPTION(ms_headercrc, OPT_BOOL, false)
 OPTION(ms_die_on_bad_msg, OPT_BOOL, false)
 OPTION(ms_die_on_unhandled_msg, OPT_BOOL, false)
 OPTION(ms_die_on_old_message, OPT_BOOL, false)     // assert if we get a dup incoming message and shouldn't have (may be triggered by pre-541cd3c64be0dfa04e8a2df39422e0eb9541a428 code)
