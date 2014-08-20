@@ -131,6 +131,8 @@ if(HAVE_XIO)
     msg/QueueStrategy.cc)
 endif(HAVE_XIO)
 
+add_subdirectory(json_spirit)
+
 set(libcommon_files
   ${CMAKE_BINARY_DIR}/src/include/ceph_ver.h
   ceph_ver.c
@@ -172,10 +174,8 @@ set(libcommon_files
   common/TrackedOp.cc
   common/SloppyCRCMap.cc
   common/types.cc
-  json_spirit/json_spirit_reader.cpp
-  json_spirit/json_spirit_writer.cpp
-  json_spirit/json_spirit_value.cpp
-  log/Log.cc log/SubsystemMap.cc
+  log/Log.cc
+  log/SubsystemMap.cc
   mon/MonCap.cc
   mon/MonClient.cc
   mon/MonMap.cc
@@ -272,7 +272,7 @@ if(${WITH_PROFILER})
   target_link_libraries(common profiler)
 endif(${WITH_PROFILER})
 
-target_link_libraries(common erasure_code ${CRYPTO_LIBS} rt ${Boost_LIBRARIES})
+target_link_libraries(common json_spirit erasure_code rt uuid ${CRYPTO_LIBS} ${Boost_LIBRARIES})
 
 set(libglobal_srcs
   global/global_init.cc
@@ -289,6 +289,9 @@ if(${ENABLE_SHARED})
   set_target_properties(global PROPERTIES
     OUTPUT_NAME ceph-global VERSION "1.0.0" SOVERSION "1")
 endif(${ENABLE_SHARED})
+
+# rados object classes
+add_subdirectory(cls)
 
 # RADOS client/library
 set(osdc_files
@@ -311,10 +314,11 @@ set(librados_srcs
   librados/RadosXattrIter.cc
   )
 add_library(librados ${CEPH_SHARED} ${librados_srcs}
-  $<TARGET_OBJECTS:cls_lock_objs>
-  $<TARGET_OBJECTS:cls_references_objs>)
+  $<TARGET_OBJECTS:cls_references_objs>
+  $<TARGET_OBJECTS:heap_profiler_objs>)
 add_dependencies(librados osdc)
-target_link_libraries(librados osdc common osd os ${CRYPTO_LIBS} ${EXTRALIBS})
+target_link_libraries(librados PRIVATE osdc osd os global common cls_lock_client
+  ${CRYPTO_LIBS} ${EXTRALIBS} ${TCMALLOC_LIBS})
 if(${ENABLE_SHARED})
   set_target_properties(librados PROPERTIES OUTPUT_NAME rados VERSION 2.0.0
     SOVERSION 2)
@@ -422,94 +426,6 @@ target_link_libraries(os leveldb snappy)
 
 set(cls_references_files objclass/class_api.cc)
 add_library(cls_references_objs OBJECT ${cls_references_files})
-
-set(cls_refcount_files
-  cls/refcount/cls_refcount.cc
-  cls/refcount/cls_refcount_ops.cc
-  cls/refcount/cls_refcount_client.cc)
-add_library(cls_refcount_objs OBJECT ${cls_refcount_files})
-add_library(cls_refcount ${CEPH_SHARED} $<TARGET_OBJECTS:cls_refcount_objs>)
-if(${ENABLE_SHARED})
-  set_target_properties(cls_refcount PROPERTIES OUTPUT_NAME cls_refcount
-    VERSION "1.0.0" SOVERSION "1")
-endif(${ENABLE_SHARED})
-install(TARGETS cls_refcount DESTINATION lib/rados-classes)
-
-
-set(cls_lock_files
-  cls/lock/cls_lock_client.cc
-  cls/lock/cls_lock_types.cc 
-  cls/lock/cls_lock_ops.cc
-  cls/lock/cls_lock.cc)
-add_library(cls_lock_objs OBJECT ${cls_lock_files})
-add_library(cls_lock ${CEPH_SHARED} $<TARGET_OBJECTS:cls_lock_objs>)
-if(${ENABLE_SHARED})
-  set_target_properties(cls_lock PROPERTIES OUTPUT_NAME cls_lock
-    VERSION "1.0.0" SOVERSION "1")
-endif(${ENABLE_SHARED})
-install(TARGETS cls_lock DESTINATION lib/rados-classes)
-
-
-set(cls_version_files
-  cls/version/cls_version.cc
-  cls/version/cls_version_types.cc
-  cls/version/cls_version_client.cc)
-add_library(cls_version_objs OBJECT ${cls_version_files})
-add_library(cls_version ${CEPH_SHARED} $<TARGET_OBJECTS:cls_version_objs>)
-if(${ENABLE_SHARED})
-  set_target_properties(cls_version PROPERTIES OUTPUT_NAME cls_version
-    VERSION "1.0.0" SOVERSION "1")
-endif(${ENABLE_SHARED})
-install(TARGETS cls_version DESTINATION lib/rados-classes)
-
-set(cls_log_files
-  cls/log/cls_log.cc
-  cls/log/cls_log_client.cc)
-add_library(cls_log_objs OBJECT ${cls_log_files})
-add_library(cls_log ${CEPH_SHARED} $<TARGET_OBJECTS:cls_log_objs>)
-if(${ENABLE_SHARED})
-  set_target_properties(cls_log PROPERTIES OUTPUT_NAME cls_log VERSION "1.0.0"
-    SOVERSION "1")
-endif(${ENABLE_SHARED})
-install(TARGETS cls_log DESTINATION lib/rados-classes)
-
-set(cls_replica_log_files
-  cls/replica_log/cls_replica_log.cc
-  cls/replica_log/cls_replica_log_client.cc
-  cls/replica_log/cls_replica_log_types.cc
-  cls/replica_log/cls_replica_log_ops.cc)
-add_library(cls_replica_log_objs OBJECT ${cls_replica_log_files})
-add_library(cls_replica_log ${CEPH_SHARED}
-  $<TARGET_OBJECTS:cls_replica_log_objs>)
-if(${ENABLE_SHARED})
-  set_target_properties(cls_replica_log PROPERTIES OUTPUT_NAME cls_replica_log
-    VERSION "1.0.0" SOVERSION "1")
-endif(${ENABLE_SHARED})
-install(TARGETS cls_replica_log DESTINATION lib/rados-classes)
-
-set(cls_statelog_files
-  cls/statelog/cls_statelog.cc 
-  cls/statelog/cls_statelog_client.cc)
-add_library(cls_statelog_objs OBJECT ${cls_statelog_files})
-add_library(cls_statelog ${CEPH_SHARED} $<TARGET_OBJECTS:cls_statelog_objs>)
-if(${ENABLE_SHARED})
-  set_target_properties(cls_statelog PROPERTIES OUTPUT_NAME cls_statelog
-    VERSION "1.0.0" SOVERSION "1")
-endif(${ENABLE_SHARED})
-install(TARGETS cls_statelog DESTINATION lib/rados-classes)
-
-set(cls_user_files
-  cls/user/cls_user.cc
-  cls/user/cls_user_client.cc
-  cls/user/cls_user_ops.cc
-  cls/user/cls_user_types.cc)
-add_library(cls_user_objs OBJECT ${cls_user_files})
-add_library(cls_user ${CEPH_SHARED} $<TARGET_OBJECTS:cls_user_objs>)
-if(${ENABLE_SHARED})
-  set_target_properties(cls_user PROPERTIES OUTPUT_NAME cls_user
-    VERSION "1.0.0" SOVERSION "1")
-endif(${ENABLE_SHARED})
-install(TARGETS cls_user DESTINATION lib/rados-classes)
 
 set(osdc_osd_srcs
   osdc/Objecter.cc
@@ -725,30 +641,19 @@ if(WITH_LIBCEPHFS)
 endif(WITH_LIBCEPHFS)
 
 if(${WITH_RBD})
-  set(cls_rbd_files
-    cls/rbd/cls_rbd.cc)
-  add_library(cls_rbd_objs OBJECT ${cls_rbd_files})
-  add_library(cls_rbd ${CEPH_SHARED} $<TARGET_OBJECTS:cls_rbd_objs>)
-  if(${ENABLE_SHARED})
-    set_target_properties(cls_rbd PROPERTIES OUTPUT_NAME cls_rbd
-      VERSION "1.0.0" SOVERSION "1")
-  endif(${ENABLE_SHARED})
-  install(TARGETS cls_rbd DESTINATION lib/rados-classes)
-
   set(librbd_srcs
     librbd/librbd.cc
     krbd.cc
     librbd/AioCompletion.cc
     librbd/AioRequest.cc
-    cls/rbd/cls_rbd_client.cc
     librbd/ImageCtx.cc
     librbd/internal.cc
     librbd/LibrbdWriteback.cc
     librbd/WatchCtx.cc)
   add_library(librbd ${CEPH_SHARED} ${librbd_srcs}
-    $<TARGET_OBJECTS:cls_lock_objs> $<TARGET_OBJECTS:osdc_rbd_objs>
+    $<TARGET_OBJECTS:osdc_rbd_objs>
     $<TARGET_OBJECTS:common_util_obj>)
-  target_link_libraries(librbd ${CMAKE_DL_LIBS})
+  target_link_libraries(librbd PRIVATE cls_lock_client cls_rbd_client ${CMAKE_DL_LIBS})
   if(${ENABLE_SHARED})
     set_target_properties(librbd PROPERTIES VERSION "1.0.0" SOVERSION "1"
       OUTPUT_NAME rbd)
@@ -773,28 +678,12 @@ endif(${WITH_RBD})
 if(${WITH_KVS})
   set(kvs_srcs
     key_value_store/cls_kvs.cc)
-  add_library(cls_kvs ${CEPH_SHARED} ${kvs_srcs})
-  if(${ENABLE_SHARED})
-    set_target_properties(cls_kvs PROPERTIES OUTPUT_NAME cls_kvs
-      VERSION "1.0.0" SOVERSION "1")
-  endif(${ENABLE_SHARED})
+  add_library(cls_kvs SHARED ${kvs_srcs})
+  set_target_properties(cls_kvs PROPERTIES VERSION "1.0.0" SOVERSION "1")
   install(TARGETS cls_kvs DESTINATION lib/rados-classes)
 endif(${WITH_KVS})
 
 if(${WITH_RADOSGW})
-  set(cls_rgw_files
-    cls/rgw/cls_rgw_client.cc
-    cls/rgw/cls_rgw_types.cc
-    cls/rgw/cls_rgw_ops.cc
-    cls/rgw/cls_rgw.cc)
-  add_library(cls_rgw_objs OBJECT ${cls_rgw_files})
-  add_library(cls_rgw ${CEPH_SHARED} $<TARGET_OBJECTS:cls_rgw_objs>)
-  if(${ENABLE_SHARED})
-    set_target_properties(cls_rgw PROPERTIES OUTPUT_NAME cls_rgw
-      VERSION "1.0.0" SOVERSION "1")
-  endif(${ENABLE_SHARED})
-  install(TARGETS cls_rgw DESTINATION lib/rados-classes)
-
   set(rgw_a_srcs
     rgw/librgw.cc
     rgw/rgw_acl.cc
@@ -884,8 +773,10 @@ if(${WITH_RADOSGW})
     rgw/rgw_main.cc)
 
   add_executable(radosgw ${radosgw_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
-  target_link_libraries(radosgw rgw_a librados cls_rgw cls_lock cls_refcount
-    cls_log cls_statelog cls_version cls_replica_log cls_kvs cls_user curl
-    expat global fcgi resolv ${TCMALLOC_LIBS})
+  target_link_libraries(radosgw rgw_a librados
+    cls_rgw_client cls_lock_client cls_refcount_client
+    cls_log_client cls_statelog_client cls_version_client
+    cls_replica_log_client cls_user_client
+    curl expat global fcgi resolv ${TCMALLOC_LIBS})
   install(TARGETS radosgw DESTINATION bin)
 endif(${WITH_RADOSGW})
