@@ -356,23 +356,6 @@ int rados_ping_monitor(rados_t cluster, const char *mon_id,
 int rados_connect(rados_t cluster);
 
 /**
- * Connect to the cluster with an Accelio messenger.
- *
- * @note BUG: Before calling this, calling a function that communicates with the
- * cluster will crash.
- *
- * @pre The cluster handle is configured with at least a monitor
- * address. If cephx is enabled, a client name and secret must also be
- * set.
- *
- * @post If this succeeds, any function in librados may be used
- *
- * @param cluster The cluster to connect to.
- * @returns 0 on sucess, negative error code on failure
- */
-int rados_xio_connect(rados_t cluster);
-
-/**
  * Disconnects from the cluster.
  *
  * For clean up, this is only necessary after rados_connect() has
