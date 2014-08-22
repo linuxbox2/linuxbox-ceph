@@ -1030,7 +1030,7 @@ int MemStore::_touch(coll_t cid, const ghobject_t& oid)
 }
 
 int MemStore::_write(coll_t cid, const ghobject_t& oid,
-		     uint64_t offset, size_t len, const bufferlist& bl,
+		     uint64_t offset, size_t len, bufferlist& bl,
 		     bool replica)
 {
   dout(10) << __func__ << " " << cid << " " << oid << " "
@@ -1050,7 +1050,11 @@ int MemStore::_write(coll_t cid, const ghobject_t& oid,
     c->object_hash[oid] = o;
   }
 
-  _write_into_bl(bl, offset, &o->data);
+  // XXX: copy buffer for xio testing
+  bufferlist newbl;
+  bl.begin().copy_all(newbl);
+
+  _write_into_bl(newbl, offset, &o->data);
   return 0;
 }
 

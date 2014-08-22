@@ -187,7 +187,7 @@ private:
   void _write_into_bl(const bufferlist& src, unsigned offset, bufferlist *dst);
 
   int _touch(coll_t cid, const ghobject_t& oid);
-  int _write(coll_t cid, const ghobject_t& oid, uint64_t offset, size_t len, const bufferlist& bl,
+  int _write(coll_t cid, const ghobject_t& oid, uint64_t offset, size_t len, bufferlist& bl,
       bool replica = false);
   int _zero(coll_t cid, const ghobject_t& oid, uint64_t offset, size_t len);
   int _truncate(coll_t cid, const ghobject_t& oid, uint64_t size);
