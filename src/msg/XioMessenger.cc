@@ -633,6 +633,7 @@ int XioMessenger::start()
 void XioMessenger::wait()
 {
   portals.join();
+  dispatch_strategy->wait();
 } /* wait */
 
 int XioMessenger::send_message(Message *m, const entity_inst_t& dest)
@@ -789,6 +790,7 @@ assert(req->out.pdata_iov.nents || !nbuffers);
 int XioMessenger::shutdown()
 {
   portals.shutdown();
+  dispatch_strategy->shutdown();
   started = false;
   return 0;
 } /* shutdown */
