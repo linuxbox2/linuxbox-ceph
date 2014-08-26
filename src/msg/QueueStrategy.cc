@@ -79,7 +79,20 @@ void QueueStrategy::shutdown()
 
 void QueueStrategy::wait()
 {
-  /* TODO:  implement */
+  QSThread *thrd;
+  lock.Lock();
+  assert(stop);
+  while (disp_threads.size()) {
+    thrd = &(disp_threads.front());
+    disp_threads.pop_front();
+    lock.Unlock();
+
+    // join outside of lock
+    thrd->join();
+
+    lock.Lock();
+  }
+  lock.Unlock();
 }
 
 void QueueStrategy::start()
