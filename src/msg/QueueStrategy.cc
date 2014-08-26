@@ -58,6 +58,7 @@ void QueueStrategy::entry(QSThread *thrd)
     if (stop) {
 	if (!m) break;
 	m->put();
+	m = NULL;
 	continue;
     }
     get_messenger()->ms_deliver_dispatch(m);
