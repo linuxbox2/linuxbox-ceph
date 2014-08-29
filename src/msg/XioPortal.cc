@@ -13,7 +13,7 @@
  */
 
 #include "XioPortal.h"
-#include "common/PrebufferedStreambuf.h"
+#include <stdio.h>
 
 #define dout_subsys ceph_subsys_xio
 
@@ -21,30 +21,34 @@ int XioPortal::bind(struct xio_session_ops *ops, const string &base_uri,
 		    uint16_t port, uint16_t *assigned_port)
 {
   // format uri
-  PrebufferedStreambuf buf(base_uri.size() + 7);
-  ostream(&buf) << base_uri << ':' << port;
+  char buf[40];
+  xio_uri = base_uri;
+  xio_uri += ":";
+  sprintf(buf, "%d", port);
+  xio_uri += buf;
 
   uint16_t assigned;
-  server = xio_bind(ctx, ops, buf.get_str().c_str(), &assigned, 0, msgr);
+  server = xio_bind(ctx, ops, xio_uri.c_str(), &assigned, 0, msgr);
   if (server == NULL) {
     int err = xio_errno();
-    derr << "xp::bind: portal " << buf.get_str()
-      << " failed to bind: " << xio_strerror(err) << dendl;
+    derr << "xp::bind: portal " << xio_uri << " failed to bind: "
+	 << xio_strerror(err) << dendl;
     return err;
   }
 
   // update uri if port changed
   if (port != assigned) {
-    buf.pubseekpos(0); // rewind
-    ostream(&buf) << base_uri << ':' << assigned;
+    xio_uri = base_uri;
+    xio_uri += ":";
+    sprintf(buf, "%d", assigned);
+    xio_uri += buf;
   }
 
-  xio_uri = buf.get_str();
   portal_id = const_cast<char*>(xio_uri.c_str());
   if (assigned_port)
     *assigned_port = assigned;
-  dout(20) << "xio_bind: portal " << xio_uri
-    << " returned server " << server << dendl;
+  dout(20) << "xio_bind: portal " << xio_uri << " returned server "
+	   << server << dendl;
   return 0;
 }
 
