@@ -89,6 +89,8 @@ public:
 
   virtual int bind(const entity_addr_t& addr);
 
+  virtual int rebind(const set<int>& avoid_ports);
+
   virtual int start();
 
   virtual void wait();

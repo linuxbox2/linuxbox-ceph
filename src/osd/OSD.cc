@@ -5640,16 +5640,24 @@ void OSD::handle_osd_map(MOSDMap *m)
 	avoid_ports.insert(hb_front_server_messenger->get_myaddr().get_port());
 
 	int r = cluster_messenger->rebind(avoid_ports);
-	if (r != 0)
+	if (r != 0) {
+	  dout(0) << "cluster_messenger rebind failed, shutting down" << dendl;
 	  do_shutdown = true;  // FIXME: do_restart?
+	}
 
 	r = hb_back_server_messenger->rebind(avoid_ports);
-	if (r != 0)
+	if (r != 0) {
+	  dout(0) << "hb_back_server__messenger rebind failed, shutting down"
+		  << dendl;
 	  do_shutdown = true;  // FIXME: do_restart?
+	}
 
 	r = hb_front_server_messenger->rebind(avoid_ports);
-	if (r != 0)
+	if (r != 0) {
+	  dout(0) << "hb_front_server__messenger rebind failed, shutting down"
+		  << dendl;
 	  do_shutdown = true;  // FIXME: do_restart?
+	}
 
 	hbclient_messenger->mark_down_all();
 

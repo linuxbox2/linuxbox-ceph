@@ -616,6 +616,12 @@ int XioMessenger::bind(const entity_addr_t& addr)
   return portals.bind(&xio_msgr_ops, base_uri, shift_addr.get_port());
 } /* bind */
 
+int XioMessenger::rebind(const set<int>& avoid_ports)
+{
+  dout(4) << "XioMessenger " << this << " rebind attempt" << dendl;
+  return 0;
+} /* rebind */
+
 int XioMessenger::start()
 {
   portals.start();
