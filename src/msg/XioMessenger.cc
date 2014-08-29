@@ -283,21 +283,28 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 		  &xopt, sizeof(unsigned));
 
       /* and unregisterd one */
-#define XMSG_MEMPOOL_MIN 4096
-#define XMSG_MEMPOOL_MAX 4096
+#define XMSG_MEMPOOL_QUANTUM 4096
 
       xio_msgr_noreg_mpool =
 	xio_mempool_create(-1 /* nodeid */,
 			   XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC);
 
-      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 64, 15,
-				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
-      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 256, 15,
-				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
-      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 1024, 15,
-				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
-      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, getpagesize(), 15,
-				       XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 64,
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_64,
+				       XMSG_MEMPOOL_QUANTUM);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 256,
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_256,
+				       XMSG_MEMPOOL_QUANTUM);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 1024,
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_1k,
+				       XMSG_MEMPOOL_QUANTUM);
+      (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, getpagesize(),
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_page,
+				       XMSG_MEMPOOL_QUANTUM);
 
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
@@ -329,7 +336,8 @@ int XioMessenger::pool_hint(uint32_t dsize) {
 
   /* if dsize is already present, returns -EEXIST */
   return xio_mempool_add_allocator(xio_msgr_noreg_mpool, dsize, 0,
-				   XMSG_MEMPOOL_MAX, XMSG_MEMPOOL_MIN);
+				   cct->_conf->xio_mp_max_hint,
+				   XMSG_MEMPOOL_QUANTUM);
 }
 
 int XioMessenger::new_session(struct xio_session *session,
