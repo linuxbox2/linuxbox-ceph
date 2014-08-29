@@ -764,7 +764,8 @@ int main(int argc, const char **argv)
     kill(getpid(), SIGTERM);
 
   simple_msgr->wait();
-  xmsgr->wait();
+  if (xmsgr)
+    xmsgr->wait();
 
   unregister_async_signal_handler(SIGHUP, sighup_handler);
   unregister_async_signal_handler(SIGINT, handle_mon_signal);
