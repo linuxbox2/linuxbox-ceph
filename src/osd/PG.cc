@@ -44,6 +44,8 @@
 
 #ifdef WITH_LTTNG
 #include "tracing/pg.h"
+#else
+#define tracepoint(...)
 #endif
 
 #include <sstream>
