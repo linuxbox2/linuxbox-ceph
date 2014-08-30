@@ -59,7 +59,9 @@
 #include "include/assert.h"  // json_spirit clobbers it
 
 #ifdef WITH_LTTNG
-#include "tracing/osd.h"
+#include "tracing/osd.h" // ??
+#else
+#define tracepoint(...)
 #endif
 
 #define dout_subsys ceph_subsys_osd
