@@ -38,6 +38,7 @@ public:
   static const int TYPE_MDS = CEPH_ENTITY_TYPE_MDS;
   static const int TYPE_OSD = CEPH_ENTITY_TYPE_OSD;
   static const int TYPE_CLIENT = CEPH_ENTITY_TYPE_CLIENT;
+  static const int TYPE_GENERIC_SERVER  = CEPH_ENTITY_TYPE_GENERIC_SERVER;
 
   static const int NEW = -1;
 
@@ -52,6 +53,7 @@ public:
   static entity_name_t MDS(int i=NEW) { return entity_name_t(TYPE_MDS, i); }
   static entity_name_t OSD(int i=NEW) { return entity_name_t(TYPE_OSD, i); }
   static entity_name_t CLIENT(int i=NEW) { return entity_name_t(TYPE_CLIENT, i); }
+  static entity_name_t GENERIC(int i=NEW) { return entity_name_t(TYPE_GENERIC_SERVER, i); }
   
   int64_t num() const { return _num; }
   int type() const { return _type; }
