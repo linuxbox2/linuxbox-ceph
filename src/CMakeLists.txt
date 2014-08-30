@@ -6,7 +6,7 @@ add_definitions("-DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT 
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -rdynamic -Wall -Wtype-limits -Wignored-qualifiers -Winit-self -Wpointer-arith -Werror=format-security -fno-strict-aliasing -fsigned-char -fPIC")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wno-invalid-offsetof -Wnon-virtual-dtor -Wno-invalid-offsetof -Wstrict-null-sentinel")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -ftemplate-depth-1024 -Wno-invalid-offsetof -Wnon-virtual-dtor -Wno-invalid-offsetof -Wstrict-null-sentinel -Woverloaded-virtual")
 
 set(EXTRALIBS uuid rt dl)
 
@@ -172,6 +172,7 @@ set(libcommon_files
   common/RefCountedObj.cc
   msg/Messenger.cc
   msg/Pipe.cc
+  msg/PipeConnection.cc
   msg/SimpleMessenger.cc
   ${xio_common_srcs}
   msg/msg_types.cc
@@ -384,11 +385,13 @@ set(libos_srcs
   os/FlatIndex.cc
   os/LevelDBStore.cc
   os/DBObjectMap.cc 
+  os/Transaction.cc
   os/WBThrottle.cc
   os/GenericFileStoreBackend.cc
   os/BtrfsFileStoreBackend.cc
   os/ZFSFileStoreBackend.cc
   os/KeyValueStore.cc
+  os/KeyValueDB.cc
   os/MemStore.cc
   os/GenericObjectMap.cc
   os/HashIndex.cc)
@@ -545,6 +548,7 @@ if(${WITH_MDS})
     mds/Server.cc
     mds/Mutation.cc
     mds/MDCache.cc
+    mds/RecoveryQueue.cc
     mds/Locker.cc
     mds/Migrator.cc
     mds/MDBalancer.cc
@@ -560,6 +564,7 @@ if(${WITH_MDS})
     mds/SnapServer.cc
     mds/snap.cc
     mds/SessionMap.cc
+    mds/MDSContext.cc
     mds/MDLog.cc
     mds/JournalPointer.cc
     ${CMAKE_SOURCE_DIR}/src/osdc/Journaler.cc)
@@ -813,7 +818,8 @@ if(${WITH_RADOSGW})
     rgw/rgw_metadata.cc
     rgw/rgw_replica_log.cc
     rgw/rgw_keystone.cc
-    rgw/rgw_quota.cc)
+    rgw/rgw_quota.cc
+    rgw/rgw_dencoder.cc)
 
   add_library(rgw_a STATIC ${rgw_a_srcs})
 
@@ -863,6 +869,7 @@ if(${WITH_RADOSGW})
     rgw/rgw_swift_auth.cc
     rgw/rgw_loadgen.cc
     rgw/rgw_civetweb.cc
+    rgw/rgw_civetweb_log.cc
     civetweb/src/civetweb.c
     rgw/rgw_main.cc)
 
