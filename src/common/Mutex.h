@@ -105,7 +105,6 @@ public:
 
   friend class Cond;
 
-
 public:
   class Locker {
     Mutex &mutex;
@@ -119,6 +118,5 @@ public:
     }
   };
 };
-
 
 #endif

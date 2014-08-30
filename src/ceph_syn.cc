@@ -23,6 +23,10 @@ using namespace std;
 #include "client/Client.h"
 
 #include "msg/Messenger.h"
+#if defined(HAVE_XIO)
+#include "msg/xio/XioMessenger.h"
+#include "msg/xio/QueueStrategy.h"
+#endif
 
 #include "mon/MonClient.h"
 
@@ -65,9 +69,20 @@ int main(int argc, const char **argv, char *envp[])
 
   cout << "ceph-syn: starting " << g_conf->num_client << " syn client(s)" << std::endl;
   for (int i=0; i<g_conf->num_client; i++) {
-    messengers[i] = Messenger::create(g_ceph_context,
-				      entity_name_t(entity_name_t::TYPE_CLIENT,-1), "synclient",
-				      i * 1000000 + getpid());
+#if defined(HAVE_XIO)
+    if (g_conf->client_rdma) {
+      messengers[i] = new XioMessenger(g_ceph_context,
+				       entity_name_t::CLIENT(-1), "synclient",
+				       i * 1000000 + getpid(), 0,
+				       new QueueStrategy(2));
+    }
+    else
+#endif
+    {
+      messengers[i] = Messenger::create(g_ceph_context,
+					entity_name_t::CLIENT(-1), "synclient",
+				        i * 1000000 + getpid());
+    }
     messengers[i]->bind(g_conf->public_addr);
     mclients[i] = new MonClient(g_ceph_context);
     mclients[i]->build_initial_monmap();
