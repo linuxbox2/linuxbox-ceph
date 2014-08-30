@@ -571,6 +571,7 @@ install(PROGRAMS
   ${CMAKE_SOURCE_DIR}/src/ceph-run
   ${CMAKE_SOURCE_DIR}/src/vstart.sh
   ${CMAKE_SOURCE_DIR}/src/ceph-clsinfo
+  ${CMAKE_SOURCE_DIR}/src/cephfsnew
   DESTINATION bin)
 
 install(FILES
