@@ -451,11 +451,8 @@ int XioMessenger::session_event(struct xio_session *session,
   case XIO_SESSION_TEARDOWN_EVENT:
     ldout(cct,2) << "xio_session_teardown " << session << dendl;
     xio_session_destroy(session);
-    if (nsessions.dec() == 0) {
-      sh_mtx.Lock();
+    if (nsessions.dec() == 0)
       sh_cond.Signal();
-      sh_mtx.Unlock();
-    }
     break;
   default:
     break;
@@ -813,7 +810,6 @@ assert(req->out.pdata_iov.nents || !nbuffers);
 
 int XioMessenger::shutdown()
 {
-  Mutex::Locker lck(sh_mtx);
   shutdown_called.set(true);
   conns_sp.lock();
   XioConnection::ConnList::iterator iter;
@@ -822,9 +818,7 @@ int XioMessenger::shutdown()
     (void) iter->disconnect(); // XXX mark down?
   }
   conns_sp.unlock();
-  while(nsessions.read() > 0) {
-    sh_cond.Wait(sh_mtx);
-  }
+  join_sessions();
   portals.shutdown();
   dispatch_strategy->shutdown();
   started = false;
@@ -909,6 +903,14 @@ void XioMessenger::try_insert(XioConnection *xcon)
   Spinlock::Locker lckr(conns_sp);
   /* already resident in conns_list */
   conns_entity_map.insert(*xcon);
+}
+
+void XioMessenger::join_sessions()
+{
+  while(nsessions.read() > 0) {
+    Mutex::Locker lck(sh_mtx);
+    sh_cond.Wait(sh_mtx);
+  }
 }
 
 XioMessenger::~XioMessenger()
