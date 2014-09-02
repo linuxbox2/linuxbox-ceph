@@ -86,32 +86,33 @@ namespace ceph {
 // reinclude our assert to clobber the system one
 #include "include/assert.h"
 
+#include <stdint.h>
+
 namespace ceph {
   class atomic_t {
-    AO_t val;
+    uint32_t val;
   public:
     atomic_t(AO_t i=0) : val(i) {}
     void set(AO_t v) {
-      AO_store(&val, v);
+      (void) __atomic_store_n(&val, v, __ATOMIC_SEQ_CST);
     }
     AO_t inc() {
-      return AO_fetch_and_add1(&val) + 1;
+      return __atomic_add_fetch(&val, 1, __ATOMIC_SEQ_CST);
     }
     AO_t dec() {
-      return AO_fetch_and_sub1_write(&val) - 1;
+      return __atomic_sub_fetch(&val, 1, __ATOMIC_SEQ_CST);
     }
     AO_t add(AO_t add_me) {
-      return AO_fetch_and_add(&val, add_me) + add_me;
+      return __atomic_add_fetch(&val, add_me, __ATOMIC_SEQ_CST);
     }
     AO_t sub(int sub_me) {
-      int negsub = 0 - sub_me;
-      return AO_fetch_and_add_write(&val, (AO_t)negsub) - sub_me;
+      return __atomic_sub_fetch(&val, sub_me, __ATOMIC_SEQ_CST);
     }
     AO_t read() const {
       // cast away const on the pointer.  this is only needed to build
       // on lenny, but not newer debians, so the atomic_ops.h got fixed
       // at some point.  this hack can go away someday...
-      return AO_load_full((AO_t *)&val);
+      return __atomic_load_n(&val, __ATOMIC_SEQ_CST);
     }
   private:
     // forbid copying
