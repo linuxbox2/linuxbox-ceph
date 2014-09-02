@@ -40,7 +40,7 @@ void QueueStrategy::ds_dispatch(Message *m) {
 
 void QueueStrategy::entry(QSThread *thrd)
 {
-  Message *m;
+  Message *m = NULL;
   for (;;) {
     lock.Lock();
     for (;;) {
