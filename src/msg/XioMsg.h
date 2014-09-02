@@ -168,16 +168,7 @@ struct xio_msg_ex
   struct xio_iovec_ex iovs[XIO_MSGR_IOVLEN];
 
   xio_msg_ex(void* user_context) {
-    memset(&msg, 0, sizeof(struct xio_msg)); // XXXX going away
-
-    // minimal initialize an "out" msg
-    msg.type = XIO_MSG_TYPE_ONE_WAY;
-    msg.request = NULL;
-    msg.more_in_batch = 0;
-    // for now, we DO NEED receipts for every msg
-    msg.flags = 0;
-    msg.user_context = user_context;
-    // minimal zero "in" side
+    // go in structure order
     msg.in.header.iov_len = 0;
     msg.in.header.iov_base = NULL;  /* XXX Accelio requires this currently */
 
@@ -195,6 +186,16 @@ struct xio_msg_ex
     msg.out.pdata_iov.max_nents = XIO_MSGR_IOVLEN;
     msg.out.pdata_iov.nents = 0;
     msg.out.pdata_iov.sglist = iovs;
+
+    // minimal initialize an "out" msg
+    msg.request = NULL;
+    msg.type = XIO_MSG_TYPE_ONE_WAY;
+    msg.more_in_batch = 0;
+    // for now, we DO NEED receipts for every msg
+    msg.flags = 0;
+    msg.user_context = user_context;
+    msg.next = NULL;
+    // minimal zero "in" side
   }
 };
 
