@@ -149,8 +149,8 @@ static int on_ow_msg_send_complete(struct xio_session *session,
   CephContext *cct = xcon->get_messenger()->cct;
 
   ldout(cct,25) << "msg delivered session: " << session
-	   << " msg: " << msg << " conn_user_context "
-	   << conn_user_context << dendl;
+		<< " msg: " << msg << " conn_user_context "
+		<< conn_user_context << dendl;
 
   return xcon->on_ow_msg_send_complete(session, msg, conn_user_context);
 }
