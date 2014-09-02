@@ -176,14 +176,11 @@ public:
   int on_msg_req(struct xio_session *session, struct xio_msg *req,
 		 int more_in_batch, void *cb_user_context);
 
-  int on_msg_delivered(struct xio_session *session, struct xio_msg *msg,
-		       int more_in_batch, void *conn_user_context);
+  int on_ow_msg_send_complete(struct xio_session *session, struct xio_msg *msg,
+			      void *conn_user_context);
 
   int on_msg_error(struct xio_session *session, enum xio_status error,
 		   struct xio_msg  *msg, void *conn_user_context);
-
-  int on_msg_send_complete(struct xio_session *session,
-			   struct xio_msg *rsp, void *conn_user_context);
 
   void msg_send_fail(XioMsg *xmsg, int code);
 

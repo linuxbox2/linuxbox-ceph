@@ -175,7 +175,7 @@ struct xio_msg_ex
     msg.request = NULL;
     msg.more_in_batch = 0;
     // for now, we DO NEED receipts for every msg
-    msg.flags = XIO_MSG_FLAG_REQUEST_READ_RECEIPT | XIO_MSG_FLAG_IMM_SEND_COMP;
+    msg.flags = 0;
     msg.user_context = user_context;
     // minimal zero "in" side
     msg.in.header.iov_len = 0;

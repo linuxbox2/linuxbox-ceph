@@ -382,19 +382,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
   return 0;
 }
 
-int XioConnection::on_msg_send_complete(struct xio_session *session,
-					struct xio_msg *rsp,
-					void *conn_user_context)
-{
-  abort(); /* XXX */
-} /* on_msg_send_complete */
-
 static uint64_t rcount;
 
-int XioConnection::on_msg_delivered(struct xio_session *session,
-				    struct xio_msg *req,
-				    int more_in_batch,
-				    void *conn_user_context)
+int XioConnection::on_ow_msg_send_complete(struct xio_session *session,
+					   struct xio_msg *req,
+					   void *conn_user_context)
 {
   /* requester send complete (one-way) */
   uint64_t rc = ++rcount;

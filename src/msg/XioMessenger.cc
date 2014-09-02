@@ -119,19 +119,6 @@ static int on_new_session(struct xio_session *session,
   return (msgr->new_session(session, req, cb_user_context));
 }
 
-static int on_msg_send_complete(struct xio_session *session,
-				struct xio_msg *rsp,
-				void *conn_user_context)
-{
-  XioConnection *xcon =
-    static_cast<XioConnection*>(conn_user_context);
-
-  dout(4) << "msg send complete: session: " << session
-    << " rsp: " << rsp << " user_context " << conn_user_context << dendl;
-
-  return xcon->on_msg_send_complete(session, rsp, conn_user_context);
-}
-
 static int on_msg(struct xio_session *session,
 		  struct xio_msg *req,
 		  int more_in_batch,
@@ -146,20 +133,18 @@ static int on_msg(struct xio_session *session,
 			  cb_user_context);
 }
 
-static int on_msg_delivered(struct xio_session *session,
-			    struct xio_msg *msg,
-			    int more_in_batch,
-			    void *conn_user_context)
+static int on_ow_msg_send_complete(struct xio_session *session,
+				   struct xio_msg *msg,
+				   void *conn_user_context)
 {
   XioConnection *xcon =
     static_cast<XioConnection*>(conn_user_context);
 
   dout(25) << "msg delivered session: " << session
-    << " msg: " << msg << " more: " << more_in_batch
-    << " conn_user_context " << conn_user_context << dendl;
+	   << " msg: " << msg << " conn_user_context "
+	   << conn_user_context << dendl;
 
-  return xcon->on_msg_delivered(session, msg, more_in_batch,
-				conn_user_context);
+  return xcon->on_ow_msg_send_complete(session, msg, conn_user_context);
 }
 
 static int on_msg_error(struct xio_session *session,
@@ -310,9 +295,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_msgr_ops.on_session_event = on_session_event;
       xio_msgr_ops.on_new_session = on_new_session;
       xio_msgr_ops.on_session_established = NULL;
-      xio_msgr_ops.on_msg_send_complete	= on_msg_send_complete;
       xio_msgr_ops.on_msg = on_msg;
-      xio_msgr_ops.on_msg_delivered = on_msg_delivered;
+      xio_msgr_ops.on_ow_msg_send_complete = on_ow_msg_send_complete;
       xio_msgr_ops.on_msg_error = on_msg_error;
       xio_msgr_ops.on_cancel = on_cancel;
       xio_msgr_ops.on_cancel_request = on_cancel_request;
