@@ -166,6 +166,13 @@ public:
 #endif
   }
 
+  void disconnect() {
+    if (is_connected()) {
+      connected.set(false);
+      xio_disconnect(conn); // normal teardown will clean up conn
+    }
+  }
+
   uint32_t get_magic() { return magic; }
   void set_magic(int _magic) { magic = _magic; }
   uint32_t get_special_handling() { return special_handling; }

@@ -226,12 +226,15 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 			   string mname, uint64_t nonce, int nportals,
 			   DispatchStrategy *ds)
   : SimplePolicyMessenger(cct, name, mname, nonce),
+    nsessions(0),
+    shutdown_called(false),
     portals(this, nportals),
     dispatch_strategy(ds),
     loop_con(this),
     port_shift(0),
     magic(0),
-    special_handling(0)
+    special_handling(0),
+    sh_mtx("XioMessenger sh_mtx")
 {
 
   if (cct->_conf->xio_trace_xcon)
@@ -328,7 +331,14 @@ int XioMessenger::new_session(struct xio_session *session,
 			      struct xio_new_session_req *req,
 			      void *cb_user_context)
 {
-  return portals.accept(session, req, cb_user_context);
+  if (shutdown_called.read()) {
+    return xio_reject(
+      session, XIO_E_SESSION_REFUSED, NULL /* udata */, 0 /* udata len */);
+  }
+  int code = portals.accept(session, req, cb_user_context);
+  if (! code)
+    nsessions.inc();
+  return code;
 } /* new_session */
 
 int XioMessenger::session_event(struct xio_session *session,
@@ -429,6 +439,8 @@ int XioMessenger::session_event(struct xio_session *session,
   case XIO_SESSION_TEARDOWN_EVENT:
     dout(2) << "xio_session_teardown " << session << dendl;
     xio_session_destroy(session);
+    if (nsessions.dec() == 0)
+      sh_cond.Signal();
     break;
   default:
     break;
@@ -785,6 +797,15 @@ assert(req->out.pdata_iov.nents || !nbuffers);
 
 int XioMessenger::shutdown()
 {
+  shutdown_called.set(true);
+  conns_sp.lock();
+  XioConnection::ConnList::iterator iter;
+  iter = conns_list.begin();
+  for (iter = conns_list.begin(); iter != conns_list.end(); ++iter) {
+    (void) iter->disconnect(); // XXX mark down?
+  }
+  conns_sp.unlock();
+  join_sessions();
   portals.shutdown();
   dispatch_strategy->shutdown();
   started = false;
@@ -793,6 +814,9 @@ int XioMessenger::shutdown()
 
 ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
 {
+  if (shutdown_called.read())
+    return NULL;
+
   const entity_inst_t& self_inst = get_myinst();
   if ((&dest == &self_inst) ||
       (dest == self_inst)) {
@@ -839,6 +863,7 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
       delete xcon;
       return NULL;
     }
+    nsessions.inc();
 
     /* this should cause callbacks with user context of conn, but
      * we can always set it explicitly */
@@ -867,6 +892,14 @@ void XioMessenger::try_insert(XioConnection *xcon)
   Spinlock::Locker lckr(conns_sp);
   /* already resident in conns_list */
   conns_entity_map.insert(*xcon);
+}
+
+void XioMessenger::join_sessions()
+{
+  while(nsessions.read() > 0) {
+    Mutex::Locker lck(sh_mtx);
+    sh_cond.Wait(sh_mtx);
+  }
 }
 
 XioMessenger::~XioMessenger()

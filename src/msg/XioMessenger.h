@@ -32,6 +32,8 @@ class XioMessenger : public SimplePolicyMessenger
 {
 private:
   static atomic_t nInstances;
+  atomic_t nsessions;
+  atomic_t shutdown_called;
   Spinlock conns_sp;
   XioConnection::ConnList conns_list;
   XioConnection::EntitySet conns_entity_map;
@@ -41,6 +43,8 @@ private:
   int port_shift;
   uint32_t magic;
   uint32_t special_handling;
+  Mutex sh_mtx;
+  Cond sh_cond;
 
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
@@ -64,6 +68,7 @@ public:
   void set_special_handling(int n) { special_handling = n; }
   int pool_hint(uint32_t size);
   void try_insert(XioConnection *xcon);
+  void join_sessions();
 
   /* xio hooks */
   int new_session(struct xio_session *session,
