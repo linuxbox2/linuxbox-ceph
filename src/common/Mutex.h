@@ -104,7 +104,7 @@ public:
   void Unlock();
 
   friend class Cond;
-
+  friend class Cond2;
 
 public:
   class Locker {
