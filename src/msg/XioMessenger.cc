@@ -234,7 +234,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     port_shift(0),
     magic(0),
     special_handling(0),
-    sh_mtx("XioMessenger sh_mtx")
+    sh_mtx("XioMessenger sh_mtx"),
+    sh_cond(sh_mtx)
 {
 
   if (cct->_conf->xio_trace_xcon)
@@ -439,8 +440,11 @@ int XioMessenger::session_event(struct xio_session *session,
   case XIO_SESSION_TEARDOWN_EVENT:
     dout(2) << "xio_session_teardown " << session << dendl;
     xio_session_destroy(session);
-    if (nsessions.dec() == 0)
-      sh_cond.Signal();
+    if (nsessions.dec() == 0) {
+      Mutex::Locker lck(sh_mtx);
+      if (nsessions.read() == 0)
+	sh_cond.Signal();
+    }
     break;
   default:
     break;
@@ -807,7 +811,7 @@ int XioMessenger::shutdown()
   }
   conns_sp.unlock();
   while(nsessions.read() > 0) {
-    sh_cond.Wait(sh_mtx);
+    sh_cond.Wait();
   }
   portals.shutdown();
   dispatch_strategy->shutdown();

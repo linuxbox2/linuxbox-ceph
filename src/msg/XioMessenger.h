@@ -44,7 +44,7 @@ private:
   uint32_t magic;
   uint32_t special_handling;
   Mutex sh_mtx;
-  Cond sh_cond;
+  Cond2 sh_cond;
 
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
