@@ -43,7 +43,7 @@ private:
   int port_shift;
   uint32_t magic;
   uint32_t special_handling;
-  Mutex sh_mtx;
+  Mutex2 sh_mtx;
   Cond2 sh_cond;
 
 public:

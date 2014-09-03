@@ -112,14 +112,14 @@ class Cond {
 /* Traditional POSIX mutex and condition variable pair */
 class Cond2 {
   pthread_cond_t _c;
-  Mutex& mtx;
+  Mutex2& mtx;
 
   // don't allow copying.
   void operator=(Cond2 &C);
   Cond2(const Cond2 &C);
 
  public:
-  Cond2(Mutex& _mtx) : mtx(_mtx) {
+  Cond2(Mutex2& _mtx) : mtx(_mtx) {
     int r = pthread_cond_init(&_c,NULL);
     assert(r == 0);
   }
