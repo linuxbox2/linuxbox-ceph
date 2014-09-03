@@ -128,6 +128,7 @@ public:
   string name;
   int rank;
   Messenger *messenger;
+  Messenger *xmsgr;
   ConnectionRef con_self;
   Mutex lock;
   SafeTimer timer;
@@ -805,7 +806,7 @@ public:
 
  public:
   Monitor(CephContext *cct_, string nm, MonitorDBStore *s,
-	  Messenger *m, MonMap *map);
+	  Messenger *m, Messenger *xm, MonMap *map);
   ~Monitor();
 
   static int check_features(MonitorDBStore *store);
