@@ -104,7 +104,6 @@ public:
   void Unlock();
 
   friend class Cond;
-  friend class Cond2;
 
 public:
   class Locker {
@@ -112,6 +111,52 @@ public:
 
   public:
     Locker(Mutex& m) : mutex(m) {
+      mutex.Lock();
+    }
+    ~Locker() {
+      mutex.Unlock();
+    }
+  };
+};
+
+class Mutex2 {
+private:
+  pthread_mutex_t _m;
+
+  // don't allow copying.
+  void operator=(Mutex2 &M);
+  Mutex2(const Mutex2 &M);
+
+public:
+  Mutex2() {
+    pthread_mutex_init(&_m, NULL);
+  }
+
+  ~Mutex2() {
+    pthread_mutex_destroy(&_m);
+  }
+
+  bool TryLock() {
+    int r = pthread_mutex_trylock(&_m);
+    return r == 0;
+  }
+
+  void Lock() {
+    (void) pthread_mutex_lock(&_m);
+  }
+
+  void Unlock() {
+    (void) pthread_mutex_unlock(&_m);
+  }
+
+  friend class Cond2;
+
+public:
+  class Locker {
+    Mutex2 &mutex;
+
+  public:
+    Locker(Mutex2& m) : mutex(m) {
       mutex.Lock();
     }
     ~Locker() {

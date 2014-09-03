@@ -244,7 +244,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     loop_con(this),
     magic(0),
     special_handling(0),
-    sh_mtx("XioMessenger sh_mtx"),
+    sh_mtx(),
     sh_cond(sh_mtx)
 {
 
@@ -453,7 +453,7 @@ int XioMessenger::session_event(struct xio_session *session,
     ldout(cct,2) << "xio_session_teardown " << session << dendl;
     xio_session_destroy(session);
     if (nsessions.dec() == 0) {
-      Mutex::Locker lck(sh_mtx);
+      Mutex2::Locker lck(sh_mtx);
       if (nsessions.read() == 0)
 	sh_cond.Signal();
     }
@@ -823,7 +823,7 @@ int XioMessenger::shutdown()
   }
   conns_sp.unlock();
   while(nsessions.read() > 0) {
-    Mutex::Locker lck(sh_mtx);
+    Mutex2::Locker lck(sh_mtx);
     if (nsessions.read() > 0)
       sh_cond.Wait();
   }
