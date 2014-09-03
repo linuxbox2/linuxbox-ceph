@@ -51,7 +51,7 @@ bool XioDispatcher::ms_dispatch(Message *m)
   }
 
   if (unlikely(m->get_magic() & MSG_MAGIC_TRACE_CTR)) {
-    if (unlikely(dc % 8192) == 0) {
+    if (unlikely(dc % 65536) == 0) {
       struct timespec ts;
       clock_gettime(CLOCK_REALTIME_COARSE, &ts);
       std::cout << "ping " << dc << " nanos: " <<
