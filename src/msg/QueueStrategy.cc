@@ -49,6 +49,7 @@ void QueueStrategy::entry(QSThread *thrd)
 	mqueue.pop_front();
 	break;
       }
+      m = NULL;
       if (stop)
 	break;
       disp_threads.push_front(*thrd);
@@ -58,7 +59,6 @@ void QueueStrategy::entry(QSThread *thrd)
     if (stop) {
 	if (!m) break;
 	m->put();
-	m = NULL;
 	continue;
     }
     get_messenger()->ms_deliver_dispatch(m);
