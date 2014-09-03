@@ -446,11 +446,12 @@ public:
 
   virtual void dump(Formatter *f) const;
 
-  void encode(uint64_t features, bool datacrc);
+  void encode(uint64_t features, int crcflags);
 };
 typedef boost::intrusive_ptr<Message> MessageRef;
 
-extern Message *decode_message(CephContext *cct, ceph_msg_header &header,
+extern Message *decode_message(CephContext *cct, int crcflags,
+			       ceph_msg_header &header,
 			       ceph_msg_footer& footer, bufferlist& front,
 			       bufferlist& middle, bufferlist& data);
 inline ostream& operator<<(ostream& out, Message& m) {
@@ -461,6 +462,7 @@ inline ostream& operator<<(ostream& out, Message& m) {
 }
 
 extern void encode_message(Message *m, uint64_t features, bufferlist& bl);
-extern Message *decode_message(CephContext *cct, bufferlist::iterator& bl);
+extern Message *decode_message(CephContext *cct, int crcflags,
+                               bufferlist::iterator& bl);
 
 #endif
