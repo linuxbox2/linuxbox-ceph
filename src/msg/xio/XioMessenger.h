@@ -68,7 +68,6 @@ public:
   void set_special_handling(int n) { special_handling = n; }
   int pool_hint(uint32_t size);
   void try_insert(XioConnection *xcon);
-  void join_sessions();
 
   /* xio hooks */
   int new_session(struct xio_session *session,
