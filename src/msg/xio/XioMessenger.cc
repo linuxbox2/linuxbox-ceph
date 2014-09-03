@@ -814,7 +814,6 @@ assert(req->out.pdata_iov.nents || !nbuffers);
 
 int XioMessenger::shutdown()
 {
-  Mutex::Locker lck(sh_mtx);
   shutdown_called.set(true);
   conns_sp.lock();
   XioConnection::ConnList::iterator iter;
@@ -824,7 +823,9 @@ int XioMessenger::shutdown()
   }
   conns_sp.unlock();
   while(nsessions.read() > 0) {
-    sh_cond.Wait();
+    Mutex::Locker lck(sh_mtx);
+    if (nsessions.read() > 0)
+      sh_cond.Wait();
   }
   portals.shutdown();
   dispatch_strategy->shutdown();
