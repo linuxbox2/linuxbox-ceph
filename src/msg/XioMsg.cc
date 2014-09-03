@@ -17,7 +17,6 @@
 #include "XioConnection.h"
 #include "XioMsg.h"
 
-
 int XioCompletionHook::release_msgs()
 {
   XioRsp *xrsp;

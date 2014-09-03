@@ -32,6 +32,10 @@ atomic_t XioMessenger::nInstances;
 
 struct xio_mempool *xio_msgr_noreg_mpool;
 
+atomic_t xio_msg_cnt;
+atomic_t xio_hook_cnt;
+atomic_t xio_mbuf_cnt;
+
 static struct xio_session_ops xio_msgr_ops;
 
 /* Accelio API callouts */
@@ -119,6 +123,8 @@ static int on_new_session(struct xio_session *session,
   return (msgr->new_session(session, req, cb_user_context));
 }
 
+static uint64_t on_msg_cnt;
+
 static int on_msg(struct xio_session *session,
 		  struct xio_msg *req,
 		  int more_in_batch,
@@ -129,9 +135,17 @@ static int on_msg(struct xio_session *session,
 
   dout(25) << "on_msg session " << session << " xcon " << xcon << dendl;
 
+  if ((++on_msg_cnt % 10000 == 0)) {
+    std::cout << "xio_mbuf_cnt: " << xio_mbuf_cnt.read() << " "
+	      << "xio_msg_cnt: " << xio_msg_cnt.read() << " "
+	      << "xio_hook_cnt: " << xio_hook_cnt.read() << std::endl;
+  }
+
   return xcon->on_msg_req(session, req, more_in_batch,
 			  cb_user_context);
 }
+
+static uint64_t ow_msg_cnt;
 
 static int on_ow_msg_send_complete(struct xio_session *session,
 				   struct xio_msg *msg,
@@ -143,6 +157,12 @@ static int on_ow_msg_send_complete(struct xio_session *session,
   dout(25) << "msg delivered session: " << session
 	   << " msg: " << msg << " conn_user_context "
 	   << conn_user_context << dendl;
+
+  if ((++ow_msg_cnt % 10000 == 0)) {
+    std::cout << "xio_mbuf_cnt: " << xio_mbuf_cnt.read() << " "
+	      << "xio_msg_cnt: " << xio_msg_cnt.read() << " "
+	      << "xio_hook_cnt: " << xio_hook_cnt.read() << std::endl;
+  }
 
   return xcon->on_ow_msg_send_complete(session, msg, conn_user_context);
 }

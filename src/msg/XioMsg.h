@@ -18,6 +18,7 @@
 
 #include <boost/intrusive/list.hpp>
 #include "SimplePolicyMessenger.h"
+#include "include/atomic.h"
 extern "C" {
 #include "libxio.h"
 }
@@ -26,6 +27,10 @@ extern "C" {
 #include "XioPool.h"
 
 namespace bi = boost::intrusive;
+
+extern atomic_t xio_mbuf_cnt;
+extern atomic_t xio_msg_cnt;
+extern atomic_t xio_hook_cnt;
 
 class XioMsgCnt
 {
@@ -227,6 +232,8 @@ public:
 	alloc_trailers(_ex_cnt);
       }
 
+      xio_msg_cnt.inc();
+
       // submit queue ref
       xcon->get();
     }
@@ -285,6 +292,8 @@ public:
       }
       /* submit queue ref */
       xcon->put();
+
+      xio_msg_cnt.dec();
     }
 };
 
@@ -310,7 +319,7 @@ public:
     nrefs(1),
     cl_flag(false),
     mp_this(_mp)
-    {}
+    { xio_hook_cnt.inc(); }
 
   virtual void finish(int r) {
     this->put();
@@ -361,6 +370,7 @@ public:
   }
 
   ~XioCompletionHook() {
+    xio_hook_cnt.dec();
     xcon->put();
   }
 };

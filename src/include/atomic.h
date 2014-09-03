@@ -90,7 +90,7 @@ namespace ceph {
 
 namespace ceph {
   class atomic_t {
-    uint32_t val;
+    uint64_t val;
   public:
     atomic_t(AO_t i=0) : val(i) {}
     void set(AO_t v) {

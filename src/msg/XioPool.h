@@ -21,6 +21,8 @@ extern "C" {
 #include "libxio.h"
 }
 
+#include "include/atomic.h"
+
 class XioPool
 {
 public:

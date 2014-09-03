@@ -532,7 +532,7 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     XioCompletionHook* m_hook;
   public:
     xio_msg_buffer(XioCompletionHook* _m_hook, const char *d, unsigned l) :
-      raw((char*)d, l), m_hook(_m_hook->get()) {}
+      raw((char*)d, l), m_hook(_m_hook->get()) { xio_mbuf_cnt.inc(); }
 
     static void operator delete(void *p)
     {
@@ -540,6 +540,7 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
       // return hook ref (counts against pool);  it appears illegal
       // to do this in our dtor, because this fires after that
       buf->m_hook->put();
+      xio_mbuf_cnt.dec();
     }
     raw* clone_empty() {
       return new buffer::raw_char(len);
