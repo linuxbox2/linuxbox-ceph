@@ -119,6 +119,9 @@ OPTION(ms_tcp_rcvbuf, OPT_INT, 0)
 OPTION(ms_tcp_prefetch_max_size, OPT_INT, 4096) // max prefetch size, we limit this to avoid extra memcpy
 OPTION(ms_initial_backoff, OPT_DOUBLE, .2)
 OPTION(ms_max_backoff, OPT_DOUBLE, 15.0)
+// ms_datacrc&&!ms_headercrc == special, see Messenger::get_default_crc_flags
+OPTION(ms_datacrc, OPT_BOOL, true)
+OPTION(ms_headercrc, OPT_BOOL, false)
 OPTION(ms_nocrc, OPT_BOOL, false)
 OPTION(ms_die_on_bad_msg, OPT_BOOL, false)
 OPTION(ms_die_on_unhandled_msg, OPT_BOOL, false)
