@@ -109,6 +109,53 @@ class Cond {
   }
 };
 
+/* Traditional POSIX mutex and condition variable pair */
+class Cond2 {
+  pthread_cond_t _c;
+  Mutex& mtx;
+
+  // don't allow copying.
+  void operator=(Cond2 &C);
+  Cond2(const Cond2 &C);
+
+ public:
+  Cond2(Mutex& _mtx) : mtx(_mtx) {
+    int r = pthread_cond_init(&_c,NULL);
+    assert(r == 0);
+  }
+  virtual ~Cond2() {
+    pthread_cond_destroy(&_c);
+  }
+
+  int Wait()  {
+    int r = pthread_cond_wait(&_c, &mtx._m);
+    return r;
+  }
+
+  int WaitUntil(utime_t when) {
+    struct timespec ts;
+    when.to_timespec(&ts);
+    int r = pthread_cond_timedwait(&_c, &mtx._m, &ts);
+    return r;
+  }
+
+  int WaitInterval(CephContext *cct, utime_t interval) {
+    utime_t when = ceph_clock_now(cct);
+    when += interval;
+    return WaitUntil(when);
+  }
+
+  int Broadcast() {
+    int r = pthread_cond_broadcast(&_c);
+    return r;
+  }
+
+  int Signal() {
+    int r = pthread_cond_signal(&_c);
+    return r;
+  }
+};
+
 /**
  * context to signal a cond
  *
