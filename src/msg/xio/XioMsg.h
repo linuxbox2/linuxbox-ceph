@@ -274,7 +274,7 @@ public:
        * PASSIVE/server side) */
       if (unlikely(m->get_special_handling() & MSG_SPECIAL_HANDLING_REDUPE)) {
 	if (likely(xcon->is_connected())) {
-	  xcon->get_messenger()->send_message(m, xcon);
+	  xcon->send_message(m);
 	} else {
 	  /* dispose it */
 	  m->put();
