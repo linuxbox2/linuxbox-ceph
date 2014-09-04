@@ -8,7 +8,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -rdynamic -Wall -Wtype-limits -Wignored-qual
 
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -ftemplate-depth-1024 -Wno-invalid-offsetof -Wnon-virtual-dtor -Wno-invalid-offsetof -Wstrict-null-sentinel -Woverloaded-virtual")
 
-set(EXTRALIBS uuid rt dl)
+set(EXTRALIBS uuid rt dl ${Boost_LIBS})
 
 if(${WITH_PROFILER})
   list(APPEND EXTRALIBS profiler)
@@ -60,6 +60,11 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 include_directories(".")
+
+if(HAVE_XIO)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${Xio_INCLUDE_DIR}")
+  list(APPEND EXTRALIBS ${Xio_LIBRARY} ibverbs rdmacm pthread rt)
+endif(HAVE_XIO)
 
 if(${WITH_TCMALLOC})
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
@@ -115,6 +120,16 @@ set(crush_srcs
   crush/CrushWrapper.cc
   crush/CrushCompiler.cc
   crush/CrushTester.cc)
+
+set(xio_common_srcs)
+if(HAVE_XIO)
+  list(APPEND xio_common_srcs
+    msg/XioConnection.cc
+    msg/XioMsg.cc
+    msg/XioMessenger.cc
+    msg/XioPortal.cc
+    msg/QueueStrategy.cc)
+endif(HAVE_XIO)
 
 set(libcommon_files
   ${CMAKE_BINARY_DIR}/src/include/ceph_ver.h
@@ -211,6 +226,7 @@ set(libcommon_files
   common/ceph_json.cc
   common/ipaddr.cc
   common/pick_address.cc
+  common/address_helper.cc
   common/linux_version.c
   osdc/Striper.cc
   osdc/Objecter.cc
