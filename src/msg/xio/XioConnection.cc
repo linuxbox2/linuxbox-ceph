@@ -100,6 +100,12 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   set_features(XIO_ALL_FEATURES);
 }
 
+int XioConnection::send_message(Message *m)
+{
+  XioMessenger *ms = static_cast<XioMessenger*>(get_messenger());
+  return ms->_send_message(m, this);
+}
+
 int XioConnection::passive_setup()
 {
   /* XXX passive setup is a placeholder for (potentially active-side
@@ -433,3 +439,14 @@ int XioConnection::on_msg_error(struct xio_session *session,
 
   return 0;
 } /* on_msg_error */
+
+
+int XioLoopbackConnection::send_message(Message *m)
+{
+  XioMessenger *ms = static_cast<XioMessenger*>(get_messenger());
+  m->set_connection(this);
+  m->set_seq(next_seq());
+  m->set_src(ms->get_myinst().name);
+  ms->ds_dispatch(m);
+  return 0;
+}
