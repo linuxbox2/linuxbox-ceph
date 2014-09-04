@@ -320,6 +320,8 @@ librados::RadosClient::~RadosClient()
     delete messenger;
   if (objecter)
     delete objecter;
+  if (g_ceph_context == cct)
+    g_ceph_context = NULL;
   cct->put();
   cct = NULL;
 }
