@@ -644,11 +644,11 @@ void XioMessenger::wait()
   dispatch_strategy->wait();
 } /* wait */
 
-int XioMessenger::send_message(Message *m, const entity_inst_t& dest)
+int XioMessenger::_send_message(Message *m, const entity_inst_t& dest)
 {
   ConnectionRef conn = get_connection(dest);
   if (conn)
-    return send_message(m, &(*conn));
+    return _send_message(m, &(*conn));
   else
     return EINVAL;
 } /* send_message(Message *, const entity_inst_t&) */
@@ -666,7 +666,7 @@ static inline XioMsg* pool_alloc_xio_msg(Message *m, XioConnection *xcon,
   return xmsg;
 }
 
-int XioMessenger::send_message(Message *m, Connection *con)
+int XioMessenger::_send_message(Message *m, Connection *con)
 {
   if (con == &loop_con) {
     m->set_connection(con);

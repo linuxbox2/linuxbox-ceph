@@ -147,6 +147,11 @@ public:
 
   bool is_connected() { return connected.read(); }
 
+  int send_message(Message *m);
+  void send_keepalive() {}
+  void mark_down() {}
+  void mark_disposable() {}
+
   const entity_inst_t& get_peer() const { return peer; }
 
   XioConnection* get() {
@@ -212,6 +217,11 @@ public:
   }
 
   virtual bool is_connected() { return true; }
+
+  int send_message(Message *m);
+  void send_keepalive() {}
+  void mark_down() {}
+  void mark_disposable() {}
 
   uint32_t get_seq() {
     return seq.read();
