@@ -272,7 +272,7 @@ if(${WITH_PROFILER})
   target_link_libraries(common profiler)
 endif(${WITH_PROFILER})
 
-target_link_libraries(common ${CRYPTO_LIBS} rt ${Boost_LIBRARIES})
+target_link_libraries(common erasure_code ${CRYPTO_LIBS} rt ${Boost_LIBRARIES})
 
 set(libglobal_srcs
   global/global_init.cc
@@ -592,6 +592,8 @@ if(${WITH_MDS})
     ${TCMALLOC_LIBS} boost_thread)
   install(TARGETS ceph-mds DESTINATION bin)
 endif(${WITH_MDS})
+
+add_subdirectory(erasure-code)
 
 # Support/Tools
 add_subdirectory(gtest)
