@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& out, _bad_endl_use_dendl_t) {
 
 #define dout_impl(cct, sub, v)						\
   do {									\
-  if (cct->_conf->subsys.should_gather(sub, v)) {			\
+  if (unlikely(cct->_conf->subsys.should_gather(sub, v))) {		\
     if (0) {								\
       char __array[((v >= -1) && (v <= 200)) ? 0 : -1] __attribute__((unused)); \
     }									\
@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& out, _bad_endl_use_dendl_t) {
 #define lgeneric_derr(cct) dout_impl(cct, ceph_subsys_, -1) *_dout
 
 #define ldlog_p1(cct, sub, lvl)			\
-  (cct->_conf->subsys.should_gather(sub, lvl))
+  (unlikely(cct->_conf->subsys.should_gather(sub, lvl)))
 
 // NOTE: depend on magic value in _ASSERT_H so that we detect when
 // /usr/include/assert.h clobbers our fancier version.
