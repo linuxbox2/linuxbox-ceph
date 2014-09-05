@@ -139,8 +139,8 @@ static inline XioCompletionHook* pool_alloc_xio_completion_hook(
   XioConnection *xcon, Message *m, XioInSeq& msg_seq)
 {
   struct xio_mempool_obj mp_mem;
-  int e = xio_mempool_alloc(xio_msgr_noreg_mpool,
-			    sizeof(XioCompletionHook), &mp_mem);
+  int e = xpool_alloc(xio_msgr_noreg_mpool,
+		      sizeof(XioCompletionHook), &mp_mem);
   if (!!e)
     return NULL;
   XioCompletionHook *xhook = (XioCompletionHook*) mp_mem.addr;

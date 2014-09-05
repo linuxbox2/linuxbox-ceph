@@ -129,6 +129,13 @@ static int on_msg(struct xio_session *session,
 
   dout(25) << "on_msg session " << session << " xcon " << xcon << dendl;
 
+  static uint32_t nreqs;
+  if (unlikely(XioPool::trace_mempool)) {
+    if (unlikely((++nreqs % 65536) == 0)) {
+      xp_stats.dump(__func__);
+    }
+  }
+
   return xcon->on_msg_req(session, req, more_in_batch,
 			  cb_user_context);
 }
@@ -239,6 +246,9 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
   if (cct->_conf->xio_trace_xcon)
     magic |= MSG_MAGIC_TRACE_XCON;
+
+  XioPool::trace_mempool = (cct->_conf->xio_trace_mempool);
+  XioPool::trace_msgcnt = (cct->_conf->xio_trace_msgcnt);
 
   /* package init */
   if (! initialized.read()) {
@@ -660,7 +670,7 @@ static inline XioMsg* pool_alloc_xio_msg(Message *m, XioConnection *xcon,
   int ex_cnt)
 {
   struct xio_mempool_obj mp_mem;
-  int e = xio_mempool_alloc(xio_msgr_noreg_mpool, sizeof(XioMsg), &mp_mem);
+  int e = xpool_alloc(xio_msgr_noreg_mpool, sizeof(XioMsg), &mp_mem);
   if (!!e)
     return NULL;
   XioMsg *xmsg = (XioMsg*) mp_mem.addr;
@@ -671,6 +681,14 @@ static inline XioMsg* pool_alloc_xio_msg(Message *m, XioConnection *xcon,
 
 int XioMessenger::send_message(Message *m, Connection *con)
 {
+
+  static uint32_t nreqs;
+  if (unlikely(XioPool::trace_mempool)) {
+    if (unlikely((++nreqs % 65536) == 0)) {
+      xp_stats.dump(__func__);
+    }
+  }
+
   if (con == &loop_con) {
     m->set_connection(con);
     m->set_src(get_myinst().name);

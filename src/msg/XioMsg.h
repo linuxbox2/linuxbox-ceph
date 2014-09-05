@@ -238,7 +238,7 @@ public:
     if (refs == 0) {
       struct xio_mempool_obj *mp = &this->mp_this;
       this->~XioMsg();
-      xio_mempool_free(mp);
+      xpool_free(sizeof(XioMsg), mp);
     }
   }
 
@@ -339,7 +339,7 @@ public:
 	return;
       struct xio_mempool_obj *mp = &this->mp_this;
       this->~XioCompletionHook();
-      xio_mempool_free(mp);
+      xpool_free(sizeof(XioCompletionHook), mp);
     }
   }
 
