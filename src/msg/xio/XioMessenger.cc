@@ -242,7 +242,6 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     portals(this, nportals),
     dispatch_strategy(ds),
     loop_con(this),
-    magic(0),
     special_handling(0),
     sh_mtx(),
     sh_cond(sh_mtx)
