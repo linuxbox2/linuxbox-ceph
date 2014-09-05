@@ -36,37 +36,34 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
 
   dc = dcount++;
 
-#if 0
-  cout << __func__ << " " << m << std::endl;
-#endif
-
-  /* XXXX The following logic should ONLY be used with SimpleMessenger.
-   * I will fork a new simple_xio_dispatcher to work around this. */
+  ConnectionRef con = m->get_connection();
+  Messenger* msgr = con->get_messenger();
 
   switch (m->get_type()) {
   case CEPH_MSG_PING:
+    break;
   case MSG_DATA_PING:
   {
-    //MDataPing* mdp = static_cast<MDataPing*>(m);
+    MDataPing* mdp __attribute__((unused)) = static_cast<MDataPing*>(m);
     //cout << "MDataPing " << mdp->tag << " " << mdp->counter << std::endl;
     //mdp->get_data().hexdump(cout);
-    ConnectionRef con = m->get_connection();
-    Messenger* msgr = con->get_messenger();
-    msgr->send_message(m, con);
   }
     break;
   default:
     abort();
   }
 
-  if (unlikely(m->get_magic() & MSG_MAGIC_TRACE_CTR)) {
-    if (unlikely(dc % 8192) == 0) {
+  if (unlikely(msgr->get_magic() & MSG_MAGIC_TRACE_CTR)) {
+    if (unlikely(dc % 65536) == 0) {
       struct timespec ts;
       clock_gettime(CLOCK_REALTIME_COARSE, &ts);
-      cout << "ping " << dc << " nanos: " <<
+      std::cout << "ping " << dc << " nanos: " <<
 	ts.tv_nsec + (ts.tv_sec * 1000000000)  << std::endl;
     }
-  }
+  } /* trace ctr */
+
+
+  msgr->send_message(m, con);
 
   //m->put();
 

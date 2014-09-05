@@ -41,7 +41,6 @@ private:
   DispatchStrategy* dispatch_strategy;
   XioLoopbackConnection loop_con;
   int port_shift;
-  uint32_t magic;
   uint32_t special_handling;
   Mutex2 sh_mtx;
   Cond2 sh_cond;
@@ -62,8 +61,6 @@ public:
     loop_con.set_peer_addr(a);
   }
 
-  uint32_t get_magic() { return magic; }
-  void set_magic(int _magic) { magic = _magic; }
   uint32_t get_special_handling() { return special_handling; }
   void set_special_handling(int n) { special_handling = n; }
   int pool_hint(uint32_t size);

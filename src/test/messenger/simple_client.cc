@@ -33,6 +33,18 @@ using namespace std;
 
 #define dout_subsys ceph_subsys_simple_client
 
+void usage(ostream& out)
+{
+  out << "usage: xio_client [options]\n"
+"options:\n"
+"  --addr X\n"
+"  --port X\n"
+"  --msgs X\n"
+"  --dsize X\n"
+    ;
+}
+
+
 int main(int argc, const char **argv)
 {
 	vector<const char*> args;
@@ -78,6 +90,12 @@ int main(int argc, const char **argv)
 	  }
 	};
 
+	if (!args.empty()) {
+	  cerr << "What is this? -- " << args[0] << std::endl;
+	  usage(cerr);
+	  exit(1);
+	}
+
 	cout  << "simple_client starting " <<
 	  "dest addr " << addr << " " <<
 	  "dest port " << port << " " <<
@@ -89,6 +107,8 @@ int main(int argc, const char **argv)
 				      "client",
 				      getpid());
 
+	// enable timing prints
+	messenger->set_magic(MSG_MAGIC_TRACE_CTR);
 	messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
 
 	string dest_str = "tcp://";
@@ -115,15 +135,15 @@ int main(int argc, const char **argv)
 	t1 = time(NULL);
 
 	int msg_ix;
+	Message *m;
 	for (msg_ix = 0; msg_ix < n_msgs; ++msg_ix) {
 	  /* add a data payload if asked */
 	  if (! n_dsize) {
-	    messenger->send_message(
-	      new MPing(), conn);
+	    m = new MPing();
 	  } else {
-	  messenger->send_message(
-	    new_simple_ping_with_data("xio_client", n_dsize), conn);
+	    m = new_simple_ping_with_data("xio_client", n_dsize);
 	  }
+	  messenger->send_message(m, conn);
 	}
 
 	// do stuff

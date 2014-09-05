@@ -172,7 +172,7 @@ int main(int argc, const char **argv)
 
 	t2 = time(NULL);
 	cout << "Processed " << dispatcher->get_dcount() + n_msgs
-	     << " round-trip messages in " << t2-t1 << "s"
+	     << " one-way messages in " << t2-t1 << "s"
 	     << std::endl;
 
 	conn->put();
