@@ -1,7 +1,14 @@
 include(GetGitRevisionDescription)
 
-add_definitions("-DCEPH_LIBDIR=${LIBRARY_OUTPUT_PATH}")
-add_definitions("-DCEPH_PKGLIBDIR=${LIBRARY_OUTPUT_PATH}")
+set(bindir ${CMAKE_INSTALL_PREFIX}/bin)
+set(sbindir ${CMAKE_INSTALL_PREFIX}/sbin)
+set(libdir ${CMAKE_INSTALL_PREFIX}/lib)
+set(sysconfdir ${CMAKE_INSTALL_PREFIX}/etc)
+set(pkgdatadir ${CMAKE_INSTALL_PREFIX}/share)
+set(prefix ${CMAKE_INSTALL_PREFIX})
+
+add_definitions("-DCEPH_LIBDIR=\"${libdir}\"")
+add_definitions("-DCEPH_PKGLIBDIR=\"${libdir}\"")
 add_definitions("-DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -rdynamic -Wall -Wtype-limits -Wignored-qualifiers -Winit-self -Wpointer-arith -Werror=format-security -fno-strict-aliasing -fsigned-char -fPIC")
@@ -25,13 +32,6 @@ if(${HAVE_ATOMIC_OPS})
 	atomic_ops
 	${EXTRALIBS})
 endif(${HAVE_ATOMIC_OPS})
-
-set(bindir ${CMAKE_INSTALL_PREFIX}/bin)
-set(sbindir ${CMAKE_INSTALL_PREFIX}/sbin)
-set(libdir ${CMAKE_INSTALL_PREFIX}/lib)
-set(sysconfdir ${CMAKE_INSTALL_PREFIX}/etc)
-set(pkgdatadir ${CMAKE_INSTALL_PREFIX}/share)
-set(prefix ${CMAKE_INSTALL_PREFIX})
 
 set(GCOV_PREFIX_STRIP 4)
 
