@@ -126,6 +126,7 @@ if(HAVE_XIO)
   list(APPEND xio_common_srcs
     msg/XioConnection.cc
     msg/XioMsg.cc
+    msg/XioPool.cc
     msg/XioMessenger.cc
     msg/XioPortal.cc
     msg/QueueStrategy.cc)

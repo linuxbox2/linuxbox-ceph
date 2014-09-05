@@ -63,6 +63,8 @@ OPTION(mon_cluster_log_file, OPT_STR,
     "default=/var/log/ceph/$cluster.$channel.log cluster=/var/log/ceph/$cluster.log")
 OPTION(mon_cluster_log_file_level, OPT_STR, "info")
 
+OPTION(xio_trace_mempool, OPT_BOOL, false) // mempool allocation counters
+OPTION(xio_trace_msgcnt, OPT_BOOL, false) // incoming/outgoing msg counters
 OPTION(xio_trace_xcon, OPT_BOOL, false) // Xio message encode/decode trace
 OPTION(xio_queue_depth, OPT_INT, 512) // depth of Accelio msg queue
 OPTION(xio_mp_min, OPT_INT, 128) // default min mempool size
