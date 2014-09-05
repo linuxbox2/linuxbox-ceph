@@ -40,7 +40,6 @@ private:
   XioPortals portals;
   DispatchStrategy* dispatch_strategy;
   XioLoopbackConnection loop_con;
-  uint32_t magic;
   uint32_t special_handling;
   Mutex2 sh_mtx;
   Cond2 sh_cond;
@@ -58,9 +57,6 @@ public:
     Messenger::set_myaddr(a);
     loop_con.set_peer_addr(a);
   }
-
-  int _send_message(Message *m, const entity_inst_t &dest);
-  int _send_message(Message *m, Connection *con);
 
   uint32_t get_magic() { return magic; }
   void set_magic(int _magic) { magic = _magic; }
