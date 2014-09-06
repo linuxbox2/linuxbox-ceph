@@ -52,6 +52,7 @@ private:
   atomic_t recv;
   uint32_t magic;
   uint32_t special_handling;
+  uint64_t scount;
 
   struct lifecycle {
     // different from Pipe states?
@@ -182,6 +183,7 @@ public:
   void set_magic(int _magic) { magic = _magic; }
   uint32_t get_special_handling() { return special_handling; }
   void set_special_handling(int n) { special_handling = n; }
+  uint64_t get_scount() { return scount; }
 
   int passive_setup(); /* XXX */
 
@@ -198,6 +200,8 @@ public:
 
   void msg_release_fail(struct xio_msg *msg, int code);
 };
+
+typedef boost::intrusive_ptr<XioConnection> XioConnectionRef;
 
 class XioLoopbackConnection : public Connection
 {

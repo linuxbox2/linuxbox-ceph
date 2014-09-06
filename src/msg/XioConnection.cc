@@ -88,6 +88,7 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   session(NULL),
   conn(NULL),
   magic(m->get_magic()),
+  scount(0),
   in_seq()
 {
   pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
@@ -388,14 +389,12 @@ int XioConnection::on_msg_req(struct xio_session *session,
   return 0;
 }
 
-static uint64_t rcount;
-
 int XioConnection::on_ow_msg_send_complete(struct xio_session *session,
 					   struct xio_msg *req,
 					   void *conn_user_context)
 {
   /* requester send complete (one-way) */
-  uint64_t rc = ++rcount;
+  uint64_t rc = ++scount;
 
   XioMsg* xmsg = static_cast<XioMsg*>(req->user_context);
   if (unlikely(magic & MSG_MAGIC_TRACE_CTR)) {
