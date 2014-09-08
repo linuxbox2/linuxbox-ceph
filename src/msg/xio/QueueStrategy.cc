@@ -25,12 +25,16 @@ QueueStrategy::QueueStrategy(int _n_threads)
 }
 
 void QueueStrategy::ds_dispatch(Message *m) {
-  QSThread *thrd;
+  msgr->ms_fast_preprocess(m);
+  if (msgr->ms_can_fast_dispatch(m)) {
+    msgr->ms_fast_dispatch(m);
+    return;
+  }
   lock.Lock();
   mqueue.push_back(*m);
   if (disp_threads.size()) {
     if (! disp_threads.empty()) {
-      thrd = &(disp_threads.front());
+      QSThread *thrd = &disp_threads.front();
       disp_threads.pop_front();
       thrd->cond.Signal();
     }
