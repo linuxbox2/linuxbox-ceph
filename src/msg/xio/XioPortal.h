@@ -33,8 +33,6 @@ extern "C" {
 #endif
 #define CACHE_PAD(_n) char __pad ## _n [CACHE_LINE_SIZE]
 
-class XioMessenger;
-
 class XioPortal : public Thread
 {
 private:
@@ -98,7 +96,7 @@ private:
 
   };
 
-  XioMessenger *msgr;
+  Messenger *msgr;
   struct xio_context *ctx;
   struct xio_server *server;
   SubmitQueue submit_q;
@@ -116,7 +114,7 @@ private:
   friend class XioMessenger;
 
 public:
-  XioPortal(XioMessenger *_msgr) :
+  XioPortal(Messenger *_msgr) :
   msgr(_msgr), ctx(NULL), server(NULL), submit_q(), xio_uri(""),
   portal_id(NULL), _shutdown(false), drained(false),
   magic(0),
@@ -218,9 +216,9 @@ public:
 	      else {
 		code = xio_send_msg(xs->xcon->conn, msg);
 		/* header trace moved here to capture xio serial# */
-		if (dlog_p(ceph_subsys_xio, 11)) {
-		  print_xio_msg_hdr("xio_send_msg", xmsg->hdr, msg);
-		  print_ceph_msg("xio_send_msg", xmsg->m);
+		if (ldlog_p1(msgr->cct, ceph_subsys_xio, 11)) {
+		  print_xio_msg_hdr(msgr->cct, "xio_send_msg", xmsg->hdr, msg);
+		  print_ceph_msg(msgr->cct, "xio_send_msg", xmsg->m);
 		}
 	      }
 	      if (unlikely(code)) {
@@ -266,7 +264,7 @@ private:
   int n;
 
 public:
-  XioPortals(XioMessenger *msgr, int _n) : p_vec(NULL), n(_n)
+  XioPortals(Messenger *msgr, int _n) : p_vec(NULL), n(_n)
     {
       /* portal0 */
       portals.push_back(new XioPortal(msgr));

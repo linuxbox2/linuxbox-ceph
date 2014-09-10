@@ -28,19 +28,18 @@ extern struct xio_mempool *xio_msgr_noreg_mpool;
 
 #define dout_subsys ceph_subsys_xio
 
-void print_xio_msg_hdr(const char *tag, const XioMsgHdr &hdr,
-		       const struct xio_msg *msg)
+void print_xio_msg_hdr(CephContext *cct, const char *tag,
+		       const XioMsgHdr &hdr, const struct xio_msg *msg)
 {
-
   if (msg) {
-    dout(4) << tag <<
+    ldout(cct,4) << tag <<
       " xio msg:" <<
       " sn: " << msg->sn <<
       " timestamp: " << msg->timestamp <<
       dendl;
   }
 
-  dout(4) << tag <<
+  ldout(cct,4) << tag <<
     " ceph header: " <<
     " front_len: " << hdr.hdr->front_len <<
     " seq: " << hdr.hdr->seq <<
@@ -58,7 +57,7 @@ void print_xio_msg_hdr(const char *tag, const XioMsgHdr &hdr,
     " msg_cnt: " << hdr.msg_cnt <<
     dendl;
 
-  dout(4) << tag <<
+  ldout(cct,4) << tag <<
     " ceph footer: " <<
     " front_crc: " << hdr.ftr->front_crc <<
     " middle_crc: " << hdr.ftr->middle_crc <<
@@ -68,11 +67,11 @@ void print_xio_msg_hdr(const char *tag, const XioMsgHdr &hdr,
     dendl;
 }
 
-void print_ceph_msg(const char *tag, Message *m)
+void print_ceph_msg(CephContext *cct, const char *tag, Message *m)
 {
   if (m->get_magic() & (MSG_MAGIC_XIO & MSG_MAGIC_TRACE_DTOR)) {
     ceph_msg_header& header = m->get_header();
-    dout(4) << tag << " header version " << header.version <<
+    ldout(cct,4) << tag << " header version " << header.version <<
       " compat version " << header.compat_version <<
       dendl;
   }
@@ -175,7 +174,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
     XioMsgCnt msg_cnt(
       buffer::create_static(treq->in.header.iov_len,
 			    (char*) treq->in.header.iov_base));
-    dout(10) << __func__ << " receive req " << "treq " << treq
+    ldout(msgr->cct,10) << __func__ << " receive req " << "treq " << treq
       << " msg_cnt " << msg_cnt.msg_cnt
       << " iov_base " << treq->in.header.iov_base
       << " iov_len " << (int) treq->in.header.iov_len
@@ -206,7 +205,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   struct timeval t1, t2;
 
-  dout(4) << __func__ << " " << "msg_seq.size()="  << msg_seq.size() <<
+  ldout(msgr->cct,4) << __func__ << " " << "msg_seq.size()="  << msg_seq.size() <<
     dendl;
 
   struct xio_msg* msg_iter = msg_seq.begin();
@@ -219,7 +218,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (magic & (MSG_MAGIC_TRACE_XCON)) {
     if (hdr.hdr->type == 43) {
-      print_xio_msg_hdr("on_msg_req", hdr, NULL);
+      print_xio_msg_hdr(msgr->cct, "on_msg_req", hdr, NULL);
     }
   }
 
@@ -265,7 +264,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (magic & (MSG_MAGIC_TRACE_XCON)) {
     if (hdr.hdr->type == 43) {
-      dout(4) << "front (payload) dump:";
+      ldout(msgr->cct,4) << "front (payload) dump:";
       payload.hexdump( *_dout );
       *_dout << dendl;
     }
@@ -375,14 +374,14 @@ int XioConnection::on_msg_req(struct xio_session *session,
     }
 
     if (magic & (MSG_MAGIC_TRACE_XCON)) {
-      dout(4) << "decode m is " << m->get_type() << dendl;
+      ldout(msgr->cct,4) << "decode m is " << m->get_type() << dendl;
     }
 
     /* dispatch it */
     msgr->ds_dispatch(m);
   } else {
     /* responds for undecoded messages and frees hook */
-    dout(4) << "decode m failed" << dendl;
+    ldout(msgr->cct,4) << "decode m failed" << dendl;
     m_hook->on_err_finalize(this);
   }
 
@@ -403,7 +402,7 @@ int XioConnection::on_ow_msg_send_complete(struct xio_session *session,
     }
   } /* trace ctr */
 
-  dout(11) << "on_msg_delivered xcon: " << xmsg->xcon <<
+  ldout(msgr->cct,11) << "on_msg_delivered xcon: " << xmsg->xcon <<
     " session: " << session << " msg: " << req << " sn: " << req->sn <<
     " type: " << xmsg->m->get_type() << " tid: " << xmsg->m->get_tid() <<
     " seq: " << xmsg->m->get_seq() << dendl;
@@ -415,7 +414,7 @@ int XioConnection::on_ow_msg_send_complete(struct xio_session *session,
 
 void XioConnection::msg_send_fail(XioMsg *xmsg, int code)
 {
-  dout(4) << "xio_send_msg FAILED " << &xmsg->req_0.msg << " code=" << code <<
+  ldout(msgr->cct,4) << "xio_send_msg FAILED " << &xmsg->req_0.msg << " code=" << code <<
     " (" << xio_strerror(code) << ")" << dendl;
   /* return refs taken for each xio_msg */
   xmsg->put_msg_refs();
@@ -423,7 +422,7 @@ void XioConnection::msg_send_fail(XioMsg *xmsg, int code)
 
 void XioConnection::msg_release_fail(struct xio_msg *msg, int code)
 {
-  dout(4) << "xio_release_msg FAILED " << msg <<  "code=" << code <<
+  ldout(msgr->cct,4) << "xio_release_msg FAILED " << msg <<  "code=" << code <<
     " (" << xio_strerror(code) << ")" << dendl;
 } /* msg_release_fail */
 

@@ -379,8 +379,8 @@ public:
   }
 };
 
-void print_xio_msg_hdr(const char *tag,  const XioMsgHdr &hdr,
-		       const struct xio_msg *msg);
-void print_ceph_msg(const char *tag, Message *m);
+void print_xio_msg_hdr(CephContext *cct, const char *tag,
+		       const XioMsgHdr &hdr, const struct xio_msg *msg);
+void print_ceph_msg(CephContext *cct, const char *tag, Message *m);
 
 #endif /* XIO_MSG_H */
