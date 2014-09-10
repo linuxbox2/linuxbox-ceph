@@ -884,6 +884,7 @@ add_executable(unittest_daemon_config
   $<TARGET_OBJECTS:heap_profiler_objs>
   )
 target_link_libraries(unittest_daemon_config
+  common
   global
   ${UNITTEST_LIBS}
   ${CMAKE_DL_LIBS}
@@ -1527,6 +1528,7 @@ set_target_properties(test_objectstore PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(test_objectstore
   os
+  common
   ${UNITTEST_LIBS}
   global
   ${EXTRALIBS}
@@ -1584,6 +1586,7 @@ set_target_properties(test_xattr_bench PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(test_xattr_bench
   os
+  common
   ${UNITTEST_LIBS}
   global
   ${EXTRALIBS}
@@ -1599,11 +1602,13 @@ set_target_properties(test_filejournal PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(test_filejournal
   os
+  common
   ${UNITTEST_LIBS}
   global
   ${EXTRALIBS}
   ${TCMALLOC_LIBS}
   ${CMAKE_DL_LIBS}
+  ${EXTRALIBS}
   )
 
 add_executable(test_stress_watch
@@ -1644,6 +1649,7 @@ set_target_properties(test_object_map PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(test_object_map
   os
+  common
   ${UNITTEST_LIBS}
   global
   ${EXTRALIBS}
@@ -1659,6 +1665,7 @@ set_target_properties(test_keyvaluedb_atomicity PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(test_keyvaluedb_atomicity
   os
+  common
   ${UNITTEST_LIBS}
   global
   ${EXTRALIBS}
@@ -1675,6 +1682,7 @@ set_target_properties(test_keyvaluedb_iterators PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(test_keyvaluedb_iterators
   os
+  common
   ${UNITTEST_LIBS}
   global
   ${EXTRALIBS}
