@@ -40,7 +40,6 @@ private:
   XioPortals portals;
   DispatchStrategy* dispatch_strategy;
   XioLoopbackConnection loop_con;
-  int port_shift;
   uint32_t magic;
   uint32_t special_handling;
   Mutex sh_mtx;
@@ -52,8 +51,6 @@ public:
 	       DispatchStrategy* ds);
 
   virtual ~XioMessenger();
-
-  void set_port_shift(int shift) { port_shift = shift; }
 
   XioPortal* default_portal() { return portals.get_portal0(); }
 

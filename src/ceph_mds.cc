@@ -170,7 +170,6 @@ int main(int argc, const char **argv)
     new QueueStrategy(2) /* dispatch strategy */);
 
   xmsgr->set_cluster_protocol(CEPH_MDS_PROTOCOL);
-  xmsgr->set_port_shift(111);;
 #endif
 
   cout << "starting " << g_conf->name << " at " << simple_msgr->get_myaddr()

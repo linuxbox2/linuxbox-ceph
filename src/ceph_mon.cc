@@ -762,7 +762,6 @@ int main(int argc, const char **argv)
 
   xmsgr->set_cluster_protocol(CEPH_MON_PROTOCOL);
   xmsgr->set_default_send_priority(CEPH_MSG_PRIO_HIGH);
-  xmsgr->set_port_shift(111);
 
   xmsgr->set_default_policy(Messenger::Policy::stateless_server(
 				  supported, 0));

@@ -215,12 +215,9 @@ int librados::RadosClient::connect()
   nonce = getpid() + (1000000 * (uint64_t)rados_instance.inc());
 #if defined(HAVE_XIO)
   if (cct->_conf->client_rdma) {
-    XioMessenger *xmsgr
-      = new XioMessenger(cct, entity_name_t::CLIENT(-1), "radosclient",
-			 nonce, 0 /* portals */,
-			 new QueueStrategy(2) /* dispatch strategy */);
-      xmsgr->set_port_shift(111) /* XXX */;
-    messenger = xmsgr;
+    messenger = new XioMessenger(cct, entity_name_t::CLIENT(-1), "radosclient",
+				 nonce, 0 /* portals */,
+				 new QueueStrategy(2) /* dispatch strategy */);
   } else
 #endif /* HAVE_XIO */
   {
