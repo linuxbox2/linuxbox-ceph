@@ -404,7 +404,6 @@ int main(int argc, const char **argv)
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_public->set_cluster_protocol(CEPH_OSD_PROTOCOL);
-  ms_xio_public->set_port_shift(111);
 
   XioMessenger *ms_xio_cluster = new XioMessenger(
     g_ceph_context,
@@ -414,7 +413,6 @@ int main(int argc, const char **argv)
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_cluster->set_cluster_protocol(CEPH_OSD_PROTOCOL);
-  ms_xio_cluster->set_port_shift(111);
 
   XioMessenger *ms_xio_objecter = new XioMessenger(
     g_ceph_context,
@@ -424,7 +422,6 @@ int main(int argc, const char **argv)
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_objecter->set_cluster_protocol(CEPH_OSD_PROTOCOL);
-  ms_xio_objecter->set_port_shift(111);
 
   XioMessenger *ms_xio_hb_cl = new XioMessenger(
     g_ceph_context,
@@ -434,7 +431,6 @@ int main(int argc, const char **argv)
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_hb_cl->set_cluster_protocol(CEPH_OSD_PROTOCOL);
-  ms_xio_hb_cl->set_port_shift(111);
 
   XioMessenger *ms_xio_hb_fs = new XioMessenger(
     g_ceph_context,
@@ -444,7 +440,6 @@ int main(int argc, const char **argv)
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_hb_fs->set_cluster_protocol(CEPH_OSD_PROTOCOL);
-  ms_xio_hb_fs->set_port_shift(111);
 
   XioMessenger *ms_xio_hb_bs = new XioMessenger(
     g_ceph_context,
@@ -454,7 +449,6 @@ int main(int argc, const char **argv)
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_hb_bs->set_cluster_protocol(CEPH_OSD_PROTOCOL);
-  ms_xio_hb_bs->set_port_shift(111);
 #endif /* HAVE_XIO */
 
   cout << "starting osd." << whoami

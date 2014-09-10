@@ -231,7 +231,6 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
     portals(this, nportals),
     dispatch_strategy(ds),
     loop_con(this),
-    port_shift(0),
     magic(0),
     special_handling(0),
     sh_mtx("XioMessenger sh_mtx")
@@ -371,8 +370,8 @@ int XioMessenger::session_event(struct xio_session *session,
     (void) entity_addr_from_sockaddr(&s_inst.addr,
 				     (struct sockaddr *) &xcona.peer_addr);
 
-    if (port_shift)
-      s_inst.addr.set_port(s_inst.addr.get_port()-port_shift);
+    if (cct->_conf->xio_port_shift)
+      s_inst.addr.set_port(s_inst.addr.get_port() - cct->_conf->xio_port_shift);
 
     xcon = new XioConnection(this, XioConnection::PASSIVE, s_inst);
     xcon->session = session;
@@ -610,8 +609,9 @@ int XioMessenger::bind(const entity_addr_t& addr)
   }
 
   entity_addr_t shift_addr = *a;
-  if (port_shift && shift_addr.get_port() > 0) { // don't shift port 0
-    shift_addr.set_port(shift_addr.get_port() + port_shift);
+  if (cct->_conf->xio_port_shift && shift_addr.get_port() > 0) {
+    // don't shift port 0
+    shift_addr.set_port(shift_addr.get_port() + cct->_conf->xio_port_shift);
   }
 
   string base_uri = xio_uri_from_entity(shift_addr, false /* want_port */);
@@ -621,7 +621,7 @@ int XioMessenger::bind(const entity_addr_t& addr)
   uint16_t port0;
   int r = portals.bind(&xio_msgr_ops, base_uri, shift_addr.get_port(), &port0);
   if (r == 0) {
-    shift_addr.set_port(port0 - port_shift);
+    shift_addr.set_port(port0 - cct->_conf->xio_port_shift);
     set_myaddr(shift_addr);
   }
   return r;
@@ -830,10 +830,8 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
   }
 
   entity_inst_t _dest = dest;
-  if (port_shift) {
-    _dest.addr.set_port(
-      _dest.addr.get_port() + port_shift);
-  }
+  if (cct->_conf->xio_port_shift)
+    _dest.addr.set_port(_dest.addr.get_port() + cct->_conf->xio_port_shift);
 
   conns_sp.lock();
   XioConnection::EntitySet::iterator conn_iter =

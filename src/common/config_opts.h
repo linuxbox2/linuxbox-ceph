@@ -71,6 +71,7 @@ OPTION(xio_mp_max_256, OPT_INT, 8192) // max 256-byte chunks
 OPTION(xio_mp_max_1k, OPT_INT, 8192) // max 1K chunks
 OPTION(xio_mp_max_page, OPT_INT, 4096) // max 1K chunks
 OPTION(xio_mp_max_hint, OPT_INT, 4096) // max size-hint chunks
+OPTION(xio_port_shift, OPT_INT, 111) // xio ports shifted from tcp ports
 
 DEFAULT_SUBSYS(0, 5)
 SUBSYS(lockdep, 0, 1)
