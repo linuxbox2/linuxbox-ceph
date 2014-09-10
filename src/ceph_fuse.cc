@@ -130,7 +130,6 @@ int main(int argc, const char **argv, const char *envp[]) {
 	= new XioMessenger(g_ceph_context, entity_name_t::CLIENT(-1),
 			   "xio client", getpid(), 0 /* portals */,
 			   new QueueStrategy(2) /* dispatch strategy */);
-      xmsgr->set_port_shift(111);
       messenger = xmsgr;
     } else
 #endif

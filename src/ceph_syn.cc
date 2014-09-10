@@ -71,14 +71,10 @@ int main(int argc, const char **argv, char *envp[])
   for (int i=0; i<g_conf->num_client; i++) {
 #if defined(HAVE_XIO)
     if (g_conf->client_rdma) {
-      XioMessenger *xmsgr
-	= new XioMessenger(g_ceph_context, entity_name_t::CLIENT(-1),
-			   "xio synclient",
-			   i * 1000000 + getpid(),
-			   0 /* portals */,
-			   new QueueStrategy(2) /* dispatch strategy */);
-	xmsgr->set_port_shift(111);
-      messengers[i] = xmsgr;
+      messengers[i] = new XioMessenger(g_ceph_context,
+				       entity_name_t::CLIENT(-1), "synclient",
+				       i * 1000000 + getpid(), 0,
+				       new QueueStrategy(2));
     }
     else
 #endif
