@@ -1,0 +1,22 @@
+#!/bin/sh
+
+cephfs=$1
+data=$2
+metadata=$3
+
+if [ -z $cephfs ]; then
+    echo "Usage: cephfsnew <name> [data pool id] [metadata pool id]"
+    exit
+fi
+if [ -z $data ]; then data=1; fi
+if [ -z $metadata ]; then metadata=$((data + 1)); fi
+
+cmd="./ceph osd pool create ${cephfs}_data ${data}"
+echo $cmd
+$cmd
+cmd="./ceph osd pool create ${cephfs}_metadata ${metadata}"
+echo $cmd
+$cmd
+cmd="./ceph fs new $cephfs ${cephfs}_metadata ${cephfs}_data"
+echo $cmd
+$cmd
