@@ -65,7 +65,7 @@ bool SimpleDispatcher::ms_dispatch(Message *m)
   } /* trace ctr */
 
 
-  msgr->send_message(m, con);
+  con->send_message(m);
 
   //m->put();
 
