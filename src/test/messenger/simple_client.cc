@@ -143,7 +143,7 @@ int main(int argc, const char **argv)
 	  } else {
 	    m = new_simple_ping_with_data("xio_client", n_dsize);
 	  }
-	  messenger->send_message(m, conn);
+	  conn->send_message(m);
 	}
 
 	// do stuff
