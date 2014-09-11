@@ -91,6 +91,7 @@ moreargs=""
 auto_action=0
 manual_action=0
 nocopyconf=0
+zap=0
 
 while [ $# -ge 1 ]; do
 case $1 in
@@ -161,6 +162,9 @@ case $1 in
 	    usecrushmapsrc=$1
 	    moreargs="$moreargs --crushmapsrc $1"
 	    ;;
+    --zap)
+	    zap=1
+	    ;;
     --crushmap)
 	    [ -z "$2" ] && usage_exit
 	    shift
@@ -191,6 +195,32 @@ if [ $manual_action -eq 0 ]; then
 elif [ $auto_action -eq 1 ]; then
     echo "The -a option cannot be combined with other subcommands; see man page."
     usage_exit
+fi
+
+### zap ###
+if [ $zap -eq 1 ]; then
+    set +e
+    get_name_list "osd"
+    for name in $what; do
+	type=`echo $name | cut -c 1-3`   # e.g. 'mon', if $name is 'mon1'
+	id=`echo $name | cut -c 4- | sed 's/^\\.//'`
+	num=$id
+	name="$type.$id"
+	path="${type}${id}"
+	get_conf osd_data "/var/lib/ceph/osd/ceph-$id" "osd data"
+	umount -f ${osd_data}
+    done
+    data_dir=`dirname ${osd_data}`
+    # watch out
+    rm -rf ${data_dir}/*
+    mkdir -p  ${data_dir}/ceph
+    conf_dir=`dirname ${conf}` 
+    osd_sh="${conf_dir}/osds.sh"
+    if [ -f "${osd_sh}" ]; then
+	echo "Zapping OSDS (${osd_sh})"
+	`bash ${osd_sh}`
+    fi
+    set -e
 fi
 
 ### prepare-monmap ###
