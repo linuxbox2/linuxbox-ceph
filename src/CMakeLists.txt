@@ -551,6 +551,9 @@ install(TARGETS ceph_mon_store_converter DESTINATION bin)
 configure_file(${CMAKE_SOURCE_DIR}/src/ceph-coverage.in
   ${CMAKE_BINARY_DIR}/ceph-coverage @ONLY)
 
+configure_file(${CMAKE_SOURCE_DIR}/src/mkcephfs.in
+  ${CMAKE_BINARY_DIR}/mkcephfs @ONLY)
+
 configure_file(${CMAKE_SOURCE_DIR}/src/ceph-debugpack.in
   ${CMAKE_BINARY_DIR}/ceph-debugpack @ONLY)
 
@@ -587,6 +590,7 @@ install(PROGRAMS
   ${CMAKE_SOURCE_DIR}/src/ceph-disk-activate
   ${CMAKE_SOURCE_DIR}/src/ceph-disk-prepare
   ${CMAKE_SOURCE_DIR}/src/ceph-disk-udev
+  ${CMAKE_BINARY_DIR}/mkcephfs
   DESTINATION sbin)
 
 if(WITH_LIBCEPHFS)
