@@ -220,7 +220,7 @@ public:
     return segments.rbegin()->second;
   }
 
-  LogSegment *get_segment(uint64_t seq) {
+  LogSegment *get_segment(log_segment_seq_t seq) {
     if (segments.count(seq))
       return segments[seq];
     return NULL;
@@ -232,8 +232,8 @@ public:
 
   void flush_logger();
 
-  size_t get_num_events() { return num_events; }
-  size_t get_num_segments() { return segments.size(); }  
+  size_t get_num_events() const { return num_events; }
+  size_t get_num_segments() const { return segments.size(); }
 
   uint64_t get_read_pos();
   uint64_t get_write_pos();

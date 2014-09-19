@@ -224,10 +224,19 @@ void Server::handle_client_session(MClientSession *m)
     }
     assert(session->is_closed() ||
 	   session->is_closing());
+
+    session->set_client_metadata(m->client_meta);
+    dout(20) << __func__ << " CEPH_SESSION_REQUEST_OPEN "
+      << session->info.client_metadata.size() << " metadata entries:" << dendl;
+    for (map<string, string>::iterator i = session->info.client_metadata.begin();
+        i != session->info.client_metadata.end(); ++i) {
+      dout(20) << "  " << i->first << ": " << i->second << dendl;
+    }
+
     sseq = mds->sessionmap.set_state(session, Session::STATE_OPENING);
     mds->sessionmap.touch_session(session);
     pv = ++mds->sessionmap.projected;
-    mdlog->start_submit_entry(new ESession(m->get_source_inst(), true, pv),
+    mdlog->start_submit_entry(new ESession(m->get_source_inst(), true, pv, m->client_meta),
 			      new C_MDS_session_finish(mds, session, sseq, true, pv));
     mdlog->flush();
     break;
@@ -483,7 +492,7 @@ void Server::terminate_sessions()
 
 void Server::find_idle_sessions()
 {
-  dout(10) << "find_idle_sessions.  laggy until " << mds->laggy_until << dendl;
+  dout(10) << "find_idle_sessions.  laggy until " << mds->get_laggy_until() << dendl;
   
   // timeout/stale
   //  (caps go stale, lease die)
@@ -513,8 +522,8 @@ void Server::find_idle_sessions()
   cutoff -= g_conf->mds_session_autoclose;
 
   // don't kick clients if we've been laggy
-  if (mds->laggy_until > cutoff) {
-    dout(10) << " laggy_until " << mds->laggy_until << " > cutoff " << cutoff
+  if (mds->get_laggy_until() > cutoff) {
+    dout(10) << " laggy_until " << mds->get_laggy_until() << " > cutoff " << cutoff
 	     << ", not kicking any clients to be safe" << dendl;
     return;
   }
@@ -781,6 +790,12 @@ void Server::recover_filelocks(CInode *in, bufferlist locks, int64_t client)
   }
 }
 
+
+/**
+ * Call this when the MDCache is oversized, to send requests to the clients
+ * to trim some caps, and consequently unpin some inodes in the MDCache so
+ * that it can trim too.
+ */
 void Server::recall_client_state(float ratio)
 {
   int max_caps_per_client = (int)(g_conf->mds_cache_size * .8);
@@ -806,15 +821,15 @@ void Server::recall_client_state(float ratio)
 	     << dendl;
 
     if (session->caps.size() > min_caps_per_client) {	
-      int newlim = (int)(session->caps.size() * ratio);
-      if (newlim > max_caps_per_client)
-	newlim = max_caps_per_client;
-      MClientSession *m = new MClientSession(CEPH_SESSION_RECALL_STATE);
-      m->head.max_caps = newlim;
-      mds->send_message_client(m, session);
+      int newlim = MIN((int)(session->caps.size() * ratio), max_caps_per_client);
+      if (session->caps.size() > newlim) {
+          MClientSession *m = new MClientSession(CEPH_SESSION_RECALL_STATE);
+          m->head.max_caps = newlim;
+          mds->send_message_client(m, session);
+          session->notify_recall_sent(newlim);
+      }
     }
   }
- 
 }
 
 
@@ -2005,6 +2020,7 @@ CInode* Server::prepare_new_inode(MDRequestRef& mdr, CDir *dir, inodeno_t useino
   }
 
   in->inode.version = 1;
+  in->inode.xattr_version = 1;
   in->inode.nlink = 1;   // FIXME
 
   in->inode.mode = mode;

@@ -1615,6 +1615,7 @@ void ESession::replay(MDS *mds)
     if (open) {
       session = mds->sessionmap.get_or_add_session(client_inst);
       mds->sessionmap.set_state(session, Session::STATE_OPEN);
+      session->set_client_metadata(client_metadata);
       dout(10) << " opened session " << session->info.inst << dendl;
     } else {
       session = mds->sessionmap.get_session(client_inst.name);
@@ -1651,19 +1652,20 @@ void ESession::replay(MDS *mds)
 
 void ESession::encode(bufferlist &bl) const
 {
-  ENCODE_START(3, 3, bl);
+  ENCODE_START(4, 3, bl);
   ::encode(stamp, bl);
   ::encode(client_inst, bl);
   ::encode(open, bl);
   ::encode(cmapv, bl);
   ::encode(inos, bl);
   ::encode(inotablev, bl);
+  ::encode(client_metadata, bl);
   ENCODE_FINISH(bl);
 }
 
 void ESession::decode(bufferlist::iterator &bl)
 {
-  DECODE_START_LEGACY_COMPAT_LEN(3, 3, 3, bl);
+  DECODE_START_LEGACY_COMPAT_LEN(4, 3, 3, bl);
   if (struct_v >= 2)
     ::decode(stamp, bl);
   ::decode(client_inst, bl);
@@ -1671,6 +1673,9 @@ void ESession::decode(bufferlist::iterator &bl)
   ::decode(cmapv, bl);
   ::decode(inos, bl);
   ::decode(inotablev, bl);
+  if (struct_v >= 4) {
+    ::decode(client_metadata, bl);
+  }
   DECODE_FINISH(bl);
 }
 
@@ -1681,6 +1686,12 @@ void ESession::dump(Formatter *f) const
   f->dump_int("client map version", cmapv);
   f->dump_stream("inos") << inos;
   f->dump_int("inotable version", inotablev);
+  f->open_object_section("client_metadata");
+  for (map<string, string>::const_iterator i = client_metadata.begin();
+      i != client_metadata.end(); ++i) {
+    f->dump_string(i->first.c_str(), i->second);
+  }
+  f->close_section();  // client_metadata
 }
 
 void ESession::generate_test_instances(list<ESession*>& ls)
@@ -3021,4 +3032,40 @@ void ENoOp::decode(bufferlist::iterator &bl)
 void ENoOp::replay(MDS *mds)
 {
   dout(4) << "ENoOp::replay, " << pad_size << " bytes skipped in journal" << dendl;
+}
+
+/**
+ * If re-formatting an old journal that used absolute log position
+ * references as segment sequence numbers, use this function to update
+ * it.
+ *
+ * @param mds
+ * MDS instance, just used for logging
+ * @param old_to_new
+ * Map of old journal segment segment sequence numbers to new journal segment sequence numbers
+ *
+ * @return
+ * True if the event was modified.
+ */
+bool EMetaBlob::rewrite_truncate_finish(MDS const *mds,
+    std::map<log_segment_seq_t, log_segment_seq_t> const &old_to_new)
+{
+  bool modified = false;
+  map<inodeno_t, log_segment_seq_t> new_trunc_finish;
+  for (std::map<inodeno_t, log_segment_seq_t>::iterator i = truncate_finish.begin();
+      i != truncate_finish.end(); ++i) {
+    if (old_to_new.count(i->second)) {
+      dout(20) << __func__ << " applying segment seq mapping "
+        << i->second << " -> " << old_to_new.find(i->second)->second << dendl;
+      new_trunc_finish[i->first] = old_to_new.find(i->second)->second;
+      modified = true;
+    } else {
+      dout(20) << __func__ << " no segment seq mapping found for "
+        << i->second << dendl;
+      new_trunc_finish[i->first] = i->second;
+    }
+  }
+  truncate_finish = new_trunc_finish;
+
+  return modified;
 }

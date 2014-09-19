@@ -478,8 +478,7 @@ int main(int argc, const char **argv)
   // screwing us over
   Preforker prefork;
   if (!(flags & CINIT_FLAG_NO_DAEMON_ACTIONS)) {
-    if (g_conf->daemonize) {
-      global_init_prefork(g_ceph_context, 0);
+    if (global_init_prefork(g_ceph_context, 0) >= 0) {
       prefork.prefork();
       if (prefork.is_parent()) {
 	return prefork.parent_wait();
@@ -488,7 +487,7 @@ int main(int argc, const char **argv)
     }
     common_init_finish(g_ceph_context);
     global_init_chdir(g_ceph_context);
-    if (preload_erasure_code() < -1)
+    if (preload_erasure_code() < 0)
       prefork.exit(1);
   }
 

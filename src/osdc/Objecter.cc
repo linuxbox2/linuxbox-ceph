@@ -1317,7 +1317,6 @@ void Objecter::close_session(OSDSession *s)
 
   osd_sessions.erase(s->osd);
   s->lock.unlock();
-  assert(s->get_nref() == 1);  // We reassigned any/all ops, so should be last ref
   put_session(s);
 
   // Assign any leftover ops to the homeless session
@@ -1856,6 +1855,12 @@ int Objecter::op_cancel(OSDSession *s, ceph_tid_t tid, int r)
     return -ENOENT;
   }
 
+  if (s->con) {
+    ldout(cct, 20) << " revoking rx buffer for " << tid
+		   << " on " << s->con << dendl;
+    s->con->revoke_rx_buffer(tid);
+  }
+
   ldout(cct, 10) << __func__ << " tid " << tid << dendl;
   Op *op = p->second;
   if (op->onack) {
@@ -1975,7 +1980,7 @@ int64_t Objecter::get_object_pg_hash_position(int64_t pool, const string& key,
   return p->raw_hash_to_pg(p->hash_key(key, ns));
 }
 
-int Objecter::_calc_target(op_target_t *t)
+int Objecter::_calc_target(op_target_t *t, bool any_change)
 {
   assert(rwlock.is_locked());
 
@@ -2036,7 +2041,8 @@ int Objecter::_calc_target(op_target_t *t)
   }
 
   if (t->pgid != pgid ||
-      is_pg_changed(t->primary, t->acting, primary, acting, t->used_replica) ||
+      is_pg_changed(
+	t->primary, t->acting, primary, acting, t->used_replica || any_change) ||
       force_resend) {
     t->pgid = pgid;
     t->acting = acting;
@@ -2234,7 +2240,7 @@ int Objecter::_recalc_linger_op_target(LingerOp *linger_op, RWLock::Context& lc)
 {
   assert(rwlock.is_wlocked());
 
-  int r = _calc_target(&linger_op->target);
+  int r = _calc_target(&linger_op->target, true);
   if (r == RECALC_OP_TARGET_NEED_RESEND) {
     ldout(cct, 10) << "recalc_linger_op_target tid " << linger_op->linger_id
 		   << " pgid " << linger_op->target.pgid
@@ -2284,15 +2290,15 @@ void Objecter::_finish_op(Op *op)
   if (op->budgeted)
     put_op_budget(op);
 
+  if (op->ontimeout) {
+    timer.cancel_event(op->ontimeout);
+  }
+
   _session_op_remove(op->session, op);
 
   logger->dec(l_osdc_op_active);
 
   assert(check_latest_map_ops.find(op->tid) == check_latest_map_ops.end());
-
-  if (op->ontimeout) {
-    timer.cancel_event(op->ontimeout);
-  }
 
   inflight_ops.dec();
 
@@ -3264,6 +3270,7 @@ void Objecter::handle_fs_stats_reply(MStatfsReply *m)
   } else {
     ldout(cct, 10) << "unknown request " << tid << dendl;
   }
+  m->put();
   ldout(cct, 10) << "done" << dendl;
 }
 
@@ -3868,14 +3875,15 @@ void Objecter::_finish_command(CommandOp *c, int r, string rs)
   if (c->onfinish)
     c->onfinish->complete(r);
 
+  if (c->ontimeout) {
+    timer.cancel_event(c->ontimeout);
+  }
+
   OSDSession *s = c->session;
   s->lock.get_write();
   _session_command_op_remove(c->session, c);
   s->lock.unlock();
 
-  if (c->ontimeout) {
-    timer.cancel_event(c->ontimeout);
-  }
   c->put();
 
   logger->dec(l_osdc_command_active);

@@ -1669,7 +1669,8 @@ OSD::OSD(CephContext *cct_, ObjectStore *store_,
   heartbeat_thread(this),
   heartbeat_dispatcher(this),
   finished_lock("OSD::finished_lock"),
-  op_tracker(cct, cct->_conf->osd_enable_op_tracker),
+  op_tracker(cct, cct->_conf->osd_enable_op_tracker, 
+                  cct->_conf->osd_num_op_tracker_shard),
   test_ops_hook(NULL),
   op_shardedwq(cct->_conf->osd_op_num_shards, this, 
     cct->_conf->osd_op_thread_timeout, &osd_op_tp),
@@ -4355,6 +4356,7 @@ void OSD::ms_handle_connect(Connection *con)
       send_pg_stats(ceph_clock_now(cct));
 
       monc->sub_want("osd_pg_creates", 0, CEPH_SUBSCRIBE_ONETIME);
+      monc->sub_want("osdmap", osdmap->get_epoch(), CEPH_SUBSCRIBE_ONETIME);
       monc->renew_subs();
     }
   }

@@ -4,6 +4,7 @@
  * Ceph - scalable distributed file system
  *
  * Copyright (C) 2014 Cloudwatt <libre.licensing@cloudwatt.com>
+ * Copyright (C) 2014 Red Hat <contact@redhat.com>
  *
  * Author: Loic Dachary <loic@dachary.org>
  *
@@ -25,7 +26,7 @@
 #include "erasure-code/ErasureCodePlugin.h"
 #include "json_spirit/json_spirit_writer.h"
 
-#include "ErasureCodeLRC.h"
+#include "ErasureCodeLrc.h"
 
 // re-include our assert to clobber boost's
 #include "include/assert.h"
@@ -36,10 +37,10 @@
 
 static ostream& _prefix(std::ostream* _dout)
 {
-  return *_dout << "ErasureCodeLRC: ";
+  return *_dout << "ErasureCodeLrc: ";
 }
 
-int ErasureCodeLRC::create_ruleset(const string &name,
+int ErasureCodeLrc::create_ruleset(const string &name,
 				   CrushWrapper &crush,
 				   ostream *ss) const
 {
@@ -54,23 +55,26 @@ int ErasureCodeLRC::create_ruleset(const string &name,
   int root = crush.get_item_id(ruleset_root);
 
   int ruleset = 0;
-  for (int i = 0; i < crush.get_max_rules(); i++) {
-    if (crush.rule_exists(i) &&
-	crush.get_rule_mask_ruleset(i) >= ruleset) {
-      ruleset = crush.get_rule_mask_ruleset(i) + 1;
-    }
+  int rno = 0;
+  for (rno = 0; rno < crush.get_max_rules(); rno++) {
+    if (!crush.rule_exists(rno) && !crush.ruleset_exists(rno))
+       break;
   }
+  ruleset = rno;
 
   int steps = 3 + ruleset_steps.size();
   int min_rep = 3;
   int max_rep = 30;
-  crush_rule *rule = crush_make_rule(steps, ruleset,
-				     pg_pool_t::TYPE_ERASURE,
-				     min_rep, max_rep);
-  assert(rule);
+  int ret;
+  ret = crush.add_rule(steps, ruleset, pg_pool_t::TYPE_ERASURE,
+		  min_rep, max_rep, rno);
+  assert(ret == rno);
   int step = 0;
-  crush_rule_set_step(rule, step++, CRUSH_RULE_SET_CHOOSELEAF_TRIES, 5, 0);
-  crush_rule_set_step(rule, step++, CRUSH_RULE_TAKE, root, 0);
+
+  ret = crush.set_rule_step(rno, step++, CRUSH_RULE_SET_CHOOSELEAF_TRIES, 5, 0);
+  assert(ret == 0);
+  ret = crush.set_rule_step(rno, step++, CRUSH_RULE_TAKE, root, 0);
+  assert(ret == 0);
   // [ [ "choose", "rack", 2 ],
   //   [ "chooseleaf", "host", 5 ] ]
   for (vector<Step>::const_iterator i = ruleset_steps.begin();
@@ -83,16 +87,16 @@ int ErasureCodeLRC::create_ruleset(const string &name,
       *ss << "unknown crush type " << i->type;
       return -EINVAL;
     }
-    crush_rule_set_step(rule, step++, op, i->n, type);
+    ret = crush.set_rule_step(rno, step++, op, i->n, type);
+    assert(ret == 0);
   }
-  crush_rule_set_step(rule, step++, CRUSH_RULE_EMIT, 0, 0);
-  int rno = crush_add_rule(crush.crush, rule, -1);
+  ret = crush.set_rule_step(rno, step++, CRUSH_RULE_EMIT, 0, 0);
+  assert(ret == 0);
   crush.set_rule_name(rno, name);
-
   return ruleset;
 }
 
-int ErasureCodeLRC::layers_description(const map<string,string> &parameters,
+int ErasureCodeLrc::layers_description(const map<string,string> &parameters,
 				       json_spirit::mArray *description,
 				       ostream *ss) const
 {
@@ -121,14 +125,14 @@ int ErasureCodeLRC::layers_description(const map<string,string> &parameters,
   return 0;
 }
 
-int ErasureCodeLRC::layers_parse(string description_string,
+int ErasureCodeLrc::layers_parse(string description_string,
 				 json_spirit::mArray description,
 				 ostream *ss)
 {
   int position = 0;
   for (vector<json_spirit::mValue>::iterator i = description.begin();
        i != description.end();
-       i++, position++) {
+       ++i, position++) {
     if (i->type() != json_spirit::array_type) {
       stringstream json_string;
       json_spirit::write(*i, json_string);
@@ -148,9 +152,9 @@ int ErasureCodeLRC::layers_parse(string description_string,
 	if (j->type() != json_spirit::str_type) {
 	  stringstream element;
 	  json_spirit::write(*j, element);
-	  *ss << "the first element of the entry " 
+	  *ss << "the first element of the entry "
 	      << element.str() << " (first is zero) "
-	      << position << " in " << description_string 
+	      << position << " in " << description_string
 	      << " is of type " << (*j).type() << " instead of string" << std::endl;
 	  return ERROR_LRC_STR;
 	}
@@ -163,9 +167,9 @@ int ErasureCodeLRC::layers_parse(string description_string,
 	    j->type() != json_spirit::obj_type) {
 	  stringstream element;
 	  json_spirit::write(*j, element);
-	  *ss << "the second element of the entry " 
+	  *ss << "the second element of the entry "
 	      << element.str() << " (first is zero) "
-	      << position << " in " << description_string 
+	      << position << " in " << description_string
 	      << " is of type " << (*j).type() << " instead of string or object"
 	      << std::endl;
 	  return ERROR_LRC_CONFIG_OPTIONS;
@@ -189,9 +193,9 @@ int ErasureCodeLRC::layers_parse(string description_string,
     }
   }
   return 0;
-} 
+}
 
-int ErasureCodeLRC::layers_init()
+int ErasureCodeLrc::layers_init()
 {
   ErasureCodePluginRegistry &registry = ErasureCodePluginRegistry::instance();
   int err;
@@ -220,7 +224,7 @@ int ErasureCodeLRC::layers_init()
       layer.parameters["plugin"] = "jerasure";
     if (layer.parameters.find("technique") == layer.parameters.end())
       layer.parameters["technique"] = "reed_sol_van";
-    if (layer.parameters.find("directory") == layer.parameters.end()) 
+    if (layer.parameters.find("directory") == layer.parameters.end())
       layer.parameters["directory"] = directory;
     stringstream ss;
     err = registry.factory(layer.parameters["plugin"],
@@ -235,7 +239,7 @@ int ErasureCodeLRC::layers_init()
   return 0;
 }
 
-int ErasureCodeLRC::layers_sanity_checks(string description_string,
+int ErasureCodeLrc::layers_sanity_checks(string description_string,
 					 ostream *ss) const
 {
   int position = 0;
@@ -250,8 +254,8 @@ int ErasureCodeLRC::layers_sanity_checks(string description_string,
        layer != layers.end();
        ++layer) {
     if (chunk_count != layer->chunks_map.length()) {
-      *ss << "the first element of the array at position " 
-	  << position << " (starting from zero) " 
+      *ss << "the first element of the array at position "
+	  << position << " (starting from zero) "
 	  << " is the string '" << layer->chunks_map
 	  << " found in the layers parameter "
 	  << description_string << ". It is expected to be "
@@ -264,7 +268,7 @@ int ErasureCodeLRC::layers_sanity_checks(string description_string,
   return 0;
 }
 
-int ErasureCodeLRC::parse(const map<string,string> &parameters,
+int ErasureCodeLrc::parse(const map<string,string> &parameters,
 			  ostream *ss)
 {
   int r = ErasureCode::parse(parameters, ss);
@@ -273,11 +277,11 @@ int ErasureCodeLRC::parse(const map<string,string> &parameters,
 
   if (parameters.count("directory") != 0)
     directory = parameters.find("directory")->second;
-  
+
   return parse_ruleset(parameters, ss);
 }
 
-int ErasureCodeLRC::parse_kml(map<string,string> &parameters,
+int ErasureCodeLrc::parse_kml(map<string,string> &parameters,
 			      ostream *ss)
 {
   int err = ErasureCode::parse(parameters, ss);
@@ -328,7 +332,7 @@ int ErasureCodeLRC::parse_kml(map<string,string> &parameters,
 	<< parameters << std::endl;
     return ERROR_LRC_M_MODULO;
   }
-  
+
   string mapping;
   for (int i = 0; i < local_group_count; i++) {
     mapping += string(k / local_group_count, 'D') +
@@ -345,10 +349,10 @@ int ErasureCodeLRC::parse_kml(map<string,string> &parameters,
       string(m / local_group_count, 'c') + "_";
   }
   layers += "\", \"\" ],";
-  
+
   // local layers
   for (int i = 0; i < local_group_count; i++) {
-    layers += " [ \"";    
+    layers += " [ \"";
     for (int j = 0; j < local_group_count; j++) {
       if (i == j)
 	layers += string(l, 'D') + "c";
@@ -383,7 +387,7 @@ int ErasureCodeLRC::parse_kml(map<string,string> &parameters,
   return 0;
 }
 
-int ErasureCodeLRC::parse_ruleset(const map<string,string> &parameters,
+int ErasureCodeLrc::parse_ruleset(const map<string,string> &parameters,
 				  ostream *ss)
 {
   map<string,string>::const_iterator parameter;
@@ -416,7 +420,7 @@ int ErasureCodeLRC::parse_ruleset(const map<string,string> &parameters,
     int position = 0;
     for (vector<json_spirit::mValue>::iterator i = description.begin();
 	 i != description.end();
-	 i++, position++) {
+	 ++i, position++) {
       if (i->type() != json_spirit::array_type) {
 	stringstream json_string;
 	json_spirit::write(*i, json_string);
@@ -434,7 +438,7 @@ int ErasureCodeLRC::parse_ruleset(const map<string,string> &parameters,
   return 0;
 }
 
-int ErasureCodeLRC::parse_ruleset_step(string description_string,
+int ErasureCodeLrc::parse_ruleset_step(string description_string,
 				       json_spirit::mArray description,
 				       ostream *ss)
 {
@@ -442,11 +446,11 @@ int ErasureCodeLRC::parse_ruleset_step(string description_string,
   json_spirit::write(description, json_string);
   string op;
   string type;
-  int n;
+  int n = 0;
   int position = 0;
   for (vector<json_spirit::mValue>::iterator i = description.begin();
        i != description.end();
-       i++, position++) {
+       ++i, position++) {
     if ((position == 0 || position == 1) &&
 	i->type() != json_spirit::str_type) {
       *ss << "element " << position << " of the array "
@@ -474,7 +478,7 @@ int ErasureCodeLRC::parse_ruleset_step(string description_string,
   return 0;
 }
 
-int ErasureCodeLRC::init(const map<string,string> &parameters,
+int ErasureCodeLrc::init(const map<string,string> &parameters,
 			 ostream *ss)
 {
   int r;
@@ -520,7 +524,7 @@ int ErasureCodeLRC::init(const map<string,string> &parameters,
   return layers_sanity_checks(description_string, ss);
 }
 
-set<int> ErasureCodeLRC::get_erasures(const set<int> &want,
+set<int> ErasureCodeLrc::get_erasures(const set<int> &want,
 				      const set<int> &available) const
 {
   set<int> result;
@@ -530,14 +534,14 @@ set<int> ErasureCodeLRC::get_erasures(const set<int> &want,
   return result;
 }
 
-unsigned int ErasureCodeLRC::get_chunk_size(unsigned int object_size) const
+unsigned int ErasureCodeLrc::get_chunk_size(unsigned int object_size) const
 {
   return layers.front().erasure_code->get_chunk_size(object_size);
 }
 
 void p(const set<int> &s) { cerr << s; } // for gdb
 
-int ErasureCodeLRC::minimum_to_decode(const set<int> &want_to_read,
+int ErasureCodeLrc::minimum_to_decode(const set<int> &want_to_read,
 				      const set<int> &available_chunks,
 				      set<int> *minimum)
 {
@@ -570,8 +574,8 @@ int ErasureCodeLRC::minimum_to_decode(const set<int> &want_to_read,
     }
 
     //
-    // Case 2: 
-    // 
+    // Case 2:
+    //
     // Try to recover erasures with as few chunks as possible.
     //
     for (vector<Layer>::reverse_iterator i = layers.rbegin();
@@ -627,7 +631,7 @@ int ErasureCodeLRC::minimum_to_decode(const set<int> &want_to_read,
 	  //
 	  for (set<int>::const_iterator j = erasures.begin();
 	       j != erasures.end();
-	       j++) {
+	       ++j) {
 	    erasures_not_recovered.erase(*j);
 	    if (erasures_want.count(*j))
 	      erasures_want.erase(*j);
@@ -640,7 +644,7 @@ int ErasureCodeLRC::minimum_to_decode(const set<int> &want_to_read,
       minimum->insert(want_to_read.begin(), want_to_read.end());
       for (set<int>::const_iterator i = erasures_total.begin();
 	   i != erasures_total.end();
-	   i++) {
+	   ++i) {
 	if (minimum->count(*i))
 	  minimum->erase(*i);
       }
@@ -649,7 +653,7 @@ int ErasureCodeLRC::minimum_to_decode(const set<int> &want_to_read,
     }
   }
 
-  {  
+  {
     //
     // Case 3:
     //
@@ -657,14 +661,14 @@ int ErasureCodeLRC::minimum_to_decode(const set<int> &want_to_read,
     //
     // Try to recover as many chunks as possible, even from layers
     // that do not contain chunks that we want, in the hope that it
-    // will help the upper layers. 
+    // will help the upper layers.
     //
     set<int> erasures_total;
     for (unsigned int i = 0; i < get_chunk_count(); ++i) {
       if (available_chunks.count(i) == 0)
 	erasures_total.insert(i);
     }
-  
+
     for (vector<Layer>::reverse_iterator i = layers.rbegin();
 	 i != layers.rend();
 	 ++i) {
@@ -687,7 +691,7 @@ int ErasureCodeLRC::minimum_to_decode(const set<int> &want_to_read,
 	//
 	for (set<int>::const_iterator j = layer_erasures.begin();
 	     j != layer_erasures.end();
-	     j++) {
+	     ++j) {
 	  erasures_total.erase(*j);
 	}
       }
@@ -695,7 +699,7 @@ int ErasureCodeLRC::minimum_to_decode(const set<int> &want_to_read,
     if (erasures_total.empty()) {
       //
       // Do not try to be smart about what chunks are necessary to
-      // recover, use all available chunks. 
+      // recover, use all available chunks.
       //
       *minimum = available_chunks;
       dout(20) << __func__ << " minimum == available_chunks == "
@@ -703,13 +707,13 @@ int ErasureCodeLRC::minimum_to_decode(const set<int> &want_to_read,
       return 0;
     }
   }
-  
+
   derr << __func__ << " not enough chunks in " << available_chunks
        << " to read " << want_to_read << dendl;
   return -EIO;
 }
 
-int ErasureCodeLRC::encode_chunks(const set<int> &want_to_encode,
+int ErasureCodeLrc::encode_chunks(const set<int> &want_to_encode,
 				  map<int, bufferlist> *encoded)
 {
   unsigned int top = layers.size();
@@ -729,7 +733,7 @@ int ErasureCodeLRC::encode_chunks(const set<int> &want_to_encode,
     int j = 0;
     for (vector<int>::const_iterator c = layer.chunks.begin();
 	 c != layer.chunks.end();
-	 c++) {
+	 ++c) {
       layer_encoded[j] = (*encoded)[*c];
       if (want_to_encode.find(*c) != want_to_encode.end())
 	layer_want_to_encode.insert(j);
@@ -747,7 +751,7 @@ int ErasureCodeLRC::encode_chunks(const set<int> &want_to_encode,
   return 0;
 }
 
-int ErasureCodeLRC::decode_chunks(const set<int> &want_to_read,
+int ErasureCodeLrc::decode_chunks(const set<int> &want_to_read,
 				  const map<int, bufferlist> &chunks,
 				  map<int, bufferlist> *decoded)
 {
@@ -782,7 +786,7 @@ int ErasureCodeLRC::decode_chunks(const set<int> &want_to_read,
       int j = 0;
       for (vector<int>::const_iterator c = layer->chunks.begin();
 	   c != layer->chunks.end();
-	   c++) {
+	   ++c) {
 	//
 	// Pick chunks from *decoded* instead of *chunks* to re-use
 	// chunks recovered by previous layers. In other words
@@ -808,7 +812,7 @@ int ErasureCodeLRC::decode_chunks(const set<int> &want_to_read,
       j = 0;
       for (vector<int>::const_iterator c = layer->chunks.begin();
 	   c != layer->chunks.end();
-	   c++) {
+	   ++c) {
 	(*decoded)[*c] = layer_decoded[j];
 	++j;
 	if (erasures.count(*c) != 0)

@@ -89,22 +89,31 @@ PGLSFilter::~PGLSFilter()
 
 static void log_subop_stats(
   PerfCounters *logger,
-  OpRequestRef op, int tag_inb, int tag_lat)
+  OpRequestRef op, int subop)
 {
   utime_t now = ceph_clock_now(g_ceph_context);
   utime_t latency = now;
   latency -= op->get_req()->get_recv_stamp();
 
-  uint64_t inb = op->get_req()->get_data().length();
 
   logger->inc(l_osd_sop);
-
-  logger->inc(l_osd_sop_inb, inb);
   logger->tinc(l_osd_sop_lat, latency);
+  logger->inc(subop);
 
-  if (tag_inb)
-    logger->inc(tag_inb, inb);
-  logger->tinc(tag_lat, latency);
+  if (subop != l_osd_sop_pull) {
+    uint64_t inb = op->get_req()->get_data().length();
+    logger->inc(l_osd_sop_inb, inb);
+    if (subop == l_osd_sop_w) {
+      logger->inc(l_osd_sop_w_inb, inb);
+      logger->tinc(l_osd_sop_w_lat, latency);
+    } else if (subop == l_osd_sop_push) {
+      logger->inc(l_osd_sop_push_inb, inb);
+      logger->tinc(l_osd_sop_push_lat, latency);
+    } else
+      assert("no support subop" == 0);
+  } else {
+    logger->tinc(l_osd_sop_pull_lat, latency);
+  }
 }
 
 struct OnReadComplete : public Context {
@@ -996,6 +1005,7 @@ void ReplicatedPG::do_pg_op(OpRequestRef op)
 	  }
 	  if (is_unreadable_object(oid)) {
 	    wait_for_unreadable_object(oid, op);
+	    delete filter;
 	    return;
 	  }
 	  result = osd->store->read(coll, oid, 0, 0, osd_op.outdata);
@@ -1633,7 +1643,7 @@ bool ReplicatedPG::maybe_handle_cache(OpRequestRef op,
           // Check if in other hit sets
           map<time_t,HitSetRef>::iterator itor;
           bool in_other_hit_sets = false;
-          for (itor = agent_state->hit_set_map.begin(); itor != agent_state->hit_set_map.end(); itor++) {
+          for (itor = agent_state->hit_set_map.begin(); itor != agent_state->hit_set_map.end(); ++itor) {
             if (itor->second->contains(missing_oid)) {
               in_other_hit_sets = true;
               break;
@@ -4734,8 +4744,6 @@ int ReplicatedPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
       result = -EOPNOTSUPP;
     }
 
-    ctx->bytes_read += osd_op.outdata.length();
-
   fail:
     osd_op.rval = result;
     tracepoint(osd, do_osd_op_post, soid.oid.name.c_str(), soid.snap.val, op.op, ceph_osd_op_name(op.op), op.flags, result);
@@ -5528,6 +5536,10 @@ void ReplicatedPG::complete_read_ctx(int result, OpContext *ctx)
 {
   MOSDOp *m = static_cast<MOSDOp*>(ctx->op->get_req());
   assert(ctx->async_reads_complete());
+
+  for (vector<OSDOp>::iterator p = ctx->ops.begin(); p != ctx->ops.end(); ++p) {
+    ctx->bytes_read += p->outdata.length();
+  }
   ctx->reply->claim_op_out_data(ctx->ops);
   ctx->reply->get_header().data_off = ctx->data_off;
 
@@ -6412,53 +6424,40 @@ int ReplicatedPG::start_flush(
    * the second delete, the object would appear in the base pool to
    * have existed.
    */
-  SnapContext dsnapc;
-  dsnapc.seq = 0;
-  SnapContext snapc;
-  if (soid.snap == CEPH_NOSNAP) {
-    snapc.seq = snapset.seq;
-    snapc.snaps = snapset.snaps;
 
-    if (!snapset.clones.empty() && snapset.clones.back() != snapset.seq) {
-      dsnapc.seq = snapset.clones.back();
-      vector<snapid_t>::iterator p = snapset.snaps.begin();
-      while (p != snapset.snaps.end() && *p > dsnapc.seq)
-	++p;
-      dsnapc.snaps = vector<snapid_t>(p, snapset.snaps.end());
-    }
-  } else {
-    vector<snapid_t>::iterator citer = std::find(
-      snapset.clones.begin(),
-      snapset.clones.end(),
-      soid.snap);
-    assert(citer != snapset.clones.end());
-    snapid_t prev_snapc = (citer == snapset.clones.begin()) ?
-      snapid_t(0) : *(citer - 1);
-
-    vector<snapid_t>::iterator p = snapset.snaps.begin();
-    while (p != snapset.snaps.end() && *p >= oi.snaps.back())
-      ++p;
-    snapc.snaps = vector<snapid_t>(p, snapset.snaps.end());
-
-    vector<snapid_t>::iterator dnewest = p;
-
-    // we may need to send a delete first
-    if (prev_snapc + 1 < *dnewest) {
-      while (p != snapset.snaps.end() && *p > prev_snapc)
-	++p;
-      dsnapc.snaps = vector<snapid_t>(p, snapset.snaps.end());
-
-      dsnapc.seq = prev_snapc;
-      snapc.seq = oi.snaps.back() - 1;
+  SnapContext snapc, dsnapc, dsnapc2;
+  if (snapset.seq != 0) {
+    if (soid.snap == CEPH_NOSNAP) {
+      snapc.seq = snapset.seq;
+      snapc.snaps = snapset.snaps;
     } else {
-      snapc.seq = prev_snapc;
+      snapid_t min_included_snap = oi.snaps.back();
+      snapc = snapset.get_ssc_as_of(min_included_snap - 1);
+    }
+
+    snapid_t prev_snapc = 0;
+    for (vector<snapid_t>::reverse_iterator citer = snapset.clones.rbegin();
+	 citer != snapset.clones.rend();
+	 ++citer) {
+      if (*citer < soid.snap) {
+	prev_snapc = *citer;
+	break;
+      }
+    }
+
+    if (prev_snapc != snapc.seq) {
+      dsnapc = snapset.get_ssc_as_of(prev_snapc);
+      snapid_t first_snap_after_prev_snapc =
+	snapset.get_first_snap_after(prev_snapc, snapc.seq);
+      dsnapc2 = snapset.get_ssc_as_of(
+	first_snap_after_prev_snapc - 1);
     }
   }
 
   object_locator_t base_oloc(soid);
   base_oloc.pool = pool.info.tier_of;
 
-  if (dsnapc.seq > 0) {
+  if (dsnapc.seq > 0 && dsnapc.seq < snapc.seq) {
     ObjectOperation o;
     o.remove();
     osd->objecter->mutate(
@@ -6472,38 +6471,22 @@ int ReplicatedPG::start_flush(
        CEPH_OSD_FLAG_ENFORCE_SNAPC),
       NULL,
       NULL /* no callback, we'll rely on the ordering w.r.t the next op */);
+  }
 
-    // do we need to send the second delete?
-    SnapContext dsnapc2;
-    vector<snapid_t>::reverse_iterator rp = snapset.snaps.rbegin();
-
-    // advance rp to the smallest snap not contained by the last flushed clone
-    while (rp != snapset.snaps.rend() && *rp <= dsnapc.seq)
-      ++rp;
-
-    // set dnsnapc2.seq to be the snap prior to that snap (the object did not
-    // exist at *rq, so it must have been deleted prior to that).
-    dsnapc2.seq = (rp == snapset.snaps.rend()) ? snapset.seq : *rp;
-    if (dsnapc2.seq > 0)
-      dsnapc2.seq.val -= 1;
-
-    if (dsnapc2.seq != dsnapc.seq) {
-      dsnapc2.snaps = dsnapc.snaps;
-
-      ObjectOperation o2;
-      o2.remove();
-      osd->objecter->mutate(
-	soid.oid,
-	base_oloc,
-	o2,
-	dsnapc2,
-	oi.mtime,
-	(CEPH_OSD_FLAG_IGNORE_OVERLAY |
-	 CEPH_OSD_FLAG_ORDERSNAP |
-	 CEPH_OSD_FLAG_ENFORCE_SNAPC),
-	NULL,
-	NULL /* no callback, we'll rely on the ordering w.r.t the next op */);
-    }
+  if (dsnapc2.seq > dsnapc.seq && dsnapc2.seq < snapc.seq) {
+    ObjectOperation o;
+    o.remove();
+    osd->objecter->mutate(
+      soid.oid,
+      base_oloc,
+      o,
+      dsnapc2,
+      oi.mtime,
+      (CEPH_OSD_FLAG_IGNORE_OVERLAY |
+       CEPH_OSD_FLAG_ORDERSNAP |
+       CEPH_OSD_FLAG_ENFORCE_SNAPC),
+      NULL,
+      NULL /* no callback, we'll rely on the ordering w.r.t the next op */);
   }
 
   FlushOpRef fop(new FlushOp);
@@ -7952,8 +7935,7 @@ void ReplicatedBackend::sub_op_modify_commit(RepModifyRef rm)
   get_parent()->send_message_osd_cluster(
     rm->ackerosd, commit, get_osdmap()->get_epoch());
   
-  log_subop_stats(get_parent()->get_logger(), rm->op,
-		  l_osd_sop_w_inb, l_osd_sop_w_lat);
+  log_subop_stats(get_parent()->get_logger(), rm->op, l_osd_sop_w);
 }
 
 
@@ -8629,7 +8611,7 @@ struct C_OnPushCommit : public Context {
   C_OnPushCommit(ReplicatedPG *pg, OpRequestRef op) : pg(pg), op(op) {}
   void finish(int) {
     op->mark_event("committed");
-    log_subop_stats(pg->osd->logger, op, l_osd_push_inb, l_osd_sop_push_lat);
+    log_subop_stats(pg->osd->logger, op, l_osd_sop_push);
   }
 };
 
@@ -9018,7 +9000,7 @@ void ReplicatedBackend::sub_op_pull(OpRequestRef op)
     m->from,
     reply);
 
-  log_subop_stats(get_parent()->get_logger(), op, 0, l_osd_sop_pull_lat);
+  log_subop_stats(get_parent()->get_logger(), op, l_osd_sop_pull);
 }
 
 void ReplicatedBackend::handle_pull(pg_shard_t peer, PullOp &op, PushOp *reply)
@@ -10983,6 +10965,9 @@ void ReplicatedPG::hit_set_create()
     if (p->target_size < static_cast<uint64_t>(g_conf->osd_hit_set_min_size))
       p->target_size = g_conf->osd_hit_set_min_size;
 
+    if (p->target_size > static_cast<uint64_t>(g_conf->osd_hit_set_max_size))
+      p->target_size = g_conf->osd_hit_set_max_size;
+
     p->seed = now.sec();
 
     dout(10) << __func__ << " target_size " << p->target_size
@@ -11166,6 +11151,7 @@ void ReplicatedPG::hit_set_persist()
   ctx->delta_stats.num_objects++;
   ctx->delta_stats.num_objects_hit_set_archive++;
   ctx->delta_stats.num_bytes += bl.length();
+  ctx->delta_stats.num_bytes_hit_set_archive += bl.length();
 
   bufferlist bss;
   ::encode(ctx->new_snapset, bss);
@@ -11238,6 +11224,7 @@ void ReplicatedPG::hit_set_trim(RepGather *repop, unsigned max)
     --repop->ctx->delta_stats.num_objects;
     --repop->ctx->delta_stats.num_objects_hit_set_archive;
     repop->ctx->delta_stats.num_bytes -= obc->obs.oi.size;
+    repop->ctx->delta_stats.num_bytes_hit_set_archive -= obc->obs.oi.size;
   }
 }
 
@@ -11386,6 +11373,11 @@ bool ReplicatedPG::agent_work(int start_max)
     }
     if (obc->is_blocked()) {
       dout(20) << __func__ << " skip (blocked) " << obc->obs.oi << dendl;
+      osd->logger->inc(l_osd_agent_skip);
+      continue;
+    }
+    if (obc->is_request_pending()) {
+      dout(20) << __func__ << " skip (request pending) " << obc->obs.oi << dendl;
       osd->logger->inc(l_osd_agent_skip);
       continue;
     }
@@ -11583,6 +11575,10 @@ bool ReplicatedPG::agent_maybe_evict(ObjectContextRef& obc)
     dout(20) << __func__ << " skip (watchers) " << obc->obs.oi << dendl;
     return false;
   }
+  if (obc->is_blocked()) {
+    dout(20) << __func__ << " skip (blocked) " << obc->obs.oi << dendl;
+    return false;
+  }
 
   if (soid.snap == CEPH_NOSNAP) {
     int result = _verify_no_head_clones(soid, obc->ssc->snapset);
@@ -11702,8 +11698,6 @@ void ReplicatedPG::agent_choose_mode(bool restart)
   uint64_t divisor = pool.info.get_pg_num_divisor(info.pgid.pgid);
   assert(divisor > 0);
 
-  uint64_t num_user_objects = info.stats.stats.sum.num_objects;
-
   // adjust (effective) user objects down based on the number
   // of HitSet objects, which should not count toward our total since
   // they cannot be flushed.
@@ -11715,11 +11709,15 @@ void ReplicatedPG::agent_choose_mode(bool restart)
   if (base_pool->is_erasure())
     unflushable += info.stats.stats.sum.num_objects_omap;
 
-
+  uint64_t num_user_objects = info.stats.stats.sum.num_objects;
   if (num_user_objects > unflushable)
     num_user_objects -= unflushable;
   else
     num_user_objects = 0;
+
+  uint64_t num_user_bytes = info.stats.stats.sum.num_bytes;
+  uint64_t unflushable_bytes = info.stats.stats.sum.num_bytes_hit_set_archive;
+  num_user_bytes -= unflushable_bytes;
 
   // also reduce the num_dirty by num_objects_omap
   int64_t num_dirty = info.stats.stats.sum.num_objects_dirty;
@@ -11741,6 +11739,7 @@ void ReplicatedPG::agent_choose_mode(bool restart)
 	   << " num_objects_omap: " << info.stats.stats.sum.num_objects_omap
 	   << " num_dirty: " << num_dirty
 	   << " num_user_objects: " << num_user_objects
+	   << " num_user_bytes: " << num_user_bytes
 	   << " pool.info.target_max_bytes: " << pool.info.target_max_bytes
 	   << " pool.info.target_max_objects: " << pool.info.target_max_objects
 	   << dendl;
@@ -11748,9 +11747,8 @@ void ReplicatedPG::agent_choose_mode(bool restart)
   // get dirty, full ratios
   uint64_t dirty_micro = 0;
   uint64_t full_micro = 0;
-  if (pool.info.target_max_bytes && info.stats.stats.sum.num_objects > 0) {
-    uint64_t avg_size = info.stats.stats.sum.num_bytes /
-      info.stats.stats.sum.num_objects;
+  if (pool.info.target_max_bytes && num_user_objects > 0) {
+    uint64_t avg_size = num_user_bytes / num_user_objects;
     dirty_micro =
       num_dirty * avg_size * 1000000 /
       MAX(pool.info.target_max_bytes / divisor, 1);
@@ -12020,6 +12018,8 @@ void ReplicatedPG::_scrub(ScrubMap& scrubmap)
     } else {
       stat.num_bytes += oi.size;
     }
+    if (soid.nspace == cct->_conf->osd_hit_set_namespace)
+      stat.num_bytes_hit_set_archive += oi.size;
 
     if (!soid.is_snapdir()) {
       if (oi.is_dirty())
@@ -12158,7 +12158,8 @@ void ReplicatedPG::_scrub_finish()
 	   << scrub_cstat.sum.num_objects_dirty << "/" << info.stats.stats.sum.num_objects_dirty << " dirty, "
 	   << scrub_cstat.sum.num_objects_omap << "/" << info.stats.stats.sum.num_objects_omap << " omap, "
 	   << scrub_cstat.sum.num_objects_hit_set_archive << "/" << info.stats.stats.sum.num_objects_hit_set_archive << " hit_set_archive, "
-	   << scrub_cstat.sum.num_bytes << "/" << info.stats.stats.sum.num_bytes << " bytes."
+	   << scrub_cstat.sum.num_bytes << "/" << info.stats.stats.sum.num_bytes << " bytes,"
+	   << scrub_cstat.sum.num_bytes_hit_set_archive << "/" << info.stats.stats.sum.num_bytes_hit_set_archive << " hit_set_archive bytes."
 	   << dendl;
 
   if (scrub_cstat.sum.num_objects != info.stats.stats.sum.num_objects ||
@@ -12169,6 +12170,8 @@ void ReplicatedPG::_scrub_finish()
        !info.stats.omap_stats_invalid) ||
       (scrub_cstat.sum.num_objects_hit_set_archive != info.stats.stats.sum.num_objects_hit_set_archive &&
        !info.stats.hitset_stats_invalid) ||
+      (scrub_cstat.sum.num_bytes_hit_set_archive != info.stats.stats.sum.num_bytes_hit_set_archive &&
+       !info.stats.hitset_bytes_stats_invalid) ||
       scrub_cstat.sum.num_whiteouts != info.stats.stats.sum.num_whiteouts ||
       scrub_cstat.sum.num_bytes != info.stats.stats.sum.num_bytes) {
     osd->clog->error() << info.pgid << " " << mode
@@ -12179,7 +12182,8 @@ void ReplicatedPG::_scrub_finish()
 		      << scrub_cstat.sum.num_objects_omap << "/" << info.stats.stats.sum.num_objects_omap << " omap, "
 		      << scrub_cstat.sum.num_objects_hit_set_archive << "/" << info.stats.stats.sum.num_objects_hit_set_archive << " hit_set_archive, "
 		      << scrub_cstat.sum.num_whiteouts << "/" << info.stats.stats.sum.num_whiteouts << " whiteouts, "
-		      << scrub_cstat.sum.num_bytes << "/" << info.stats.stats.sum.num_bytes << " bytes.\n";
+		      << scrub_cstat.sum.num_bytes << "/" << info.stats.stats.sum.num_bytes << " bytes,"
+		      << scrub_cstat.sum.num_bytes_hit_set_archive << "/" << info.stats.stats.sum.num_bytes_hit_set_archive << " hit_set_archive bytes.\n";
     ++scrubber.shallow_errors;
 
     if (repair) {
@@ -12188,6 +12192,7 @@ void ReplicatedPG::_scrub_finish()
       info.stats.dirty_stats_invalid = false;
       info.stats.omap_stats_invalid = false;
       info.stats.hitset_stats_invalid = false;
+      info.stats.hitset_bytes_stats_invalid = false;
       publish_stats_to_osd();
       share_pg_info();
     }

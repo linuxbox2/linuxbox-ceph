@@ -20,15 +20,15 @@ using namespace std;
 using namespace rbd_replay;
 
 extern "C"
-void pending_io_callback(librbd::completion_t cb, void *arg) {
-  PendingIO *io = (PendingIO*)arg;
+void rbd_replay_pending_io_callback(librbd::completion_t cb, void *arg) {
+  PendingIO *io = static_cast<PendingIO*>(arg);
   io->completed(cb);
 }
 
 PendingIO::PendingIO(action_id_t id,
 		     ActionCtx &worker)
   : m_id(id),
-    m_completion(new librbd::RBD::AioCompletion(this, pending_io_callback)),
+    m_completion(new librbd::RBD::AioCompletion(this, rbd_replay_pending_io_callback)),
     m_worker(worker) {
     }
 

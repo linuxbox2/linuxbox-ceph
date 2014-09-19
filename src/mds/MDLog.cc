@@ -341,8 +341,6 @@ void MDLog::_submit_thread()
       bufferlist bl;
       le->encode_with_header(bl);
 
-      mds->mds_lock.Lock();
-
       uint64_t write_pos = journaler->get_write_pos();
 
       le->set_start_off(write_pos);
@@ -361,19 +359,15 @@ void MDLog::_submit_thread()
       if (data.flush)
 	journaler->flush();
 
-      mds->mds_lock.Unlock();
-
       if (logger)
 	logger->set(l_mdl_wrpos, ls->end);
 
       delete le;
     } else {
-      mds->mds_lock.Lock();
       if (data.fin)
 	journaler->wait_for_flush(new C_IO_Wrapper(mds, data.fin));
       if (data.flush)
 	journaler->flush();
-      mds->mds_lock.Unlock();
     }
 
     submit_mutex.Lock();
@@ -739,9 +733,7 @@ void MDLog::_recovery_thread(MDSInternalContextBase *completion)
     if (mds->is_standby_replay()) {
       dout(1) << "Journal " << jp.front << " is being rewritten, "
         << "cannot replay in standby until an active MDS completes rewrite" << dendl;
-      mds->mds_lock.Lock();
       completion->complete(-EAGAIN);
-      mds->mds_lock.Unlock();
       return;
     }
     dout(1) << "Erasing journal " << jp.back << dendl;
@@ -750,19 +742,15 @@ void MDLog::_recovery_thread(MDSInternalContextBase *completion)
         mds->objecter, logger, l_mdl_jlat, &mds->timer, &mds->finisher);
 
     // Read all about this journal (header + extents)
-    mds->mds_lock.Lock();
     C_SaferCond recover_wait;
     back.recover(&recover_wait);
-    mds->mds_lock.Unlock();
     int recovery_result = recover_wait.wait();
 
     // Journaler.recover succeeds if no journal objects are present: an error
     // means something worse like a corrupt header, which we can't handle here.
     assert(recovery_result == 0);
     // We could read journal, so we can erase it.
-    mds->mds_lock.Lock();
     back.erase(&erase_waiter);
-    mds->mds_lock.Unlock();
     int erase_result = erase_waiter.wait();
 
     // If we are successful, or find no data, we can update the JournalPointer to
@@ -782,9 +770,7 @@ void MDLog::_recovery_thread(MDSInternalContextBase *completion)
   Journaler *front_journal = new Journaler(jp.front, mds->mdsmap->get_metadata_pool(),
       CEPH_FS_ONDISK_MAGIC, mds->objecter, logger, l_mdl_jlat, &mds->timer, &mds->finisher);
   C_SaferCond recover_wait;
-  mds->mds_lock.Lock();
   front_journal->recover(&recover_wait);
-  mds->mds_lock.Unlock();
   dout(4) << "Waiting for journal " << jp.front << " to recover..." << dendl;
   int recovery_result = recover_wait.wait();
   dout(4) << "Journal " << jp.front << " recovered." << dendl;
@@ -857,20 +843,24 @@ void MDLog::_reformat_journal(JournalPointer const &jp_in, Journaler *old_journa
 
   /* Write the new journal header to RADOS */
   C_SaferCond write_head_wait;
-  mds->mds_lock.Lock();
   new_journal->write_head(&write_head_wait);
-  mds->mds_lock.Unlock();
   write_head_wait.wait();
 
   // Read in the old journal, and whenever we have readable events,
   // write them to the new journal.
   int r = 0;
 
+  // In old format journals before event_seq was introduced, the serialized
+  // offset of a SubtreeMap message in the log is used as the unique ID for
+  // a log segment.  Because we change serialization, this will end up changing
+  // for us, so we have to explicitly update the fields that point back to that
+  // log segment.
+  std::map<log_segment_seq_t, log_segment_seq_t> segment_pos_rewrite;
+
   // The logic in here borrowed from replay_thread expects mds_lock to be held,
   // e.g. between checking readable and doing wait_for_readable so that journaler
   // state doesn't change in between.
   uint32_t events_transcribed = 0;
-  mds->mds_lock.Lock();
   while (1) {
     while (!old_journal->is_readable() &&
 	   old_journal->get_read_pos() < old_journal->get_write_pos() &&
@@ -881,9 +871,7 @@ void MDLog::_reformat_journal(JournalPointer const &jp_in, Journaler *old_journa
       old_journal->wait_for_readable(&readable_waiter);
 
       // Wait for a journal prefetch to complete
-      mds->mds_lock.Unlock();
       readable_waiter.wait();
-      mds->mds_lock.Lock();
     }
     if (old_journal->get_error()) {
       r = old_journal->get_error();
@@ -898,26 +886,71 @@ void MDLog::_reformat_journal(JournalPointer const &jp_in, Journaler *old_journa
     // Read one serialized LogEvent
     assert(old_journal->is_readable());
     bufferlist bl;
+    uint64_t le_pos = old_journal->get_read_pos();
     bool r = old_journal->try_read_entry(bl);
     if (!r && old_journal->get_error())
       continue;
     assert(r);
 
+    // Update segment_pos_rewrite
+    LogEvent *le = LogEvent::decode(bl);
+    if (le) {
+      bool modified = false;
+
+      if (le->get_type() == EVENT_SUBTREEMAP ||
+          le->get_type() == EVENT_RESETJOURNAL) {
+        ESubtreeMap *sle = dynamic_cast<ESubtreeMap*>(le);
+        if (sle == NULL || sle->event_seq == 0) {
+          // A non-explicit event seq: the effective sequence number 
+          // of this segment is it's position in the old journal and
+          // the new effective sequence number will be its position
+          // in the new journal.
+          segment_pos_rewrite[le_pos] = new_journal->get_write_pos();
+          dout(20) << __func__ << " discovered segment seq mapping "
+            << le_pos << " -> " << new_journal->get_write_pos() << dendl;
+        }
+      } else {
+        event_seq++;
+      }
+
+      // Rewrite segment references if necessary
+      EMetaBlob *blob = le->get_metablob();
+      if (blob) {
+        modified = blob->rewrite_truncate_finish(mds, segment_pos_rewrite);
+      }
+
+      // Zero-out expire_pos in subtreemap because offsets have changed
+      // (expire_pos is just an optimization so it's safe to eliminate it)
+      if (le->get_type() == EVENT_SUBTREEMAP) {
+        dout(20) << __func__ << " zeroing expire_pos in subtreemap event at " << le_pos << dendl;
+        ESubtreeMap *sle = dynamic_cast<ESubtreeMap*>(le);
+        assert(sle != NULL);
+        sle->expire_pos = 0;
+        modified = true;
+      }
+
+      if (modified) {
+        bl.clear();
+        le->encode_with_header(bl);
+      }
+
+      delete le;
+    } else {
+      // Failure from LogEvent::decode, our job is to change the journal wrapper,
+      // not validate the contents, so pass it through.
+      dout(1) << __func__ << " transcribing un-decodable LogEvent at old position "
+        << old_journal->get_read_pos() << ", new position " << new_journal->get_write_pos()
+        << dendl;
+    }
+
     // Write (buffered, synchronous) one serialized LogEvent
     events_transcribed += 1;
     new_journal->append_entry(bl);
-
-    // Allow other I/O to advance, e.g. MDS beacons
-    mds->mds_lock.Unlock();
-    mds->mds_lock.Lock();
   }
-  mds->mds_lock.Unlock();
 
   dout(1) << "Transcribed " << events_transcribed << " events, flushing new journal" << dendl;
   C_SaferCond flush_waiter;
-  mds->mds_lock.Lock();
   new_journal->flush(&flush_waiter);
-  mds->mds_lock.Unlock();
   flush_waiter.wait();
 
   // If failed to rewrite journal, leave the part written journal
@@ -934,9 +967,7 @@ void MDLog::_reformat_journal(JournalPointer const &jp_in, Journaler *old_journa
   /* Delete the old journal to free space */
   dout(1) << "New journal flushed, erasing old journal" << dendl;
   C_SaferCond erase_waiter;
-  mds->mds_lock.Lock();
   old_journal->erase(&erase_waiter);
-  mds->mds_lock.Unlock();
   int erase_result = erase_waiter.wait();
   assert(erase_result == 0);
   delete old_journal;
@@ -962,7 +993,6 @@ void MDLog::_reformat_journal(JournalPointer const &jp_in, Journaler *old_journa
 // i am a separate thread
 void MDLog::_replay_thread()
 {
-  mds->mds_lock.Lock();
   dout(10) << "_replay_thread start" << dendl;
 
   // loop
@@ -997,9 +1027,7 @@ void MDLog::_replay_thread()
            * -- as long as we drop the main mds lock--. */
           C_SaferCond reread_fin;
           journaler->reread_head(&reread_fin);
-          mds->mds_lock.Unlock();
           int err = reread_fin.wait();
-          mds->mds_lock.Lock();
           if (err) {
             if (err == -ENOENT && mds->is_standby_replay()) {
               r = -EAGAIN;
@@ -1076,15 +1104,13 @@ void MDLog::_replay_thread()
       le->_segment->end = journaler->get_read_pos();
       num_events++;
 
+      mds->mds_lock.Lock();
       le->replay(mds);
+      mds->mds_lock.Unlock();
     }
     delete le;
 
     logger->set(l_mdl_rdpos, pos);
-
-    // drop lock for a second, so other events/messages (e.g. beacon timer!) can go off
-    mds->mds_lock.Unlock();
-    mds->mds_lock.Lock();
   }
 
   // done!
@@ -1097,10 +1123,11 @@ void MDLog::_replay_thread()
   }
 
   dout(10) << "_replay_thread kicking waiters" << dendl;
+  mds->mds_lock.Lock();
   finish_contexts(g_ceph_context, waitfor_replay, r);  
+  mds->mds_lock.Unlock();
 
   dout(10) << "_replay_thread finish" << dendl;
-  mds->mds_lock.Unlock();
 }
 
 void MDLog::standby_trim_segments()
@@ -1114,15 +1141,7 @@ void MDLog::standby_trim_segments()
     if (seg->end > expire_pos)
       break;
     dout(10) << " removing segment " << seg->seq << "/" << seg->offset << dendl;
-    seg->dirty_dirfrags.clear_list();
-    seg->new_dirfrags.clear_list();
-    seg->dirty_inodes.clear_list();
-    seg->dirty_dentries.clear_list();
-    seg->open_files.clear_list();
-    seg->dirty_parent_inodes.clear_list();
-    seg->dirty_dirfrag_dir.clear_list();
-    seg->dirty_dirfrag_nest.clear_list();
-    seg->dirty_dirfrag_dirfragtree.clear_list();
+    mds->mdcache->standby_trim_segment(seg);
     remove_oldest_segment();
     removed_segment = true;
   }

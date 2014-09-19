@@ -132,7 +132,7 @@ void FileStore::FSPerfTracker::update_from_perfcounters(
 {
   os_commit_latency.consume_next(
     logger.get_tavg_ms(
-      l_os_commit_lat));
+      l_os_j_lat));
   os_apply_latency.consume_next(
     logger.get_tavg_ms(
       l_os_apply_lat));
@@ -1946,16 +1946,8 @@ int FileStore::_do_transactions(
   ThreadPool::TPHandle *handle)
 {
   int r = 0;
-
-  uint64_t bytes = 0, ops = 0;
-  for (list<Transaction*>::iterator p = tls.begin();
-       p != tls.end();
-       ++p) {
-    bytes += (*p)->get_num_bytes();
-    ops += (*p)->get_num_ops();
-  }
-
   int trans_num = 0;
+
   for (list<Transaction*>::iterator p = tls.begin();
        p != tls.end();
        ++p, trans_num++) {
@@ -2228,7 +2220,7 @@ unsigned FileStore::_do_transaction(
   dout(10) << "_do_transaction on " << &t << dendl;
 
 #ifdef WITH_LTTNG
-  const char *osr_name = t.get_osr() ? ((OpSequencer*)t.get_osr())->get_name().c_str() : "<NULL>";
+  const char *osr_name = t.get_osr() ? static_cast<OpSequencer*>(t.get_osr())->get_name().c_str() : "<NULL>";
 #endif
 
   Transaction::iterator i = t.begin();

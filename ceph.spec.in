@@ -487,13 +487,7 @@ fi
 %{_libdir}/rados-classes/libcls_user.so*
 %{_libdir}/rados-classes/libcls_version.so*
 %dir %{_libdir}/ceph/erasure-code
-%{_libdir}/ceph/erasure-code/libec_example.so*
-%{_libdir}/ceph/erasure-code/libec_fail_to_initialize.so*
-%{_libdir}/ceph/erasure-code/libec_fail_to_register.so*
-%{_libdir}/ceph/erasure-code/libec_hangs.so*
-%{_libdir}/ceph/erasure-code/libec_jerasure*.so*
-%{_libdir}/ceph/erasure-code/libec_test_jerasure*.so*
-%{_libdir}/ceph/erasure-code/libec_missing_entry_point.so*
+%{_libdir}/ceph/erasure-code/libec_*.so*
 %if 0%{?rhel} >= 7 || 0%{?fedora}
 /usr/lib/udev/rules.d/60-ceph-partuuid-workaround.rules
 /usr/lib/udev/rules.d/95-ceph-osd.rules
@@ -750,7 +744,9 @@ ln -sf %{_libdir}/librbd.so.1 /usr/lib64/qemu/librbd.so.1
 %{_bindir}/ceph-osdomap-tool
 %{_bindir}/ceph-kvstore-tool
 %{_mandir}/man8/rbd-replay.8*
+%{_mandir}/man8/rbd-replay-many.8*
 %{_bindir}/rbd-replay
+%{_bindir}/rbd-replay-many
 %if (0%{?fedora} >= 20 || 0%{?rhel} == 6)
 %{_mandir}/man8/rbd-replay-prep.8*
 %{_bindir}/rbd-replay-prep
