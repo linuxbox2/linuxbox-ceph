@@ -472,7 +472,8 @@ install(TARGETS ceph-osd DESTINATION bin)
 
 # MDS
 if(${WITH_MDS})
-  set(mds_srcs 
+  set(mds_srcs
+    mds/Beacon.cc
     mds/Capability.cc
     mds/MDS.cc
     mds/flock.cc
