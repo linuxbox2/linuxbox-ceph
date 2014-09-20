@@ -179,6 +179,7 @@ public:
 
     raw *clone();
     void swap(ptr& other);
+    ptr& strong_claim();
 
     // misc
     bool at_buffer_head() const { return _off == 0; }
@@ -393,6 +394,7 @@ public:
 
     // sort-of-like-assignment-op
     void claim(list& bl);
+    void strong_claim(list& bl); // claim with COW-semantics
     void claim_append(list& bl);
     void claim_prepend(list& bl);
 

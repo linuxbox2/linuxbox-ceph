@@ -2614,7 +2614,11 @@ void Objecter::handle_osd_op_reply(MOSDOpReply *m)
   if (op->outbl) {
     if (op->con)
       op->con->revoke_rx_buffer(op->tid);
-    m->claim_data(*op->outbl);
+    /* XXX for now, trigger COW of volatile buffers where we formerly
+       claimed them;  for performance, this will need to be moved into
+       ULP code, which could strong_claim only when holding a buffer for
+       a potentially long period */
+    m->strong_claim_data(*op->outbl);
     op->outbl = 0;
   }
 

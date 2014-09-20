@@ -147,6 +147,7 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       return data;
     }
     virtual raw* clone_empty() = 0;
+
     raw *clone() {
       raw *c = clone_empty();
       memcpy(c->data, data, len);
@@ -163,6 +164,10 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
     }
     bool is_n_page_sized() {
       return (len & ~CEPH_PAGE_MASK) == 0;
+    }
+    virtual bool is_volatile() {
+      // true if unsafe to claim-hold due (e.g., zero-copy buffer)
+      return false;
     }
     bool get_crc(const pair<size_t, size_t> &fromto,
 		 pair<uint32_t, uint32_t> *crc) const {
@@ -512,6 +517,12 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
 	unsigned l) :
       raw((char*)d, l), m_hook(_m_hook->get()) {}
 
+    bool is_volatile() {
+      /* data points to Accelio memory and interacts with Accelio
+	 flow control */ 
+      return true;
+    }
+
     static void operator delete(void *p)
     {
       xio_msg_buffer *buf = static_cast<xio_msg_buffer*>(p);
@@ -519,6 +530,7 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       // to do this in our dtor, because this fires after that
       buf->m_hook->put();
     }
+
     raw* clone_empty() {
       return new buffer::raw_char(len);
     }
@@ -651,6 +663,15 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
   buffer::raw *buffer::ptr::clone()
   {
     return _raw->clone();
+  }
+
+  buffer::ptr& buffer::ptr::strong_claim() {
+    if (_raw && _raw->is_volatile()) {
+      buffer::raw *tr = _raw;
+      _raw = tr->clone();
+      delete(tr);
+    }
+    return *this;
   }
 
   void buffer::ptr::swap(ptr& other)
@@ -1202,6 +1223,21 @@ void buffer::list::rebuild_page_aligned()
     // free my buffers
     clear();
     claim_append(bl);
+  }
+
+  // claim with COW semantics
+  void buffer::list::strong_claim(list& bl)
+  {
+    // free my buffers
+    clear();
+    const std::list<buffer::ptr>& buffers = bl.buffers();
+    std::list<buffer::ptr>::const_iterator pb;
+    for (pb = buffers.begin(); pb != buffers.end(); ++pb) {
+      buffer::ptr& p = const_cast<buffer::ptr&>(*pb);
+      push_back(p.strong_claim());
+    }
+    bl._len = 0;
+    bl.last_p = bl.begin(); // looks bogus--why don't we erase?
   }
 
   void buffer::list::claim_append(list& bl)

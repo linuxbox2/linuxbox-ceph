@@ -9173,7 +9173,11 @@ void ReplicatedBackend::sub_op_push(OpRequestRef op)
   PushOp pop;
   pop.soid = m->recovery_info.soid;
   pop.version = m->version;
-  m->claim_data(pop.data);
+  /* XXX for now, trigger COW of volatile buffers where we formerly
+     claimed them;  for performance, this will need to be moved into
+     ULP code, which could strong_claim only when holding a buffer for
+     a potentially long period */
+  m->strong_claim_data(pop.data);
   pop.data_included.swap(m->data_included);
   pop.omap_header.swap(m->omap_header);
   pop.omap_entries.swap(m->omap_entries);

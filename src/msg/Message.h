@@ -366,11 +366,19 @@ public:
   }
 
   bufferlist& get_data() { return data; }
+
   void claim_data(bufferlist& bl) {
     if (byte_throttler)
       byte_throttler->put(data.length());
     bl.claim(data);
   }
+
+  void strong_claim_data(bufferlist& bl) {
+    if (byte_throttler)
+      byte_throttler->put(data.length());
+    bl.strong_claim(data);
+  }
+
   off_t get_data_len() { return data.length(); }
 
   void set_recv_stamp(utime_t t) { recv_stamp = t; }
