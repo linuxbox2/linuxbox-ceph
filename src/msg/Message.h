@@ -369,12 +369,12 @@ public:
   }
 
   bufferlist& get_data() { return data; }
-  void claim_data(bufferlist& bl) {
+  void claim_data(bufferlist& bl, bool strong=true) {
     if (byte_throttler)
       byte_throttler->put(data.length());
     if (completion_hook)
       completion_hook->claim(data.buffers().size());
-    bl.claim(data);
+    bl.claim(data, strong);
   }
   off_t get_data_len() { return data.length(); }
 

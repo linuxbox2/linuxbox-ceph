@@ -12,7 +12,6 @@
  * 
  */
 
-
 #include "armor.h"
 #include "common/environment.h"
 #include "common/errno.h"
@@ -158,7 +157,10 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     bool is_n_page_sized() {
       return (len & ~CEPH_PAGE_MASK) == 0;
     }
-
+    virtual bool is_volatile() {
+      // true if unsafe to claim-hold due to, e.g., special registration
+      return false;
+    }
     virtual bool get_crc(const pair<size_t, size_t> &fromto,
 			 pair<uint32_t, uint32_t> *crc) const {
       return false;
@@ -534,6 +536,12 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     xio_msg_buffer(XioCompletionHook* _m_hook, const char *d, unsigned l) :
       raw((char*)d, l), m_hook(_m_hook->get()) {}
 
+    bool is_volatile() {
+      /* data points to Accelio memory and interacts with Accelio
+	 flow control */ 
+      return true;
+    }
+
     static void operator delete(void *p)
     {
       xio_msg_buffer *buf = static_cast<xio_msg_buffer*>(p);
@@ -541,6 +549,7 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
       // to do this in our dtor, because this fires after that
       buf->m_hook->put();
     }
+
     raw* clone_empty() {
       return new buffer::raw_char(len);
     }
@@ -673,6 +682,18 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
   buffer::raw *buffer::ptr::clone()
   {
     return _raw->clone();
+  }
+
+  buffer::ptr& buffer::ptr::strong_claim() {
+    if (_raw && _raw->is_volatile()) {
+      buffer::raw *tr = _raw;
+      _raw = tr->clone();
+      _raw->nref.set(1);
+      if (unlikely(tr->nref.dec() == 0)) {
+	delete tr;
+      }
+    }
+    return *this;
   }
 
   void buffer::ptr::swap(ptr& other)
@@ -1027,27 +1048,31 @@ void buffer::list::rebuild_page_aligned()
 }
 
   // sort-of-like-assignment-op
-  void buffer::list::claim(list& bl)
+  void buffer::list::claim(list& bl, bool strong)
   {
     // free my buffers
     clear();
-    claim_append(bl);
+    claim_append(bl, strong);
   }
 
-  void buffer::list::claim_append(list& bl)
+  void buffer::list::claim_append(list& bl, bool strong)
   {
     // steal the other guy's buffers
     _len += bl._len;
-    _buffers.splice( _buffers.end(), bl._buffers );
+    if (strong)
+      bl.strong_claim_inplace();
+    _buffers.splice(_buffers.end(), bl._buffers);
     bl._len = 0;
     bl.last_p = bl.begin();
   }
 
-  void buffer::list::claim_prepend(list& bl)
+  void buffer::list::claim_prepend(list& bl, bool strong)
   {
     // steal the other guy's buffers
     _len += bl._len;
-    _buffers.splice( _buffers.begin(), bl._buffers );
+    if (strong)
+      bl.strong_claim_inplace();
+    _buffers.splice(_buffers.begin(), bl._buffers);
     bl._len = 0;
     bl.last_p = bl.begin();
   }
