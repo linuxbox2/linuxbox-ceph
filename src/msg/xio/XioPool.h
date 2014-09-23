@@ -11,7 +11,6 @@
  * Foundation.  See file COPYING.
  *
  */
-
 #ifndef XIO_POOL_H
 #define XIO_POOL_H
 
@@ -25,75 +24,6 @@ extern "C" {
 #include <vector>
 #include "common/likely.h"
 
-
-class XioPoolStats {
-private:
-  enum pool_sizes {
-    SLAB_64 = 0,
-    SLAB_256,
-    SLAB_1024,
-    SLAB_PAGE,
-    SLAB_MAX
-  };
-
-  std::vector<uint64_t> ctr_set;
-
-public:
-  XioPoolStats() : ctr_set(5, 0) {}
-
-  void dump(const char* tag) {
-    std::cout << "\tpool objects:  "
-	      << "64: " << ctr_set[SLAB_64] << "  "
-	      << "256: " << ctr_set[SLAB_256] << "  "
-	      << "1024: " << ctr_set[SLAB_1024] << "  "
-	      << "page: " << ctr_set[SLAB_PAGE] << "  "
-	      << "max: " << ctr_set[SLAB_MAX] << "  "
-	      << "(" << tag << ")"
-	      << std::endl;
-  }
-
-  void inc(uint64_t size) {
-    if (size <= 64) {
-      (ctr_set[SLAB_64])++;
-      return;
-    }
-    if (size <= 256) {
-      (ctr_set[SLAB_256])++;
-      return;
-    }
-    if (size <= 1024) {
-      (ctr_set[SLAB_1024])++;
-      return;
-    }
-    if (size <= 8192) {
-      (ctr_set[SLAB_PAGE])++;
-      return;
-    }
-    (ctr_set[SLAB_MAX])++;
-  }
-
-  void dec(uint64_t size) {
-    if (size <= 64) {
-      (ctr_set[SLAB_64])--;
-      return;
-    }
-    if (size <= 256) {
-      (ctr_set[SLAB_256])--;
-      return;
-    }
-    if (size <= 1024) {
-      (ctr_set[SLAB_1024])--;
-      return;
-    }
-    if (size <= 8192) {
-      (ctr_set[SLAB_PAGE])--;
-      return;
-    }
-    (ctr_set[SLAB_MAX])--;
-  }
-};
-
-extern XioPoolStats xp_stats;
 
 static inline int xpool_alloc(struct xio_mempool *pool, uint64_t size,
 			      struct xio_mempool_obj* mp);
@@ -151,6 +81,107 @@ public:
     }
 };
 
+class XioPoolStats {
+private:
+  enum pool_sizes {
+    SLAB_64 = 0,
+    SLAB_256,
+    SLAB_1024,
+    SLAB_PAGE,
+    SLAB_MAX
+  };
+
+  std::vector<uint64_t> ctr_set;
+
+  uint32_t msg_cnt;  // send msgs
+  uint32_t hook_cnt; // recv msgs
+
+public:
+  XioPoolStats() : ctr_set(5, 0) {}
+
+  void dump(const char* tag) {
+    std::cout << "\tpool objects:  "
+	      << "64: " << ctr_set[SLAB_64] << "  "
+	      << "256: " << ctr_set[SLAB_256] << "  "
+	      << "1024: " << ctr_set[SLAB_1024] << "  "
+	      << "page: " << ctr_set[SLAB_PAGE] << "  "
+	      << "max: " << ctr_set[SLAB_MAX] << "  "
+	      << "(" << tag << ")"
+	      << std::endl;
+
+    std::cout << "\tmsg objects:  "
+	      << "in: " << hook_cnt << "  "
+	      << "out: " << msg_cnt
+	      << std::endl;
+  }
+
+  void inc(uint64_t size) {
+    if (size <= 64) {
+      ++(ctr_set[SLAB_64]);
+      return;
+    }
+    if (size <= 256) {
+      ++(ctr_set[SLAB_256]);
+      return;
+    }
+    if (size <= 1024) {
+      ++(ctr_set[SLAB_1024]);
+      return;
+    }
+    if (size <= 8192) {
+      ++(ctr_set[SLAB_PAGE]);
+      return;
+    }
+    ++(ctr_set[SLAB_MAX]);
+  }
+
+  void dec(uint64_t size) {
+    if (size <= 64) {
+      --(ctr_set[SLAB_64]);
+      return;
+    }
+    if (size <= 256) {
+      --(ctr_set[SLAB_256]);
+      return;
+    }
+    if (size <= 1024) {
+      --(ctr_set[SLAB_1024]);
+      return;
+    }
+    if (size <= 8192) {
+      --(ctr_set[SLAB_PAGE]);
+      return;
+    }
+    --(ctr_set[SLAB_MAX]);
+  }
+
+  void inc_msgcnt() {
+    if (unlikely(XioPool::trace_msgcnt)) {
+      ++msg_cnt;
+    }
+  }
+
+  void dec_msgcnt() {
+    if (unlikely(XioPool::trace_msgcnt)) {
+      --msg_cnt;
+    }
+  }
+
+  void inc_hookcnt() {
+    if (unlikely(XioPool::trace_msgcnt)) {
+      ++hook_cnt;
+    }
+  }
+
+  void dec_hookcnt() {
+    if (unlikely(XioPool::trace_msgcnt)) {
+      --hook_cnt;
+    }
+  }
+};
+
+extern XioPoolStats xp_stats;
+
 static inline int xpool_alloc(struct xio_mempool *pool, uint64_t size,
 			      struct xio_mempool_obj* mp)
 {
@@ -165,5 +196,17 @@ static inline void xpool_free(uint64_t size, struct xio_mempool_obj* mp)
     xp_stats.dec(size);
   xio_mempool_free(mp);
 }
+
+#define xpool_inc_msgcnt() \
+  do { xp_stats.inc_msgcnt(); } while (0)
+
+#define xpool_dec_msgcnt() \
+  do { xp_stats.dec_msgcnt(); } while (0)
+
+#define xpool_inc_hookcnt() \
+  do { xp_stats.inc_hookcnt(); } while (0)
+
+#define xpool_dec_hookcnt() \
+  do { xp_stats.dec_hookcnt(); } while (0)
 
 #endif /* XIO_POOL_H */
