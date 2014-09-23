@@ -18,7 +18,7 @@
 #include "msg/msg_types.h"
 #include "messages/MDataPing.h"
 #if defined(HAVE_XIO)
-#include "msg/XioMessenger.h"
+#include "msg/xio/XioMessenger.h"
 #endif
 
 static inline Message* new_ping_monstyle(const char *tag, int mult)

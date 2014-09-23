@@ -159,7 +159,7 @@ public:
     {
       if (! _shutdown) {
 	submit_q.enq(xcon, xs);
-	xio_context_stop_loop(ctx, false);
+	xio_context_stop_loop(ctx);
 	return;
       }
 
@@ -180,10 +180,12 @@ public:
 
   void *entry()
     {
-      int ix, size, code = 0;
+      int size, code = 0;
+      uint32_t xio_qdepth;
       XioSubmit::Queue send_q;
       XioSubmit::Queue::iterator q_iter;
       struct xio_msg *msg = NULL;
+      XioConnection *xcon;
       XioSubmit *xs;
       XioMsg *xmsg;
 
@@ -199,38 +201,46 @@ public:
 	}
 
 	if (size > 0) {
-	  /* XXX look out, no flow control */
-	  for (ix = 0; ix < size; ++ix) {
-	    q_iter = send_q.begin();
-	    xs = &(*q_iter);
-	    send_q.erase(q_iter);
+          q_iter = send_q.begin();
+          while (q_iter != send_q.end()) {
+            xs = &(*q_iter);
+            xcon = xs->xcon;
+            xmsg = static_cast<XioMsg*>(xs);
 
-	    switch(xs->type) {
-	    case XioSubmit::OUTGOING_MSG: /* it was an outgoing 1-way */
-	      xmsg = static_cast<XioMsg*>(xs);
-	      msg = &xmsg->req_0.msg;
-	      /* XXX we know we are not racing with a disconnect
-	       * thread */
+            /* guard Accelio send queue */
+            xio_qdepth = xcon->xio_queue_depth();
+            if (unlikely((xcon->send_ctr + xmsg->hdr.msg_cnt) > xio_qdepth)) {
+              ++q_iter;
+              continue;
+            }
+
+            q_iter = send_q.erase(q_iter);
+
+            switch (xs->type) {
+            case XioSubmit::OUTGOING_MSG: /* it was an outgoing 1-way */
 	      if (unlikely(!xs->xcon->conn))
-		code = ENOTCONN;
+                code = ENOTCONN;
 	      else {
-		code = xio_send_msg(xs->xcon->conn, msg);
-		/* header trace moved here to capture xio serial# */
-		if (ldlog_p1(msgr->cct, ceph_subsys_xio, 11)) {
-		  print_xio_msg_hdr(msgr->cct, "xio_send_msg", xmsg->hdr, msg);
-		  print_ceph_msg(msgr->cct, "xio_send_msg", xmsg->m);
-		}
+                msg = &xmsg->req_0.msg;
+                code = xio_send_msg(xcon->conn, msg);
+                /* header trace moved here to capture xio serial# */
+                if (ldlog_p1(msgr->cct, ceph_subsys_xio, 11)) {
+                  print_xio_msg_hdr(msgr->cct, "xio_send_msg", xmsg->hdr, msg);
+                  print_ceph_msg(msgr->cct, "xio_send_msg", xmsg->m);
+                }
 	      }
 	      if (unlikely(code)) {
-		xs->xcon->msg_send_fail(xmsg, code);
-	      } else
-		xs->xcon->send.set(msg->timestamp); /* XXX atomic? */
-	      break;
-	    default:
-	      /* INCOMING_MSG_RELEASE */
-	      release_xio_rsp(static_cast<XioRsp*>(xs));
-	    break;
-	    };
+                xs->xcon->msg_send_fail(xmsg, code);
+	      } else {
+                xs->xcon->send.set(msg->timestamp); // need atomic?
+                xcon->send_ctr += xmsg->hdr.msg_cnt; // only inc if cb promised
+              }
+              break;
+            default:
+              /* INCOMING_MSG_RELEASE */
+              release_xio_rsp(static_cast<XioRsp*>(xs));
+              break;
+	    }
 	  }
 	}
 
@@ -250,7 +260,7 @@ public:
   void shutdown()
     {
 	pthread_spin_lock(&sp);
-	xio_context_stop_loop(ctx, false);
+	xio_context_stop_loop(ctx);
 	_shutdown = true;
 	pthread_spin_unlock(&sp);
     }

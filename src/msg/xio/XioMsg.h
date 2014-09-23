@@ -190,7 +190,6 @@ struct xio_msg_ex
     // minimal initialize an "out" msg
     msg.request = NULL;
     msg.type = XIO_MSG_TYPE_ONE_WAY;
-    msg.more_in_batch = 0;
     // for now, we DO NEED receipts for every msg
     msg.flags = 0;
     msg.user_context = user_context;
@@ -226,6 +225,8 @@ public:
       if (unlikely(_ex_cnt > 0)) {
 	alloc_trailers(_ex_cnt);
       }
+
+      xpool_inc_msgcnt();
 
       // submit queue ref
       xcon->get();
@@ -283,6 +284,9 @@ public:
 	  /* the normal case: done with message */
 	  m->put();
       }
+
+      xpool_dec_msgcnt();
+
       /* submit queue ref */
       xcon->put();
     }
@@ -310,7 +314,10 @@ public:
     nrefs(1),
     cl_flag(false),
     mp_this(_mp)
-    {}
+    {
+      ++xcon->n_reqs; // atomicity by portal thread
+      xpool_inc_hookcnt();
+    }
 
   virtual void finish(int r) {
     this->put();
@@ -352,6 +359,8 @@ public:
   }
 
   ~XioCompletionHook() {
+    --xcon->n_reqs; // atomicity by portal thread
+    xpool_dec_hookcnt();
     xcon->put();
   }
 };
