@@ -25,7 +25,6 @@
 
 #include "include/types.h"
 #include "msg/Messenger.h"
-#include "msg/XioMessenger.h"
 
 #include "common/Timer.h"
 
@@ -113,7 +112,7 @@ public:
   string name;
   int rank;
   Messenger *messenger;
-  XioMessenger *xmsgr;
+  Messenger *xmsgr;
   ConnectionRef con_self;
   Mutex lock;
   SafeTimer timer;
@@ -768,7 +767,7 @@ public:
 
  public:
   Monitor(CephContext *cct_, string nm, MonitorDBStore *s,
-	  Messenger *m, XioMessenger *xm, MonMap *map);
+	  Messenger *m, Messenger *xm, MonMap *map);
   ~Monitor();
 
   static int check_features(MonitorDBStore *store);

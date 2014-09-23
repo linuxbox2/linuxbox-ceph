@@ -130,7 +130,7 @@ long parse_pos_long(const char *s, ostream *pss)
 }
 
 Monitor::Monitor(CephContext* cct_, string nm, MonitorDBStore *s,
-		 Messenger *m, XioMessenger *xm, MonMap *map) :
+		 Messenger *m, Messenger *xm, MonMap *map) :
   Dispatcher(cct_),
   name(nm),
   rank(-1),
