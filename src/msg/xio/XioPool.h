@@ -128,7 +128,7 @@ public:
 	if (unlikely(trace_mempool)) {
 	  memset(p->payload, 0xcf, p->s); // guard bytes
 	}
-	xpool_free(sizeof(struct xio_piece)+(p->s)+MB, p->mp);
+	xpool_free(sizeof(struct xio_piece)+(p->s)-MB, p->mp);
       }
     }
   void *alloc(size_t _s)
