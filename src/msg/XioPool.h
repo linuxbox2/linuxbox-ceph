@@ -99,20 +99,22 @@ private:
 public:
   XioPoolStats() : ctr_set(5, 0) {}
 
-  void dump(const char* tag) {
-    std::cout << "\tpool objects:  "
-	      << "64: " << ctr_set[SLAB_64] << "  "
-	      << "256: " << ctr_set[SLAB_256] << "  "
-	      << "1024: " << ctr_set[SLAB_1024] << "  "
-	      << "page: " << ctr_set[SLAB_PAGE] << "  "
-	      << "max: " << ctr_set[SLAB_MAX] << "  "
-	      << "(" << tag << ")"
-	      << std::endl;
-
-    std::cout << "\tmsg objects:  "
-	      << "in: " << hook_cnt << "  "
-	      << "out: " << msg_cnt
-	      << std::endl;
+  void dump(const char* tag, uint64_t serial) {
+    std::cout 
+      << tag << " #" << serial << ": "
+      << "pool objs: "
+      << "64: " << ctr_set[SLAB_64] << " "
+      << "256: " << ctr_set[SLAB_256] << " "
+      << "1024: " << ctr_set[SLAB_1024] << " "
+      << "page: " << ctr_set[SLAB_PAGE] << " "
+      << "max: " << ctr_set[SLAB_MAX] << " "
+      << std::endl;
+    std::cout
+      << tag << " #" << serial << ": "
+      << " msg objs: "
+      << "in: " << hook_cnt << " "
+      << "out: " << msg_cnt << " "
+      << std::endl;
   }
 
   void inc(uint64_t size) {
