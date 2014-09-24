@@ -22,12 +22,15 @@ extern "C" {
 }
 #include <iostream>
 #include <vector>
+#include "include/atomic.h"
 #include "common/likely.h"
 
 
 static inline int xpool_alloc(struct xio_mempool *pool, uint64_t size,
 			      struct xio_mempool_obj* mp);
 static inline void xpool_free(uint64_t size, struct xio_mempool_obj* mp);
+
+using ceph::atomic_t;
 
 class XioPool
 {
@@ -91,93 +94,98 @@ private:
     SLAB_MAX
   };
 
-  std::vector<uint64_t> ctr_set;
+  //std::vector<atomic_t> ctr_set;
+  atomic_t  ctr_set[5];
 
-  uint32_t msg_cnt;  // send msgs
-  uint32_t hook_cnt; // recv msgs
+  atomic_t msg_cnt;  // send msgs
+  atomic_t hook_cnt; // recv msgs
 
 public:
-  XioPoolStats() : ctr_set(5, 0) {}
+  XioPoolStats() : msg_cnt(0), hook_cnt(0) {
+    for (int ix = 0; ix < 5; ++ix) {
+      ctr_set[ix].set(0);
+    }
+  }
 
   void dump(const char* tag, uint64_t serial) {
     std::cout 
       << tag << " #" << serial << ": "
       << "pool objs: "
-      << "64: " << ctr_set[SLAB_64] << " "
-      << "256: " << ctr_set[SLAB_256] << " "
-      << "1024: " << ctr_set[SLAB_1024] << " "
-      << "page: " << ctr_set[SLAB_PAGE] << " "
-      << "max: " << ctr_set[SLAB_MAX] << " "
+      << "64: " << ctr_set[SLAB_64].read() << " "
+      << "256: " << ctr_set[SLAB_256].read() << " "
+      << "1024: " << ctr_set[SLAB_1024].read() << " "
+      << "page: " << ctr_set[SLAB_PAGE].read() << " "
+      << "max: " << ctr_set[SLAB_MAX].read() << " "
       << std::endl;
     std::cout
       << tag << " #" << serial << ": "
       << " msg objs: "
-      << "in: " << hook_cnt << " "
-      << "out: " << msg_cnt << " "
+      << "in: " << hook_cnt.read() << " "
+      << "out: " << msg_cnt.read() << " "
       << std::endl;
   }
 
   void inc(uint64_t size) {
     if (size <= 64) {
-      ++(ctr_set[SLAB_64]);
+      (ctr_set[SLAB_64]).inc();
       return;
     }
     if (size <= 256) {
-      ++(ctr_set[SLAB_256]);
+      (ctr_set[SLAB_256]).inc();
       return;
     }
     if (size <= 1024) {
-      ++(ctr_set[SLAB_1024]);
+      (ctr_set[SLAB_1024]).inc();
       return;
     }
     if (size <= 8192) {
-      ++(ctr_set[SLAB_PAGE]);
+      (ctr_set[SLAB_PAGE]).inc();
       return;
     }
-    ++(ctr_set[SLAB_MAX]);
+    (ctr_set[SLAB_MAX]).inc();
   }
 
   void dec(uint64_t size) {
     if (size <= 64) {
-      --(ctr_set[SLAB_64]);
+      (ctr_set[SLAB_64]).dec();
       return;
     }
     if (size <= 256) {
-      --(ctr_set[SLAB_256]);
+      (ctr_set[SLAB_256]).dec();
       return;
     }
     if (size <= 1024) {
-      --(ctr_set[SLAB_1024]);
+      (ctr_set[SLAB_1024]).dec();
       return;
     }
     if (size <= 8192) {
-      --(ctr_set[SLAB_PAGE]);
+      (ctr_set[SLAB_PAGE]).dec();
       return;
     }
-    --(ctr_set[SLAB_MAX]);
+    (ctr_set[SLAB_MAX]).dec();
   }
 
   void inc_msgcnt() {
     if (unlikely(XioPool::trace_msgcnt)) {
-      ++msg_cnt;
+      msg_cnt.inc();
     }
   }
 
   void dec_msgcnt() {
     if (unlikely(XioPool::trace_msgcnt)) {
-      --msg_cnt;
+      msg_cnt.dec();
     }
   }
 
   void inc_hookcnt() {
     if (unlikely(XioPool::trace_msgcnt)) {
-      ++hook_cnt;
+      hook_cnt.inc();
     }
   }
 
   void dec_hookcnt() {
     if (unlikely(XioPool::trace_msgcnt)) {
-      --hook_cnt;
+      hook_cnt.dec();
     }
   }
 };
