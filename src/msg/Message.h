@@ -314,7 +314,7 @@ public:
   void set_payload(bufferlist& bl) {
     if (byte_throttler)
       byte_throttler->put(payload.length());
-    payload.claim(bl);
+    payload.claim(bl, false /* !clone_nonsharable */);
     if (byte_throttler)
       byte_throttler->take(payload.length());
   }
@@ -322,25 +322,25 @@ public:
   void set_middle(bufferlist& bl) {
     if (byte_throttler)
       byte_throttler->put(payload.length());
-    middle.claim(bl);
+    middle.claim(bl, false /* !clone_nonsharable */);
     if (byte_throttler)
       byte_throttler->take(payload.length());
   }
   bufferlist& get_middle() { return middle; }
 
-  void set_data(const bufferlist &d) {
+  void set_data(bufferlist &bl) {
     if (byte_throttler)
       byte_throttler->put(data.length());
-    data = d;
+    data.claim(bl, false /* !clone_nonsharable */);
     if (byte_throttler)
       byte_throttler->take(data.length());
   }
 
   bufferlist& get_data() { return data; }
-  void claim_data(bufferlist& bl, bool strong=true) {
+  void claim_data(bufferlist& bl, bool clone_nonsharable=true) {
     if (byte_throttler)
       byte_throttler->put(data.length());
-    bl.claim(data, strong);
+    bl.claim(data, clone_nonsharable);
   }
   off_t get_data_len() { return data.length(); }
 
