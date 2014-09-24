@@ -889,7 +889,7 @@ int FileJournal::prepare_single_write(bufferlist& bl, off64_t& queue_pos, uint64
     bufferptr bp = buffer::create_static(pre_pad, zero_buf);
     bl.push_back(bp);
   }
-  bl.claim_append(ebl);
+  bl.claim_append(ebl, false /* ! strong */); // potential zero-copy
 
   if (h.post_pad) {
     bufferptr bp = buffer::create_static(post_pad, zero_buf);
