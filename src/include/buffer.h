@@ -488,7 +488,12 @@ public:
     }
     ~list() {}
 
-    list(const list& other) : _buffers(other._buffers), _len(other._len), last_p(this) { }
+    list(const list& other) : _buffers(other._buffers), _len(other._len),
+			      last_p(this) {
+      // make strong-claim semantics the unmarked case
+      strong_claim_inplace();
+    }
+
     list& operator= (const list& other) {
       if (this != &other) {
         _buffers = other._buffers;
