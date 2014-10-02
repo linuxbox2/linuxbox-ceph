@@ -158,6 +158,7 @@ public:
 
 #if defined(HAVE_XIO)
  static raw* create_msg(unsigned len, char *buf, XioCompletionHook *m_hook);
+ static raw* create_reg(struct xio_iovec_ex *iov);
 #endif
 
   /*

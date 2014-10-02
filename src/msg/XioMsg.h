@@ -158,6 +158,7 @@ public:
 		    > Queue;
 };
 
+extern struct xio_mempool *xio_msgr_reg_mpool;
 extern struct xio_mempool *xio_msgr_noreg_mpool;
 
 #define XIO_MSGR_IOVLEN 16

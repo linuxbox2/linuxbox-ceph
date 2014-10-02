@@ -30,6 +30,7 @@ atomic_t initialized;
 
 atomic_t XioMessenger::nInstances;
 
+struct xio_mempool *xio_msgr_reg_mpool;
 struct xio_mempool *xio_msgr_noreg_mpool;
 
 static struct xio_session_ops xio_msgr_ops;
@@ -117,6 +118,20 @@ static int on_new_session(struct xio_session *session,
     << " user_context " << cb_user_context << dendl;
 
   return (msgr->new_session(session, req, cb_user_context));
+}
+
+static int assign_data_in_buf(struct xio_msg *msg, void *conn_user_context)
+{
+  struct xio_iovec_ex *iovs = vmsg_sglist(&msg->in);
+  int n_iovs = vmsg_sglist_nents(&msg->in);
+
+  // to start, do the simplest method (skip gather)
+  for (int ix = 0; ix < n_iovs; ++ix) {
+    struct xio_iovec_ex *iov = &iovs[ix];
+    buffer::create_reg(iov);
+  }
+
+  return 0;
 }
 
 static int on_msg(struct xio_session *session,
@@ -280,6 +295,10 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_QUEUE_DEPTH,
 		  &xopt, sizeof(unsigned));
 
+      xopt = 512;
+       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_TRANS_BUF_THRESHOLD,
+		  &xopt, sizeof(unsigned));
+
       /* and unregisterd one */
 #define XMSG_MEMPOOL_QUANTUM 4096
 
@@ -304,15 +323,46 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 				       cct->_conf->xio_mp_max_page,
 				       XMSG_MEMPOOL_QUANTUM);
 
+      xio_msgr_reg_mpool =
+	xio_mempool_create(-1 /* nodeid */,
+			   XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC |
+			   XIO_MEMPOOL_FLAG_REG_MR);
+
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, getpagesize(),
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_page,
+				       XMSG_MEMPOOL_QUANTUM);
+
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, 2 * getpagesize(),
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_page,
+				       XMSG_MEMPOOL_QUANTUM);
+
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, 4 * getpagesize(),
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_page,
+				       XMSG_MEMPOOL_QUANTUM);
+
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, 4*1024*1024,
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_page,
+				       XMSG_MEMPOOL_QUANTUM);
+
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, 8*1024*1024,
+				       0,
+				       cct->_conf->xio_mp_max_page,
+				       XMSG_MEMPOOL_QUANTUM);
+
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
       xio_msgr_ops.on_new_session = on_new_session;
       xio_msgr_ops.on_session_established = NULL;
       xio_msgr_ops.on_msg = on_msg;
-      xio_msgr_ops.on_ow_msg_send_complete = on_ow_msg_send_complete;
       xio_msgr_ops.on_msg_error = on_msg_error;
       xio_msgr_ops.on_cancel = on_cancel;
       xio_msgr_ops.on_cancel_request = on_cancel_request;
+      xio_msgr_ops.assign_data_in_buf = assign_data_in_buf;
+      xio_msgr_ops.on_ow_msg_send_complete = on_ow_msg_send_complete;
 
       /* mark initialized */
       initialized.set(1);

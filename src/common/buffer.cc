@@ -548,11 +548,20 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
 
   class buffer::xio_mempool : public buffer::raw {
   public:
-    struct xio_mempool_obj *mp;
-    xio_mempool(struct xio_mempool_obj *_mp, unsigned l) :
-      raw((char*)mp->addr, l), mp(_mp)
+    struct xio_mempool_obj mp_this, mp_buf;
+    xio_mempool(struct xio_mempool_obj& _mp,
+		struct xio_mempool_obj& _mp2,
+		unsigned l) :
+      raw((char*)_mp2.addr, l), mp_this(_mp), mp_buf(_mp2)
       { }
-    ~xio_mempool() {}
+
+    static void operator delete(void *p)
+    {
+      xio_mempool *xm = static_cast<xio_mempool*>(p);
+      xio_mempool_free(&xm->mp_buf);
+      xio_mempool_free(&xm->mp_this);
+    }
+
     raw* clone_empty() {
       return new buffer::raw_char(len);
     }
@@ -562,7 +571,7 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
   {
     buffer::xio_mempool *mb = dynamic_cast<buffer::xio_mempool*>(bp.get_raw());
     if (mb) {
-      return mb->mp;
+      return &(mb->mp_this);
     }
     return NULL;
   }
@@ -573,6 +582,16 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     buffer::raw* bp =
       static_cast<buffer::raw*>(pool.alloc(sizeof(xio_msg_buffer)));
     new (bp) xio_msg_buffer(m_hook, buf, len);
+    return bp;
+  }
+
+  buffer::raw* buffer::create_reg(struct xio_iovec_ex *iov) {
+    struct xio_mempool_obj mp, mp2;
+    xio_mempool_alloc(xio_msgr_noreg_mpool, sizeof(xio_mempool), &mp);
+    buffer::raw* bp = static_cast<buffer::raw*>(mp.addr);
+    xio_mempool_alloc(xio_msgr_reg_mpool, iov->iov_len, &mp2);
+    // placement construct it
+    new (bp) xio_mempool(mp, mp2, iov->iov_len);
     return bp;
   }
 #endif /* HAVE_XIO */
