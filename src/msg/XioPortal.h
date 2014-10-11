@@ -19,7 +19,6 @@
 extern "C" {
 #include "libxio.h"
 }
-#include "XioInSeq.h"
 #include <boost/lexical_cast.hpp>
 #include "SimplePolicyMessenger.h"
 #include "XioConnection.h"
@@ -98,7 +97,7 @@ private:
 
   };
 
-  XioMessenger *msgr;
+  XioMessenger* msgr;
   struct xio_context *ctx;
   struct xio_server *server;
   SubmitQueue submit_q;
@@ -142,21 +141,6 @@ public:
   int bind(struct xio_session_ops *ops, const string &base_uri,
 	   uint16_t port, uint16_t *assigned_port);
 
-  inline void release_xio_rsp(XioRsp* xrsp) {
-    struct xio_msg *msg = xrsp->dequeue();
-    struct xio_msg *next_msg = NULL;
-    while (msg) {
-      next_msg = static_cast<struct xio_msg *>(msg->user_context);
-      int code = xio_release_msg(msg);
-      if (unlikely(code)) {
-	/* very unlikely, so log it */
-	xrsp->xcon->msg_release_fail(msg, code);
-      }
-      msg =  next_msg;
-    }
-    xrsp->finalize(); /* unconditional finalize */
-  }
-
   void enqueue_for_send(XioConnection *xcon, XioSubmit *xs)
     {
       if (! _shutdown) {
@@ -174,8 +158,7 @@ public:
       }
 	break;
       default:
-	/* INCOMING_MSG_RELEASE */
-	release_xio_rsp(static_cast<XioRsp*>(xs));
+	abort();
       break;
       };
     }
@@ -229,8 +212,7 @@ public:
 		xs->xcon->send.set(msg->timestamp); /* XXX atomic? */
 	      break;
 	    default:
-	      /* INCOMING_MSG_RELEASE */
-	      release_xio_rsp(static_cast<XioRsp*>(xs));
+	      abort();
 	    break;
 	    };
 	  }

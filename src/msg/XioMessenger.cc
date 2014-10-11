@@ -120,18 +120,14 @@ static int on_new_session(struct xio_session *session,
   return (msgr->new_session(session, req, cb_user_context));
 }
 
-static int assign_data_in_buf(struct xio_msg *msg, void *conn_user_context)
+static int assign_data_in_buf(struct xio_msg *msg,
+			      void *conn_user_context)
 {
-  struct xio_iovec_ex *iovs = vmsg_sglist(&msg->in);
-  int n_iovs = vmsg_sglist_nents(&msg->in);
+  XioConnection* xcon = static_cast<XioConnection*>(conn_user_context);
 
-  // to start, do the simplest method (skip gather)
-  for (int ix = 0; ix < n_iovs; ++ix) {
-    struct xio_iovec_ex *iov = &iovs[ix];
-    buffer::create_reg(iov);
-  }
+  dout(25) << "assign_data_in_buf xcon " << xcon << dendl;
 
-  return 0;
+  return (xcon->assign_data(msg));
 }
 
 static int on_msg(struct xio_session *session,

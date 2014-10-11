@@ -16,21 +16,3 @@
 #include "XioMessenger.h"
 #include "XioConnection.h"
 #include "XioMsg.h"
-
-
-int XioCompletionHook::release_msgs()
-{
-  XioRsp *xrsp;
-  int r = msg_seq.size();
-  cl_flag = true;
-
-  /* queue for release */
-  xrsp = (XioRsp *) rsp_pool.alloc(sizeof(XioRsp));
-  new (xrsp) XioRsp(xcon, this);
-
-  /* merge with portal traffic */
-  xcon->portal->enqueue_for_send(xcon, xrsp);
-
-  assert(r);
-  return r;
-}

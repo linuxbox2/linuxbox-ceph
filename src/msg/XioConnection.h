@@ -21,10 +21,10 @@
 extern "C" {
 #include "libxio.h"
 }
-#include "XioInSeq.h"
 #include "Connection.h"
 #include "Messenger.h"
 #include "include/atomic.h"
+
 
 #define XIO_ALL_FEATURES (CEPH_FEATURES_ALL & \
 			  ~CEPH_FEATURE_MSGR_KEEPALIVE2)
@@ -34,6 +34,20 @@ namespace bi = boost::intrusive;
 class XioPortal;
 class XioMessenger;
 class XioMsg;
+
+class XioMsgCnt
+{
+public:
+  __le32 msg_cnt;
+  buffer::list bl;
+public:
+  XioMsgCnt(buffer::ptr p)
+    {
+      bl.append(p);
+      buffer::list::iterator bl_iter = bl.begin();
+      ::decode(msg_cnt, bl_iter);
+    }
+};
 
 class XioConnection : public Connection
 {
@@ -82,7 +96,33 @@ private:
   } state;
 
   /* batching */
-  XioInSeq in_seq;
+  struct msg_seq {
+    XioConnection *xcon;
+    bool p;
+    int cnt;
+    std::list<struct xio_msg *> seq;
+    buffer::list bl;
+
+    msg_seq(XioConnection *_xcon) : xcon(_xcon), p(false) {}
+
+    void append(struct xio_msg* req) {
+      seq.push_back(req); --cnt;
+    }
+
+    void release() {
+      std::list<struct xio_msg *>::iterator iter;
+      for (iter = seq.begin(); iter != seq.end(); ++iter) {
+	struct xio_msg *msg = *iter;
+	int code = xio_release_msg(msg);
+	if (unlikely(code)) {
+	  /* very unlikely */
+	  xcon->msg_release_fail(msg, code);
+	}
+      }
+      seq.clear();
+      bl.clear(); // and disconnect buffers (released later)
+    }
+  } in_seq;
 
   // conns_entity_map comparison functor
   struct EntityComp
@@ -179,6 +219,48 @@ public:
   void set_special_handling(int n) { special_handling = n; }
 
   int passive_setup(); /* XXX */
+
+  int assign_data(struct xio_msg *req) {
+    CephContext *cct = get_messenger()->cct;
+    /* XXX Accelio guarantees message ordering at
+     * xio_session */
+    if (! in_seq.p) {
+      if (! req->in.header.iov_len) {
+	lsubdout(cct, xio, 0) << __func__ <<
+	  " empty header: packet out of sequence?" << dendl;
+	xio_release_msg(req);
+	return 0;
+      }
+      XioMsgCnt
+	msg_cnt(buffer::create_static(req->in.header.iov_len,
+				      (char*)req->in.header.iov_base));
+      lsubdout(cct, xio, 10) << __func__ << " receive req "
+			     << "treq " << req
+			     << " msg_cnt " << msg_cnt.msg_cnt
+			     << " iov_base "
+			     << req->in.header.iov_base
+			     << " iov_len "
+			     << (int) req->in.header.iov_len
+			     << " nents " << req->in.pdata_iov.nents
+			     << " conn " << conn << " sess " << session
+			     << " sn " << req->sn << dendl;
+      assert(session == this->session);
+      in_seq.cnt = msg_cnt.msg_cnt;
+      in_seq.p = true;
+    } else {
+      /* XXX major sequence error */
+      assert(! req->in.header.iov_len);
+    }
+    in_seq.append(req);
+    struct xio_iovec_ex *iovs = vmsg_sglist(&req->in);
+    int n_iovs = vmsg_sglist_nents(&req->in);
+    // XXX do the simplest method (skip gather)
+    for (int ix = 0; ix < n_iovs; ++ix) {
+      struct xio_iovec_ex *iov = &iovs[ix];
+      in_seq.bl.append(buffer::create_reg(iov));
+    }
+    return 0;
+  } /* assign_data */
 
   int on_msg_req(struct xio_session *session, struct xio_msg *req,
 		 int more_in_batch, void *cb_user_context);

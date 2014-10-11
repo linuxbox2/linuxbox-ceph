@@ -78,7 +78,8 @@ void print_ceph_msg(const char *tag, Message *m)
   }
 }
 
-XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
+XioConnection::XioConnection(XioMessenger* m,
+			     XioConnection::type _type,
 			     const entity_inst_t& _peer) :
   Connection(m),
   xio_conn_type(_type),
@@ -88,7 +89,7 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
   session(NULL),
   conn(NULL),
   magic(m->get_magic()),
-  in_seq()
+  in_seq(this)
 {
   pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
   if (xio_conn_type == XioConnection::ACTIVE)
@@ -135,78 +136,37 @@ int XioConnection::passive_setup()
 
 #define uint_to_timeval(tv, s) ((tv).tv_sec = (s), (tv).tv_usec = 0)
 
-static inline XioCompletionHook* pool_alloc_xio_completion_hook(
-  XioConnection *xcon, Message *m, XioInSeq& msg_seq)
-{
-  struct xio_mempool_obj mp_mem;
-  int e = xpool_alloc(xio_msgr_noreg_mpool,
-		      sizeof(XioCompletionHook), &mp_mem);
-  if (!!e)
-    return NULL;
-  XioCompletionHook *xhook = (XioCompletionHook*) mp_mem.addr;
-  new (xhook) XioCompletionHook(xcon, m, msg_seq, mp_mem);
-  return xhook;
-}
-
 int XioConnection::on_msg_req(struct xio_session *session,
 			      struct xio_msg *req,
 			      int more_in_batch,
 			      void *cb_user_context)
 {
   struct xio_msg *treq = req;
-  bool xio_ptr;
 
   /* XXX Accelio guarantees message ordering at
    * xio_session */
-
-  if (! in_seq.p()) {
-    if (!treq->in.header.iov_len) {
-	derr << __func__ << " empty header: packet out of sequence?" << dendl;
-	xio_release_msg(req);
-	return 0;
-    }
-    XioMsgCnt msg_cnt(
-      buffer::create_static(treq->in.header.iov_len,
-			    (char*) treq->in.header.iov_base));
-    dout(10) << __func__ << " receive req " << "treq " << treq
-      << " msg_cnt " << msg_cnt.msg_cnt
-      << " iov_base " << treq->in.header.iov_base
-      << " iov_len " << (int) treq->in.header.iov_len
-      << " nents " << treq->in.pdata_iov.nents
-      << " conn " << conn << " sess " << session
-      << " sn " << treq->sn << dendl;
-    assert(session == this->session);
-    in_seq.set_count(msg_cnt.msg_cnt);
-  } else {
-    /* XXX major sequence error */
-    assert(! treq->in.header.iov_len);
-  }
-
-  in_seq.append(req);
-  if (in_seq.count() > 0) {
+  if (in_seq.cnt > 0)
     return 0;
-  }
+  else
+    in_seq.p = false;
 
   XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
-  XioCompletionHook *m_hook =
-    pool_alloc_xio_completion_hook(this, NULL /* msg */, in_seq);
-  XioInSeq& msg_seq = m_hook->msg_seq;
-  in_seq.clear();
-
   ceph_msg_header header;
   ceph_msg_footer footer;
   buffer::list payload, middle, data;
 
   struct timeval t1, t2;
 
-  dout(4) << __func__ << " " << "msg_seq.size()="  << msg_seq.size() <<
-    dendl;
+  list<struct xio_msg *>& msg_seq = in_seq.seq;
+  list<struct xio_msg *>::iterator msg_iter = msg_seq.begin();
 
-  struct xio_msg* msg_iter = msg_seq.begin();
-  treq = msg_iter;
+  dout(11) << __func__ << " " << "msg_seq.size()="  << msg_seq.size()
+	  << dendl;
+
+  treq = *msg_iter;
   XioMsgHdr hdr(header, footer,
 		buffer::create_static(treq->in.header.iov_len,
-				      (char*) treq->in.header.iov_base));
+				    (char*) treq->in.header.iov_base));
 
   uint_to_timeval(t1, treq->timestamp);
 
@@ -216,43 +176,22 @@ int XioConnection::on_msg_req(struct xio_session *session,
     }
   }
 
-  unsigned int ix, blen, iov_len;
-  struct xio_iovec_ex *msg_iov, *iovs;
-  uint32_t take_len, left_len = 0;
-  char *left_base = NULL;
+  unsigned int blen, msg_off;
+  uint32_t take_len, left_len;
 
-  ix = 0;
   blen = header.front_len;
+  buffer::ptr mbuf;
 
-  while (blen && (msg_iter != msg_seq.end())) {
-    treq = msg_iter;
-    xio_ptr = (req->in.sgl_type == XIO_SGL_TYPE_IOV_PTR);
-    iov_len = (xio_ptr) ? treq->in.pdata_iov.nents : treq->in.data_iov.nents;
-    iovs = (xio_ptr) ? treq->in.pdata_iov.sglist : treq->in.data_iov.sglist;
-    for (; blen && (ix < iov_len); ++ix) {
-      msg_iov = &iovs[ix];
-
-      /* XXX need to detect any buffer which needs to be
-       * split due to coalescing of a segment (front, middle,
-       * data) boundary */
-
-      take_len = MIN(blen, msg_iov->iov_len);
-      payload.append(
-	buffer::create_msg(
-	  take_len, (char*) msg_iov->iov_base, m_hook));
-      blen -= take_len;
-      if (! blen) {
-	left_len = msg_iov->iov_len - take_len;
-	if (left_len) {
-	  left_base = ((char*) msg_iov->iov_base) + take_len;
-	}
-      }
-    }
-    /* XXX as above, if a buffer is split, then we needed to track
-     * the new start (carry) and not advance */
-    if (ix == iov_len) {
-      msg_seq.next(&msg_iter);
-      ix = 0;
+  while (blen && in_seq.bl.length()) {
+    mbuf = in_seq.bl.pop_front();
+    msg_off = 0;
+    take_len = MIN(blen, mbuf.length());
+    payload.append(mbuf, msg_off, take_len);
+    blen -= take_len;
+    if (! blen) {
+      left_len = mbuf.length() - take_len;
+      if (left_len)
+	msg_off = take_len;
     }
   }
 
@@ -266,62 +205,41 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   blen = header.middle_len;
 
-  if (blen && left_len) {
-    middle.append(
-      buffer::create_msg(left_len, left_base, m_hook));
-    left_len = 0;
-  }
+  if (blen && left_len)
+    middle.append(mbuf, msg_off, left_len);
 
-  while (blen && (msg_iter != msg_seq.end())) {
-    treq = msg_iter;
-    xio_ptr = (req->in.sgl_type == XIO_SGL_TYPE_IOV_PTR);
-    iov_len = (xio_ptr) ? treq->in.pdata_iov.nents : treq->in.data_iov.nents;
-    iovs = (xio_ptr) ? treq->in.pdata_iov.sglist : treq->in.data_iov.sglist;
-    for (; blen && (ix < iov_len); ++ix) {
-      msg_iov = &iovs[ix];
-      take_len = MIN(blen, msg_iov->iov_len);
-      middle.append(
-	buffer::create_msg(
-	  take_len, (char*) msg_iov->iov_base, m_hook));
-      blen -= take_len;
-      if (! blen) {
-	left_len = msg_iov->iov_len - take_len;
-	if (left_len) {
-	  left_base = ((char*) msg_iov->iov_base) + take_len;
-	}
-      }
-    }
-    if (ix == iov_len) {
-      msg_seq.next(&msg_iter);
-      ix = 0;
+  while (blen && in_seq.bl.length()) {
+    mbuf = in_seq.bl.pop_front();
+    msg_off = 0;
+    take_len = MIN(blen, mbuf.length());
+    middle.append(mbuf, msg_off, take_len);
+    blen -= take_len;
+    if (! blen) {
+      left_len = mbuf.length() - take_len;
+      if (left_len)
+	msg_off = take_len;
     }
   }
 
   blen = header.data_len;
 
-  if (blen && left_len) {
-    data.append(
-      buffer::create_msg(left_len, left_base, m_hook));
-    left_len = 0;
+  if (blen && left_len)
+    data.append(mbuf, msg_off, left_len);
+
+  while (blen && in_seq.bl.length()) {
+    mbuf = in_seq.bl.pop_front();
+    msg_off = 0;
+    take_len = MIN(blen, mbuf.length());
+    data.append(mbuf, msg_off, take_len);
+    blen -= take_len;
+    if (! blen) {
+      left_len = mbuf.length() - take_len;
+      if (left_len)
+	msg_off = take_len;
+    }
   }
 
-  while (blen && (msg_iter != msg_seq.end())) {
-    treq = msg_iter;
-    xio_ptr = (req->in.sgl_type == XIO_SGL_TYPE_IOV_PTR);
-    iov_len = (xio_ptr) ? treq->in.pdata_iov.nents : treq->in.data_iov.nents;
-    iovs = (xio_ptr) ? treq->in.pdata_iov.sglist : treq->in.data_iov.sglist;
-    for (; blen && (ix < iov_len); ++ix) {
-      msg_iov = &iovs[ix];
-      data.append(
-	buffer::create_msg(
-	  msg_iov->iov_len, (char*) msg_iov->iov_base, m_hook));
-      blen -= msg_iov->iov_len;
-    }
-    if (ix == iov_len) {
-      msg_seq.next(&msg_iter);
-      ix = 0;
-    }
-  }
+  in_seq.release(); // release Accelio msgs, clear buffers
 
   uint_to_timeval(t2, treq->timestamp);
 
@@ -329,16 +247,12 @@ int XioConnection::on_msg_req(struct xio_session *session,
   recv.set(treq->timestamp);
 
   Message *m =
-    decode_message(msgr->cct, msgr->crcflags, header, footer, payload, middle,
-		   data);
+    decode_message(msgr->cct, msgr->crcflags, header, footer, payload,
+		   middle, data);
 
   if (m) {
     /* completion */
     m->set_connection(this);
-
-    /* reply hook */
-    m_hook->set_message(m);
-    m->set_completion_hook(m_hook);
 
     /* trace flag */
     m->set_magic(magic);
@@ -376,7 +290,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
   } else {
     /* responds for undecoded messages and frees hook */
     dout(4) << "decode m failed" << dendl;
-    m_hook->on_err_finalize(this);
   }
 
   return 0;

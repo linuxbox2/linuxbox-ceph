@@ -527,25 +527,6 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
   };
 
 #if defined(HAVE_XIO)
-  class buffer::xio_msg_buffer : public buffer::raw {
-  private:
-    XioCompletionHook* m_hook;
-  public:
-    xio_msg_buffer(XioCompletionHook* _m_hook, const char *d, unsigned l) :
-      raw((char*)d, l), m_hook(_m_hook->get()) {}
-
-    static void operator delete(void *p)
-    {
-      xio_msg_buffer *buf = static_cast<xio_msg_buffer*>(p);
-      // return hook ref (counts against pool);  it appears illegal
-      // to do this in our dtor, because this fires after that
-      buf->m_hook->put();
-    }
-    raw* clone_empty() {
-      return new buffer::raw_char(len);
-    }
-  };
-
   class buffer::xio_mempool : public buffer::raw {
   public:
     struct xio_mempool_obj mp_this, mp_buf;
@@ -574,15 +555,6 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
       return &(mb->mp_this);
     }
     return NULL;
-  }
-
-  buffer::raw* buffer::create_msg(
-    unsigned len, char *buf, XioCompletionHook *m_hook) {
-    XioPool& pool = m_hook->get_pool();
-    buffer::raw* bp =
-      static_cast<buffer::raw*>(pool.alloc(sizeof(xio_msg_buffer)));
-    new (bp) xio_msg_buffer(m_hook, buf, len);
-    return bp;
   }
 
   buffer::raw* buffer::create_reg(struct xio_iovec_ex *iov) {

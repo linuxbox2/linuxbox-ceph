@@ -17,7 +17,8 @@
 
 #define dout_subsys ceph_subsys_xio
 
-int XioPortal::bind(struct xio_session_ops *ops, const string &base_uri,
+int XioPortal::bind(struct xio_session_ops *ops,
+		    const string &base_uri,
 		    uint16_t port, uint16_t *assigned_port)
 {
   // format uri
