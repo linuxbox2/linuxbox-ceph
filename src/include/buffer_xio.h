@@ -34,7 +34,7 @@ namespace ceph {
       XioCompletionHook* m_hook;
     public:
       xio_msg_buffer(XioCompletionHook* _m_hook, const char *d, unsigned l) :
-	raw((char*)d, l), m_hook(_m_hook->get()) {}
+	raw(type_xio_msg, l, (char*)d), m_hook(_m_hook->get()) {}
 
       static void operator delete(void *p)
 	{
@@ -52,7 +52,7 @@ namespace ceph {
     public:
       struct xio_mempool_obj *mp;
       xio_mempool(struct xio_mempool_obj *_mp, unsigned l) :
-	raw((char*)mp->addr, l), mp(_mp)
+	raw(type_xio, l, (char*)mp->addr), mp(_mp)
 	{ }
       ~xio_mempool() {}
       raw* clone_empty() {

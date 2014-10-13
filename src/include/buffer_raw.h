@@ -64,21 +64,36 @@ namespace ceph {
 
     class raw {
     protected:
+      // raw buffer types
+      enum {
+	type_malloc         = 0,
+	type_aligned        = 1,
+	type_pipe           = 2,
+	type_char           = 3,
+	type_static         = 4,
+	type_xio            = 5,
+	type_xio_msg        = 6,
+      };
+      static const int type_mask = 0x7; // low 3 bits
+
       char *data;
       unsigned len;
       atomic_t nref;
+      uint8_t flags;
 
       mutable Mutex crc_lock;
       map<pair<size_t, size_t>, pair<uint32_t, uint32_t> > crc_map;
 
-      raw(unsigned l)
-	: data(NULL), len(l), nref(0),
+      int get_type() const { return flags & type_mask; }
+
+      // private constructor, use factory functions to enforce
+      // type-specific invariants
+      raw(uint8_t flags, unsigned len, char *data = NULL)
+	: data(data), len(len), nref(0), flags(flags),
 	  crc_lock("buffer::raw::crc_lock", false, false)
 	{ }
-      raw(char *c, unsigned l)
-	: data(c), len(l), nref(0),
-	  crc_lock("buffer::raw::crc_lock", false, false)
-	{ }
+
+      // private destructor, only deleted by ptr (a friend)
       virtual ~raw() {};
 
       // no copying.
@@ -155,7 +170,7 @@ namespace ceph {
 
     class raw_malloc : public raw {
     public:
-      raw_malloc(unsigned l) : raw(l) {
+      raw_malloc(unsigned l) : raw(type_malloc, l) {
 	if (len) {
 	  data = (char *)malloc(len);
 	  if (!data)
@@ -168,7 +183,7 @@ namespace ceph {
 	      << l << " " << buffer::get_total_alloc() << bendl;
       }
 
-      raw_malloc(unsigned l, char *b) : raw(b, l) {
+      raw_malloc(unsigned l, char *b) : raw(type_malloc, l, b) {
 	inc_total_alloc(len);
 	bdout << "raw_malloc " << this << " alloc " << (void *)data << " "
 	      << l << " " << buffer::get_total_alloc() << bendl;
@@ -189,7 +204,7 @@ namespace ceph {
 #ifndef __CYGWIN__
     class raw_mmap_pages : public raw {
     public:
-      raw_mmap_pages(unsigned l) : raw(l) {
+      raw_mmap_pages(unsigned l) : raw(type_aligned, l) {
 	data = (char*)::mmap(NULL, len, PROT_READ|PROT_WRITE,
 			     MAP_PRIVATE|MAP_ANON, -1, 0);
 	if (!data)
@@ -213,7 +228,7 @@ namespace ceph {
 
     class raw_posix_aligned : public raw {
     public:
-      raw_posix_aligned(unsigned l) : raw(l) {
+      raw_posix_aligned(unsigned l) : raw(type_aligned, l) {
 #ifdef DARWIN
 	data = (char *) valloc (len);
 #else
@@ -246,7 +261,7 @@ namespace ceph {
     class raw_hack_aligned : public raw {
       char *realdata;
     public:
-      raw_hack_aligned(unsigned l) : raw(l) {
+      raw_hack_aligned(unsigned l) : raw(type_aligned, l) {
 	realdata = new char[len+CEPH_PAGE_SIZE-1];
 	unsigned off = ((unsigned)realdata) & ~CEPH_PAGE_MASK;
 	if (off)
@@ -272,7 +287,7 @@ namespace ceph {
 #ifdef CEPH_HAVE_SPLICE
     class raw_pipe : public raw {
     public:
-      raw_pipe(unsigned len) : raw(len), source_consumed(false) {
+      raw_pipe(unsigned len) : raw(type_pipe, len), source_consumed(false) {
 	size_t max = get_max_pipe_size();
 	if (len > max) {
 	  bdout << "raw_pipe: requested length " << len
@@ -457,7 +472,7 @@ namespace ceph {
      */
     class raw_char : public raw {
     public:
-      raw_char(unsigned l) : raw(l) {
+      raw_char(unsigned l) : raw(type_char, l) {
 	if (len)
 	  data = new char[len];
 	else
@@ -466,7 +481,7 @@ namespace ceph {
 	bdout << "raw_char " << this << " alloc " << (void *)data << " " << l
 	      << " " << buffer::get_total_alloc() << bendl;
       }
-      raw_char(unsigned l, char *b) : raw(b, l) {
+      raw_char(unsigned l, char *b) : raw(type_char, l, b) {
 	inc_total_alloc(len);
 	bdout << "raw_char " << this << " alloc " << (void *)data << " " << l
 	      << " " << buffer::get_total_alloc() << bendl;
@@ -484,7 +499,7 @@ namespace ceph {
 
     class raw_static : public raw {
     public:
-      raw_static(const char *d, unsigned l) : raw((char*)d, l) { }
+      raw_static(const char *d, unsigned l) : raw(type_static, l, (char*)d) { }
       ~raw_static() {}
       raw* clone_empty() {
 	return new raw_char(len);
