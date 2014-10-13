@@ -44,7 +44,7 @@ namespace ceph {
 	  buf->m_hook->put();
 	}
       raw* clone_empty() {
-	return new raw_char(len);
+	return raw::create(len);
       }
     };
 
@@ -56,7 +56,7 @@ namespace ceph {
 	{ }
       ~xio_mempool() {}
       raw* clone_empty() {
-	return new raw_char(len);
+	return raw::create(len);
       }
     };
 

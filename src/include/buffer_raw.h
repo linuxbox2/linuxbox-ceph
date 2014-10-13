@@ -282,6 +282,21 @@ namespace ceph {
       }
 #endif // CEPH_HAVE_SPLICE
 
+      // type_char
+      void init_char() {
+	if (!data && len)
+	  data = new char[len];
+	inc_total_alloc(len);
+	bdout << "raw_char " << this << " alloc " << (void *)data << " " << len
+	      << " " << buffer::get_total_alloc() << bendl;
+      }
+      void cleanup_char() {
+	delete[] data;
+	dec_total_alloc(len);
+	bdout << "raw_char " << this << " free " << (void *)data << " "
+	      << buffer::get_total_alloc() << bendl;
+      }
+
 
       virtual raw* clone_empty() {
 	switch (get_type()) {
@@ -314,6 +329,9 @@ namespace ceph {
 	case type_pipe:
 	  init_pipe();
 	  break;
+	case type_char:
+	  init_char();
+	  break;
 	}
       }
 
@@ -329,6 +347,9 @@ namespace ceph {
 	  break;
 	case type_pipe:
 	  cleanup_pipe();
+	  break;
+	case type_char:
+	  cleanup_char();
 	  break;
 	}
       }
@@ -425,8 +446,12 @@ namespace ceph {
       }
 
 
-      static raw* create(unsigned len);
-      static raw* claim_char(unsigned len, char *buf);
+      static raw* create(unsigned len) {
+	return new raw(type_char, len);
+      }
+      static raw* claim_char(unsigned len, char *buf) {
+	return new raw(type_char, len, buf);
+      }
       static raw* create_malloc(unsigned len) {
 	return new raw(type_malloc, len);
       }
@@ -456,57 +481,19 @@ namespace ceph {
     };
 
 
-    /*
-     * primitive buffer types
-     */
-    class raw_char : public raw {
-    public:
-      raw_char(unsigned l) : raw(type_char, l) {
-	if (len)
-	  data = new char[len];
-	else
-	  data = 0;
-	inc_total_alloc(len);
-	bdout << "raw_char " << this << " alloc " << (void *)data << " " << l
-	      << " " << buffer::get_total_alloc() << bendl;
-      }
-      raw_char(unsigned l, char *b) : raw(type_char, l, b) {
-	inc_total_alloc(len);
-	bdout << "raw_char " << this << " alloc " << (void *)data << " " << l
-	      << " " << buffer::get_total_alloc() << bendl;
-      }
-      ~raw_char() {
-	delete[] data;
-	dec_total_alloc(len);
-	bdout << "raw_char " << this << " free " << (void *)data << " "
-	      << buffer::get_total_alloc() << bendl;
-      }
-      raw* clone_empty() {
-	return new raw_char(len);
-      }
-    };
-
     class raw_static : public raw {
     public:
       raw_static(const char *d, unsigned l) : raw(type_static, l, (char*)d) { }
       ~raw_static() {}
       raw* clone_empty() {
-	return new raw_char(len);
+	return raw::create(len);
       }
     };
 
     inline raw* copy(const char *c, unsigned len) {
-      raw* r = new raw_char(len);
+      raw* r = raw::create(len);
       memcpy(r->get_data(), c, len);
       return r;
-    }
-
-    inline raw* raw::create(unsigned len) {
-      return new raw_char(len);
-    }
-
-    inline raw* raw::claim_char(unsigned len, char *buf) {
-      return new raw_char(len, buf);
     }
 
     inline raw* raw::create_static(unsigned len, char *buf) {
