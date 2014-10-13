@@ -68,10 +68,16 @@ namespace ceph {
       unsigned len;
       atomic_t nref;
 
-      raw(unsigned l) : data(NULL), len(l), nref(0)
+      mutable Mutex crc_lock;
+      map<pair<size_t, size_t>, pair<uint32_t, uint32_t> > crc_map;
+
+      raw(unsigned l)
+	: data(NULL), len(l), nref(0),
+	  crc_lock("buffer::raw::crc_lock", false, false)
 	{ }
       raw(char *c, unsigned l)
-	: data(c), len(l), nref(0)
+	: data(c), len(l), nref(0),
+	  crc_lock("buffer::raw::crc_lock", false, false)
 	{ }
       virtual ~raw() {};
 
@@ -107,15 +113,28 @@ namespace ceph {
 	return (len & ~CEPH_PAGE_MASK) == 0;
       }
 
-      virtual bool get_crc(const pair<size_t, size_t> &fromto,
-			   pair<uint32_t, uint32_t> *crc) const {
-	return false;
+      bool get_crc(const pair<size_t, size_t> &fromto,
+		   pair<uint32_t, uint32_t> *crc) const {
+	Mutex::Locker l(crc_lock);
+	map<pair<size_t, size_t>, pair<uint32_t, uint32_t> >::const_iterator i
+	  = crc_map.find(fromto);
+	if (i == crc_map.end())
+	  return false;
+	*crc = i->second;
+	return true;
       }
 
-      virtual void set_crc(const pair<size_t, size_t> &fromto,
-			   const pair<uint32_t, uint32_t> &crc) {}
+      void set_crc(const pair<size_t, size_t> &fromto,
+		   const pair<uint32_t, uint32_t> &crc) {
+	Mutex::Locker l(crc_lock);
+	crc_map[fromto] = crc;
+      }
 
-      virtual void invalidate_crc() {}
+      void invalidate_crc() {
+	Mutex::Locker l(crc_lock);
+	crc_map.clear();
+      }
+
 
       static raw* create(unsigned len);
       static raw* claim_char(unsigned len, char *buf);
@@ -130,49 +149,9 @@ namespace ceph {
 #endif
     };
 
-    class raw_crc : public raw {
+    class raw_malloc : public raw {
     public:
-      mutable Mutex crc_lock;
-      map<pair<size_t, size_t>, pair<uint32_t, uint32_t> > crc_map;
-
-      raw_crc(unsigned l) :
-	raw(l),
-	crc_lock("buffer::raw::crc_lock", false, false)
-	{}
-
-      raw_crc(char *c, unsigned l) :
-	raw(c, l),
-	crc_lock("buffer::raw::crc_lock", false, false)
-	{}
-
-      virtual ~raw_crc() {};
-
-      virtual bool get_crc(const pair<size_t, size_t> &fromto,
-			   pair<uint32_t, uint32_t> *crc) const {
-	Mutex::Locker l(crc_lock);
-	map<pair<size_t, size_t>, pair<uint32_t, uint32_t> >::const_iterator i
-	  = crc_map.find(fromto);
-	if (i == crc_map.end())
-	  return false;
-	*crc = i->second;
-	return true;
-      }
-
-      virtual void set_crc(const pair<size_t, size_t> &fromto,
-			   const pair<uint32_t, uint32_t> &crc) {
-	Mutex::Locker l(crc_lock);
-	crc_map[fromto] = crc;
-      }
-
-      virtual void invalidate_crc() {
-	Mutex::Locker l(crc_lock);
-	crc_map.clear();
-      }
-    };
-
-    class raw_malloc : public raw_crc {
-    public:
-      raw_malloc(unsigned l) : raw_crc(l) {
+      raw_malloc(unsigned l) : raw(l) {
 	if (len) {
 	  data = (char *)malloc(len);
 	  if (!data)
@@ -185,7 +164,7 @@ namespace ceph {
 	      << l << " " << buffer::get_total_alloc() << bendl;
       }
 
-      raw_malloc(unsigned l, char *b) : raw_crc(b, l) {
+      raw_malloc(unsigned l, char *b) : raw(b, l) {
 	inc_total_alloc(len);
 	bdout << "raw_malloc " << this << " alloc " << (void *)data << " "
 	      << l << " " << buffer::get_total_alloc() << bendl;
@@ -204,9 +183,9 @@ namespace ceph {
     };
 
 #ifndef __CYGWIN__
-    class raw_mmap_pages : public raw_crc {
+    class raw_mmap_pages : public raw {
     public:
-      raw_mmap_pages(unsigned l) : raw_crc(l) {
+      raw_mmap_pages(unsigned l) : raw(l) {
 	data = (char*)::mmap(NULL, len, PROT_READ|PROT_WRITE,
 			     MAP_PRIVATE|MAP_ANON, -1, 0);
 	if (!data)
@@ -228,9 +207,9 @@ namespace ceph {
       }
     };
 
-    class raw_posix_aligned : public raw_crc {
+    class raw_posix_aligned : public raw {
     public:
-      raw_posix_aligned(unsigned l) : raw_crc(l) {
+      raw_posix_aligned(unsigned l) : raw(l) {
 #ifdef DARWIN
 	data = (char *) valloc (len);
 #else
@@ -260,10 +239,10 @@ namespace ceph {
 #endif
 
 #ifdef __CYGWIN__
-    class raw_hack_aligned : public raw_crc {
+    class raw_hack_aligned : public raw {
       char *realdata;
     public:
-      raw_hack_aligned(unsigned l) : raw_crc(l) {
+      raw_hack_aligned(unsigned l) : raw(l) {
 	realdata = new char[len+CEPH_PAGE_SIZE-1];
 	unsigned off = ((unsigned)realdata) & ~CEPH_PAGE_MASK;
 	if (off)
@@ -472,9 +451,9 @@ namespace ceph {
     /*
      * primitive buffer types
      */
-    class raw_char : public raw_crc {
+    class raw_char : public raw {
     public:
-      raw_char(unsigned l) : raw_crc(l) {
+      raw_char(unsigned l) : raw(l) {
 	if (len)
 	  data = new char[len];
 	else
@@ -483,7 +462,7 @@ namespace ceph {
 	bdout << "raw_char " << this << " alloc " << (void *)data << " " << l
 	      << " " << buffer::get_total_alloc() << bendl;
       }
-      raw_char(unsigned l, char *b) : raw_crc(b, l) {
+      raw_char(unsigned l, char *b) : raw(b, l) {
 	inc_total_alloc(len);
 	bdout << "raw_char " << this << " alloc " << (void *)data << " " << l
 	      << " " << buffer::get_total_alloc() << bendl;
@@ -499,9 +478,9 @@ namespace ceph {
       }
     };
 
-    class raw_static : public raw_crc {
+    class raw_static : public raw {
     public:
-      raw_static(const char *d, unsigned l) : raw_crc((char*)d, l) { }
+      raw_static(const char *d, unsigned l) : raw((char*)d, l) { }
       ~raw_static() {}
       raw* clone_empty() {
 	return new raw_char(len);
