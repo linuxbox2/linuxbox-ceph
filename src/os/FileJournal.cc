@@ -654,7 +654,7 @@ int FileJournal::read_header()
   dout(10) << "read_header" << dendl;
   bufferlist bl;
 
-  ceph::buffer::ptr bp = ceph::buffer::create_page_aligned(block_size);
+  ceph::buffer::ptr bp = ceph::buffer::raw::create_page_aligned(block_size);
   bp.zero();
   int r = ::pread(fd, bp.c_str(), bp.length(), 0);
   bl.push_back(bp);
@@ -699,7 +699,7 @@ bufferptr FileJournal::prepare_header()
     header.committed_up_to = journaled_seq;
   }
   ::encode(header, bl);
-  bufferptr bp = ceph::buffer::create_page_aligned(get_top());
+  bufferptr bp = ceph::buffer::raw::create_page_aligned(get_top());
   bp.zero();
   memcpy(bp.c_str(), bl.c_str(), bl.length());
   return bp;
@@ -901,13 +901,13 @@ int FileJournal::prepare_single_write(bufferlist& bl, off64_t& queue_pos, uint64
 
   bl.append((const char*)&h, sizeof(h));
   if (pre_pad) {
-    bufferptr bp = ceph::buffer::create_static(pre_pad, zero_buf);
+    bufferptr bp = ceph::buffer::raw::create_static(pre_pad, zero_buf);
     bl.push_back(bp);
   }
   bl.claim_append(ebl);
 
   if (h.post_pad) {
-    bufferptr bp = ceph::buffer::create_static(post_pad, zero_buf);
+    bufferptr bp = ceph::buffer::raw::create_static(post_pad, zero_buf);
     bl.push_back(bp);
   }
   bl.append((const char*)&h, sizeof(h));
@@ -1647,7 +1647,7 @@ void FileJournal::wrap_read_bl(
     int64_t actual = ::lseek64(fd, pos, SEEK_SET);
     assert(actual == pos);
 
-    bufferptr bp = ceph::buffer::create(len);
+    bufferptr bp = ceph::buffer::raw::create(len);
     int r = safe_read_exact(fd, bp.c_str(), len);
     if (r) {
       derr << "FileJournal::wrap_read_bl: safe_read_exact " << pos << "~"

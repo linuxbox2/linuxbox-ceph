@@ -175,7 +175,7 @@ namespace ceph {
 	}
 
 	void copy(unsigned len, ptr &dest) {
-	  dest = create(len);
+	  dest = raw::create(len);
 	  copy(len, dest.c_str());
 	}
 
@@ -275,7 +275,7 @@ namespace ceph {
     public:
       list() : _len(0), last_p(this) {}
       list(unsigned prealloc) : _len(0), last_p(this) {
-	append_buffer = buffer::create(prealloc);
+	append_buffer = raw::create(prealloc);
 	append_buffer.set_length(0);   // unused, so far.
       }
       ~list() {}
@@ -468,9 +468,9 @@ namespace ceph {
 	{
 	  ptr nb;
 	  if ((_len & ~CEPH_PAGE_MASK) == 0)
-	    nb = buffer::create_page_aligned(_len);
+	    nb = raw::create_page_aligned(_len);
 	  else
-	    nb = buffer::create(_len);
+	    nb = raw::create(_len);
 	  rebuild(nb);
 	}
 
@@ -523,7 +523,7 @@ namespace ceph {
 		     (!p->is_page_aligned() ||
 		      !p->is_n_page_sized() ||
 		      (offset & ~CEPH_PAGE_MASK)));
-	    ptr nb(buffer::create_page_aligned(unaligned._len));
+	    ptr nb(raw::create_page_aligned(unaligned._len));
 	    unaligned.rebuild(nb);
 	    _buffers.insert(p, unaligned._buffers.front());
 	  }
@@ -607,7 +607,7 @@ namespace ceph {
 	if (!gap) {
 	  // make a new append_buffer!
 	  unsigned alen = CEPH_PAGE_SIZE;
-	  append_buffer = create_page_aligned(alen);
+	  append_buffer = raw::create_page_aligned(alen);
 	  append_buffer.set_length(0);   // unused, so far.
 	}
 	append_buffer.append(c);
@@ -633,7 +633,7 @@ namespace ceph {
 
 	  // make a new append_buffer!
 	  unsigned alen = CEPH_PAGE_SIZE * (((len-1) / CEPH_PAGE_SIZE) + 1);
-	  append_buffer = create_page_aligned(alen);
+	  append_buffer = raw::create_page_aligned(alen);
 	  append_buffer.set_length(0);   // unused, so far.
 	}
       }
@@ -950,7 +950,7 @@ namespace ceph {
 	  return 0;
 	}
 	int s = ROUND_UP_TO(len, CEPH_PAGE_SIZE);
-	bufferptr bp = buffer::create_page_aligned(s);
+	bufferptr bp = raw::create_page_aligned(s);
 	ssize_t ret = safe_read(fd, (void*)bp.c_str(), len);
 	if (ret >= 0) {
 	  bp.set_length(ret);
@@ -962,7 +962,7 @@ namespace ceph {
       int read_fd_zero_copy(int fd, size_t len) {
 #ifdef CEPH_HAVE_SPLICE
 	try {
-	  bufferptr bp = buffer::create_zero_copy(len, fd, NULL);
+	  bufferptr bp = raw::create_zero_copy(len, fd, NULL);
 	  append(bp);
 	} catch (buffer::error_code e) {
 	  return e.code;

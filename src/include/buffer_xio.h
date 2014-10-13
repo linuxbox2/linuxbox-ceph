@@ -60,7 +60,7 @@ namespace ceph {
       }
     };
 
-    inline raw* create_msg(
+    inline raw* raw::create_xio_msg(
       unsigned len, char *buf, XioCompletionHook *m_hook) {
       XioPool& pool = m_hook->get_pool();
       raw* bp =

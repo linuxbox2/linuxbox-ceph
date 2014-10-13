@@ -55,7 +55,7 @@ namespace ceph {
       }
 
       ptr(unsigned l) : _off(0), _len(l) {
-	_raw = create(l);
+	_raw = raw::create(l);
 	_raw->nref.inc();
 	bdout << "ptr " << this << " get " << _raw << bendl;
       }

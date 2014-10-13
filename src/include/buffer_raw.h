@@ -43,6 +43,10 @@ extern "C" {
 
 #include "buffer_int.h"
 
+#ifdef HAVE_XIO
+class XioCompletionHook;
+#endif
+
 namespace ceph {
 
   using std::pair;
@@ -113,6 +117,17 @@ namespace ceph {
 
       virtual void invalidate_crc() {}
 
+      static raw* create(unsigned len);
+      static raw* claim_char(unsigned len, char *buf);
+      static raw* create_malloc(unsigned len);
+      static raw* claim_malloc(unsigned len, char *buf);
+      static raw* create_static(unsigned len, char *buf);
+      static raw* create_page_aligned(unsigned len);
+      static raw* create_zero_copy(unsigned len, int fd, int64_t *offset);
+#ifdef HAVE_XIO
+      static raw* create_xio_msg(unsigned len, char *buf,
+				 XioCompletionHook *hook);
+#endif
     };
 
     class raw_crc : public raw {
@@ -499,27 +514,27 @@ namespace ceph {
       return r;
     }
 
-    inline raw* create(unsigned len) {
+    inline raw* raw::create(unsigned len) {
       return new raw_char(len);
     }
 
-    inline raw* claim_char(unsigned len, char *buf) {
+    inline raw* raw::claim_char(unsigned len, char *buf) {
       return new raw_char(len, buf);
     }
 
-    inline raw* create_malloc(unsigned len) {
+    inline raw* raw::create_malloc(unsigned len) {
       return new raw_malloc(len);
     }
 
-    inline raw* claim_malloc(unsigned len, char *buf) {
+    inline raw* raw::claim_malloc(unsigned len, char *buf) {
       return new raw_malloc(len, buf);
     }
 
-    inline raw* create_static(unsigned len, char *buf) {
+    inline raw* raw::create_static(unsigned len, char *buf) {
       return new raw_static(buf, len);
     }
 
-    inline raw* create_page_aligned(unsigned len) {
+    inline raw* raw::create_page_aligned(unsigned len) {
 #ifndef __CYGWIN__
       //return new raw_mmap_pages(len);
       return new raw_posix_aligned(len);
@@ -528,7 +543,7 @@ namespace ceph {
 #endif
     }
 
-    inline raw* create_zero_copy(unsigned len, int fd, int64_t *offset) {
+    inline raw* raw::create_zero_copy(unsigned len, int fd, int64_t *offset) {
 #ifdef CEPH_HAVE_SPLICE
       raw_pipe* buf = new raw_pipe(len);
       int r = buf->set_source(fd, (loff_t*)offset);

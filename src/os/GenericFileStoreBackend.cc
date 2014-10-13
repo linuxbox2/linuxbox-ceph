@@ -269,12 +269,12 @@ int GenericFileStoreBackend::_crc_load_or_init(int fd, SloppyCRCMap *cm)
     return 0;
   }
   if (l >= 0) {
-    bp = ceph::buffer::create(l);
+    bp = ceph::buffer::raw::create(l);
     memcpy(bp.c_str(), buf, l);
   } else if (l == -ERANGE) {
     l = chain_fgetxattr(fd, SLOPPY_CRC_XATTR, 0, 0);
     if (l > 0) {
-      bp = ceph::buffer::create(l);
+      bp = ceph::buffer::raw::create(l);
       l = chain_fgetxattr(fd, SLOPPY_CRC_XATTR, bp.c_str(), l);
     }
   }

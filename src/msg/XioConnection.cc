@@ -169,7 +169,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 	return 0;
     }
     XioMsgCnt msg_cnt(
-      buffer::create_static(treq->in.header.iov_len,
+      buffer::raw::create_static(treq->in.header.iov_len,
 			    (char*) treq->in.header.iov_base));
     dout(10) << __func__ << " receive req " << "treq " << treq
       << " msg_cnt " << msg_cnt.msg_cnt
@@ -208,7 +208,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   struct xio_msg* msg_iter = msg_seq.begin();
   treq = msg_iter;
   XioMsgHdr hdr(header, footer,
-		buffer::create_static(treq->in.header.iov_len,
+		buffer::raw::create_static(treq->in.header.iov_len,
 				      (char*) treq->in.header.iov_base));
 
   uint_to_timeval(t1, treq->timestamp);
@@ -241,7 +241,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
       take_len = MIN(blen, msg_iov->iov_len);
       payload.append(
-	buffer::create_msg(
+	buffer::raw::create_xio_msg(
 	  take_len, (char*) msg_iov->iov_base, m_hook));
       blen -= take_len;
       if (! blen) {
@@ -271,7 +271,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (blen && left_len) {
     middle.append(
-      buffer::create_msg(left_len, left_base, m_hook));
+      buffer::raw::create_xio_msg(left_len, left_base, m_hook));
     left_len = 0;
   }
 
@@ -284,7 +284,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
       msg_iov = &iovs[ix];
       take_len = MIN(blen, msg_iov->iov_len);
       middle.append(
-	buffer::create_msg(
+	buffer::raw::create_xio_msg(
 	  take_len, (char*) msg_iov->iov_base, m_hook));
       blen -= take_len;
       if (! blen) {
@@ -304,7 +304,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (blen && left_len) {
     data.append(
-      buffer::create_msg(left_len, left_base, m_hook));
+      buffer::raw::create_xio_msg(left_len, left_base, m_hook));
     left_len = 0;
   }
 
@@ -316,7 +316,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &iovs[ix];
       data.append(
-	buffer::create_msg(
+	buffer::raw::create_xio_msg(
 	  msg_iov->iov_len, (char*) msg_iov->iov_base, m_hook));
       blen -= msg_iov->iov_len;
     }

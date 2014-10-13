@@ -143,17 +143,7 @@ namespace ceph {
     class raw_char;
     class raw_pipe;
 
-    /*
-     * named constructors
-     */
     raw* copy(const char *c, unsigned len);
-    raw* create(unsigned len);
-    raw* claim_char(unsigned len, char *buf);
-    raw* create_malloc(unsigned len);
-    raw* claim_malloc(unsigned len, char *buf);
-    raw* create_static(unsigned len, char *buf);
-    raw* create_page_aligned(unsigned len);
-    raw* create_zero_copy(unsigned len, int fd, int64_t *offset);
 
     /*
      * nested utility classes

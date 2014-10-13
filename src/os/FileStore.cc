@@ -3381,12 +3381,12 @@ int FileStore::_fgetattr(int fd, const char *name, bufferptr& bp)
   char val[100];
   int l = chain_fgetxattr(fd, name, val, sizeof(val));
   if (l >= 0) {
-    bp = ceph::buffer::create(l);
+    bp = ceph::buffer::raw::create(l);
     memcpy(bp.c_str(), val, l);
   } else if (l == -ERANGE) {
     l = chain_fgetxattr(fd, name, 0, 0);
     if (l > 0) {
-      bp = ceph::buffer::create(l);
+      bp = ceph::buffer::raw::create(l);
       l = chain_fgetxattr(fd, name, bp.c_str(), l);
     }
   }

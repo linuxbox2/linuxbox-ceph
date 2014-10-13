@@ -448,8 +448,8 @@ void ObjectStore::Transaction::generate_test_instances(list<ObjectStore::Transac
   t = new Transaction;
   t->setattr(c, o1, "key", bl);
   map<string,bufferptr> m;
-  m["a"] = buffer::copy("this", 4);
-  m["b"] = buffer::copy("that", 4);
+  m["a"] = ceph::buffer::copy("this", 4);
+  m["b"] = ceph::buffer::copy("that", 4);
   t->setattrs(c, o1, m);
   t->rmattr(c, o1, "b");
   t->rmattrs(c, o1);

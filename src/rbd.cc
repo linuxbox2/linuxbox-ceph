@@ -1559,7 +1559,7 @@ static int do_import_diff(librbd::Image &image, const char *path)
       ::decode(len, p);
 
       if (tag == 'w') {
-	bufferptr bp = ceph::buffer::create(len);
+	bufferptr bp = ceph::buffer::raw::create(len);
 	r = safe_read_exact(fd, bp.c_str(), len);
 	if (r < 0)
 	  goto done;
