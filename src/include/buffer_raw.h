@@ -77,6 +77,7 @@ namespace ceph {
       static const int type_mask = 0x7; // low 3 bits
 
       static const int flag_alignment_hack = 0x8;
+      static const int flag_pipe_consumed  = 0x10;
 
       char *data;
       unsigned len;
@@ -143,9 +144,154 @@ namespace ceph {
       }
 #endif // __CYGWIN__
 
+      // type_pipe
+#ifndef CEPH_HAVE_SPLICE
+      void init_pipe() { throw error_code(-ENOTSUP); }
+      void cleanup_pipe() {}
+      char *copy_pipe() { throw error_code(-ENOTSUP); }
+#else // CEPH_HAVE_SPLICE
+      int pipefds[2];
+
+      void init_pipe() {
+	assert(!data);
+	size_t max = get_max_pipe_size();
+	if (len > max) {
+	  bdout << "raw_pipe: requested length " << len
+		<< " > max length " << max << bendl;
+	  throw malformed_input("length larger than max pipe size");
+	}
+	pipefds[0] = -1;
+	pipefds[1] = -1;
+
+	int r;
+	if (::pipe(pipefds) == -1) {
+	  r = -errno;
+	  bdout << "raw_pipe: error creating pipe: " << cpp_strerror(r)
+		<< bendl;
+	  throw error_code(r);
+	}
+
+	r = set_nonblocking(pipefds);
+	if (r < 0) {
+	  bdout << "raw_pipe: error setting nonblocking flag on temp pipe: "
+		<< cpp_strerror(r) << bendl;
+	  throw error_code(r);
+	}
+
+	r = set_pipe_size(pipefds, len);
+	if (r < 0) {
+	  bdout << "raw_pipe: could not set pipe size" << bendl;
+	  // continue, since the pipe should become large enough as needed
+	}
+
+	inc_total_alloc(len);
+	bdout << "raw_pipe " << this << " alloc " << len << " "
+	      << buffer::get_total_alloc() << bendl;
+      }
+      void cleanup_pipe() {
+	if (data)
+	  delete data;
+	close_pipe(pipefds);
+	dec_total_alloc(len);
+	bdout << "raw_pipe " << this << " free " << (void *)data << " "
+	      << buffer::get_total_alloc() << bendl;
+      }
+
+      int set_pipe_size(int *fds, long length) {
+#ifdef CEPH_HAVE_SETPIPE_SZ
+	if (::fcntl(fds[1], F_SETPIPE_SZ, length) == -1) {
+	  int r = -errno;
+	  if (r == -EPERM) {
+	    // pipe limit must have changed - EPERM means we requested
+	    // more than the maximum size as an unprivileged user
+	    update_max_pipe_size();
+	    throw malformed_input("length larger than new max pipe size");
+	  }
+	  return r;
+	}
+#endif // CEPH_HAVE_SETPIPE_SZ
+	return 0;
+      }
+
+      int set_nonblocking(int *fds) {
+	if (::fcntl(fds[0], F_SETFL, O_NONBLOCK) == -1)
+	  return -errno;
+	if (::fcntl(fds[1], F_SETFL, O_NONBLOCK) == -1)
+	  return -errno;
+	return 0;
+      }
+
+      void close_pipe(int *fds) {
+	if (fds[0] >= 0)
+	  VOID_TEMP_FAILURE_RETRY(::close(fds[0]));
+	if (fds[1] >= 0)
+	  VOID_TEMP_FAILURE_RETRY(::close(fds[1]));
+      }
+
+      char *copy_pipe() {
+	/* preserve original pipe contents by copying into a temporary
+	 * pipe before reading.
+	 */
+	int tmpfd[2];
+	int r;
+
+	assert((flags & flag_pipe_consumed) == 0);
+	assert(pipefds[0] >= 0);
+
+	if (::pipe(tmpfd) == -1) {
+	  r = -errno;
+	  bdout << "raw_pipe: error creating temp pipe: " << cpp_strerror(r)
+		<< bendl;
+	  throw error_code(r);
+	}
+	r = set_nonblocking(tmpfd);
+	if (r < 0) {
+	  bdout << "raw_pipe: error setting nonblocking flag on temp pipe: "
+		<< cpp_strerror(r) << bendl;
+	  throw error_code(r);
+	}
+	r = set_pipe_size(tmpfd, len);
+	if (r < 0) {
+	  bdout << "raw_pipe: error setting pipe size on temp pipe: "
+		<< cpp_strerror(r) << bendl;
+	}
+	int flags = SPLICE_F_NONBLOCK;
+	if (::tee(pipefds[0], tmpfd[1], len, flags) == -1) {
+	  r = errno;
+	  bdout << "raw_pipe: error tee'ing into temp pipe: " << cpp_strerror(r)
+		<< bendl;
+	  close_pipe(tmpfd);
+	  throw error_code(r);
+	}
+	data = (char *)malloc(len);
+	if (!data) {
+	  close_pipe(tmpfd);
+	  throw bad_alloc();
+	}
+	r = safe_read(tmpfd[0], data, len);
+	if (r < (ssize_t)len) {
+	  bdout << "raw_pipe: error reading from temp pipe:" << cpp_strerror(r)
+		<< bendl;
+	  free(data);
+	  data = NULL;
+	  close_pipe(tmpfd);
+	  throw error_code(r);
+	}
+	close_pipe(tmpfd);
+	return data;
+      }
+#endif // CEPH_HAVE_SPLICE
+
 
       virtual raw* clone_empty() {
-	return new raw(get_type(), len);
+	switch (get_type()) {
+	case type_pipe:
+	  // cloning doesn't make sense for pipe-based buffers,
+	  // and is only used by unit tests for other types of buffers
+	  return NULL;
+	default:
+	  return new raw(get_type(), len);
+	}
       }
 
       // no copying.
@@ -165,6 +311,9 @@ namespace ceph {
 	case type_aligned:
 	  init_aligned();
 	  break;
+	case type_pipe:
+	  init_pipe();
+	  break;
 	}
       }
 
@@ -178,16 +327,21 @@ namespace ceph {
 	case type_aligned:
 	  cleanup_aligned();
 	  break;
+	case type_pipe:
+	  cleanup_pipe();
+	  break;
 	}
       }
 
     public:
-      virtual char *get_data() {
+      char *get_data() {
 	switch (get_type()) {
 	case type_aligned:
 	  if (flags & flag_alignment_hack)
 	    return data + CEPH_PAGE_SIZE - ((ptrdiff_t)data & ~CEPH_PAGE_MASK);
 	  return data;
+	case type_pipe:
+	  return copy_pipe();
 	default:
 	  return data;
 	}
@@ -195,22 +349,50 @@ namespace ceph {
 
       raw *clone() {
 	raw *c = clone_empty();
-	memcpy(c->get_data(), data, len);
+	memcpy(c->data, data, len);
 	return c;
       }
 
-      virtual bool can_zero_copy() const {
-	return false;
+#ifndef CEPH_HAVE_SPLICE
+      bool can_zero_copy() const { return false; }
+      int set_source(int fd, loff_t *off) { return -ENOTSUP; }
+      int zero_copy_to_fd(int fd, loff_t *offset) { return -ENOTSUP; }
+#else // CEPH_HAVE_SPLICE
+      bool can_zero_copy() const { return get_type() == type_pipe; }
+
+      int set_source(int fd, loff_t *off) {
+	ssize_t r = safe_splice(fd, off, pipefds[1], NULL, len,
+				SPLICE_F_NONBLOCK);
+	if (r < 0) {
+	  bdout << "raw_pipe: error splicing into pipe: " << cpp_strerror(r)
+		<< bendl;
+	  return r;
+	}
+	// update length with actual amount read
+	len = r;
+	return 0;
       }
 
-      virtual int zero_copy_to_fd(int fd, loff_t *offset) {
-	return -ENOTSUP;
+      int zero_copy_to_fd(int fd, loff_t *offset) {
+	assert((flags & flag_pipe_consumed) == 0);
+	int flags = SPLICE_F_NONBLOCK;
+	ssize_t r = safe_splice_exact(pipefds[0], NULL, fd, offset, len, flags);
+	if (r < 0) {
+	  bdout << "raw_pipe: error splicing from pipe to fd: "
+		<< cpp_strerror(r) << bendl;
+	  return r;
+	}
+	flags |= flag_pipe_consumed;
+	return 0;
       }
+#endif // CEPH_HAVE_SPLICE
 
-      virtual bool is_page_aligned() {
+      bool is_page_aligned() {
 	switch (get_type()) {
 	case type_aligned:
 	  return true;
+	case type_pipe:
+	  return false;
 	default:
 	  return ((long)data & ~CEPH_PAGE_MASK) == 0;
 	}
@@ -255,7 +437,15 @@ namespace ceph {
       static raw* create_page_aligned(unsigned len) {
 	return new raw(type_aligned, len);
       }
-      static raw* create_zero_copy(unsigned len, int fd, int64_t *offset);
+      static raw* create_zero_copy(unsigned len, int fd, int64_t *offset) {
+	raw* buf = new raw(type_pipe, len);
+	int r = buf->set_source(fd, (loff_t*)offset);
+	if (r < 0) {
+	  delete buf;
+	  throw error_code(r);
+	}
+	return buf;
+      }
 #ifdef HAVE_XIO
       static raw* create_xio_msg(unsigned len, char *buf,
 				 XioCompletionHook *hook);
@@ -265,188 +455,6 @@ namespace ceph {
       friend std::ostream& operator<<(std::ostream& out, const raw &r);
     };
 
-#ifdef CEPH_HAVE_SPLICE
-    class raw_pipe : public raw {
-    public:
-      raw_pipe(unsigned len) : raw(type_pipe, len), source_consumed(false) {
-	size_t max = get_max_pipe_size();
-	if (len > max) {
-	  bdout << "raw_pipe: requested length " << len
-		<< " > max length " << max << bendl;
-	  throw malformed_input("length larger than max pipe size");
-	}
-	pipefds[0] = -1;
-	pipefds[1] = -1;
-
-	int r;
-	if (::pipe(pipefds) == -1) {
-	  r = -errno;
-	  bdout << "raw_pipe: error creating pipe: " << cpp_strerror(r)
-		<< bendl;
-	  throw error_code(r);
-	}
-
-	r = set_nonblocking(pipefds);
-	if (r < 0) {
-	  bdout << "raw_pipe: error setting nonblocking flag on temp pipe: "
-		<< cpp_strerror(r) << bendl;
-	  throw error_code(r);
-	}
-
-	r = set_pipe_size(pipefds, len);
-	if (r < 0) {
-	  bdout << "raw_pipe: could not set pipe size" << bendl;
-	  // continue, since the pipe should become large enough as needed
-	}
-
-	inc_total_alloc(len);
-	bdout << "raw_pipe " << this << " alloc " << len << " "
-	      << buffer::get_total_alloc() << bendl;
-      }
-
-      ~raw_pipe() {
-	if (data)
-	  delete data;
-	close_pipe(pipefds);
-	dec_total_alloc(len);
-	bdout << "raw_pipe " << this << " free " << (void *)data << " "
-	      << buffer::get_total_alloc() << bendl;
-      }
-
-      bool can_zero_copy() const {
-	return true;
-      }
-
-      bool is_page_aligned() {
-	return false;
-      }
-
-      int set_source(int fd, loff_t *off) {
-	int flags = SPLICE_F_NONBLOCK;
-	ssize_t r = safe_splice(fd, off, pipefds[1], NULL, len, flags);
-	if (r < 0) {
-	  bdout << "raw_pipe: error splicing into pipe: " << cpp_strerror(r)
-		<< bendl;
-	  return r;
-	}
-	// update length with actual amount read
-	len = r;
-	return 0;
-      }
-
-      int zero_copy_to_fd(int fd, loff_t *offset) {
-	assert(!source_consumed);
-	int flags = SPLICE_F_NONBLOCK;
-	ssize_t r = safe_splice_exact(pipefds[0], NULL, fd, offset, len, flags);
-	if (r < 0) {
-	  bdout << "raw_pipe: error splicing from pipe to fd: "
-		<< cpp_strerror(r) << bendl;
-	  return r;
-	}
-	source_consumed = true;
-	return 0;
-      }
-
-      raw* clone_empty() {
-	// cloning doesn't make sense for pipe-based buffers,
-	// and is only used by unit tests for other types of buffers
-	return NULL;
-      }
-
-      char *get_data() {
-	if (data)
-	  return data;
-	return copy_pipe(pipefds);
-      }
-
-    private:
-      int set_pipe_size(int *fds, long length) {
-#ifdef CEPH_HAVE_SETPIPE_SZ
-	if (::fcntl(fds[1], F_SETPIPE_SZ, length) == -1) {
-	  int r = -errno;
-	  if (r == -EPERM) {
-	    // pipe limit must have changed - EPERM means we requested
-	    // more than the maximum size as an unprivileged user
-	    update_max_pipe_size();
-	    throw malformed_input("length larger than new max pipe size");
-	  }
-	  return r;
-	}
-#endif
-	return 0;
-      }
-
-      int set_nonblocking(int *fds) {
-	if (::fcntl(fds[0], F_SETFL, O_NONBLOCK) == -1)
-	  return -errno;
-	if (::fcntl(fds[1], F_SETFL, O_NONBLOCK) == -1)
-	  return -errno;
-	return 0;
-      }
-
-      void close_pipe(int *fds) {
-	if (fds[0] >= 0)
-	  VOID_TEMP_FAILURE_RETRY(::close(fds[0]));
-	if (fds[1] >= 0)
-	  VOID_TEMP_FAILURE_RETRY(::close(fds[1]));
-      }
-
-      char *copy_pipe(int *fds) {
-	/* preserve original pipe contents by copying into a temporary
-	 * pipe before reading.
-	 */
-	int tmpfd[2];
-	int r;
-
-	assert(!source_consumed);
-	assert(fds[0] >= 0);
-
-	if (::pipe(tmpfd) == -1) {
-	  r = -errno;
-	  bdout << "raw_pipe: error creating temp pipe: " << cpp_strerror(r)
-		<< bendl;
-	  throw error_code(r);
-	}
-	r = set_nonblocking(tmpfd);
-	if (r < 0) {
-	  bdout << "raw_pipe: error setting nonblocking flag on temp pipe: "
-		<< cpp_strerror(r) << bendl;
-	  throw error_code(r);
-	}
-	r = set_pipe_size(tmpfd, len);
-	if (r < 0) {
-	  bdout << "raw_pipe: error setting pipe size on temp pipe: "
-		<< cpp_strerror(r) << bendl;
-	}
-	int flags = SPLICE_F_NONBLOCK;
-	if (::tee(fds[0], tmpfd[1], len, flags) == -1) {
-	  r = errno;
-	  bdout << "raw_pipe: error tee'ing into temp pipe: " << cpp_strerror(r)
-		<< bendl;
-	  close_pipe(tmpfd);
-	  throw error_code(r);
-	}
-	data = (char *)malloc(len);
-	if (!data) {
-	  close_pipe(tmpfd);
-	  throw bad_alloc();
-	}
-	r = safe_read(tmpfd[0], data, len);
-	if (r < (ssize_t)len) {
-	  bdout << "raw_pipe: error reading from temp pipe:" << cpp_strerror(r)
-		<< bendl;
-	  free(data);
-	  data = NULL;
-	  close_pipe(tmpfd);
-	  throw error_code(r);
-	}
-	close_pipe(tmpfd);
-	return data;
-      }
-      bool source_consumed;
-      int pipefds[2];
-    };
-#endif // CEPH_HAVE_SPLICE
 
     /*
      * primitive buffer types
@@ -503,20 +511,6 @@ namespace ceph {
 
     inline raw* raw::create_static(unsigned len, char *buf) {
       return new raw_static(buf, len);
-    }
-
-    inline raw* raw::create_zero_copy(unsigned len, int fd, int64_t *offset) {
-#ifdef CEPH_HAVE_SPLICE
-      raw_pipe* buf = new raw_pipe(len);
-      int r = buf->set_source(fd, (loff_t*)offset);
-      if (r < 0) {
-	delete buf;
-	throw error_code(r);
-      }
-      return buf;
-#else
-      throw error_code(-ENOTSUP);
-#endif
     }
 
     inline std::ostream& operator<<(std::ostream& out, const raw &r) {
