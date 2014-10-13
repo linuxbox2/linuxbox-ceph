@@ -304,6 +304,8 @@ namespace ceph {
 	  // cloning doesn't make sense for pipe-based buffers,
 	  // and is only used by unit tests for other types of buffers
 	  return NULL;
+	case type_static:
+	  return new raw(type_char, len);
 	default:
 	  return new raw(get_type(), len);
 	}
@@ -332,6 +334,9 @@ namespace ceph {
 	case type_char:
 	  init_char();
 	  break;
+	case type_static:
+	  assert(data);
+	  break; // noop
 	}
       }
 
@@ -351,6 +356,8 @@ namespace ceph {
 	case type_char:
 	  cleanup_char();
 	  break;
+	case type_static:
+	  break; // noop
 	}
       }
 
@@ -458,7 +465,9 @@ namespace ceph {
       static raw* claim_malloc(unsigned len, char *buf) {
 	return new raw(type_malloc, len, buf);
       }
-      static raw* create_static(unsigned len, char *buf);
+      static raw* create_static(unsigned len, char *buf) {
+	return new raw(type_static, len, buf);
+      }
       static raw* create_page_aligned(unsigned len) {
 	return new raw(type_aligned, len);
       }
@@ -481,23 +490,10 @@ namespace ceph {
     };
 
 
-    class raw_static : public raw {
-    public:
-      raw_static(const char *d, unsigned l) : raw(type_static, l, (char*)d) { }
-      ~raw_static() {}
-      raw* clone_empty() {
-	return raw::create(len);
-      }
-    };
-
     inline raw* copy(const char *c, unsigned len) {
       raw* r = raw::create(len);
       memcpy(r->get_data(), c, len);
       return r;
-    }
-
-    inline raw* raw::create_static(unsigned len, char *buf) {
-      return new raw_static(buf, len);
     }
 
     inline std::ostream& operator<<(std::ostream& out, const raw &r) {
