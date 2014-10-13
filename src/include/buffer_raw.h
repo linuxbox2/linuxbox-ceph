@@ -86,26 +86,60 @@ namespace ceph {
 
       int get_type() const { return flags & type_mask; }
 
-      // private constructor, use factory functions to enforce
-      // type-specific invariants
-      raw(uint8_t flags, unsigned len, char *data = NULL)
-	: data(data), len(len), nref(0), flags(flags),
-	  crc_lock("buffer::raw::crc_lock", false, false)
-	{ }
+      // type_malloc
+      void init_malloc() {
+	if (!data && len) {
+	  data = (char *)::malloc(len);
+	  if (!data)
+	    throw bad_alloc();
+	}
+	inc_total_alloc(len);
+	bdout << "raw_malloc " << this << " alloc " << (void *)data << " "
+	      << len << " " << buffer::get_total_alloc() << bendl;
+      }
+      void cleanup_malloc() {
+	::free(data);
+	dec_total_alloc(len);
+	bdout << "raw_malloc " << this << " free " << (void *)data << " "
+	      << buffer::get_total_alloc() << bendl;
+      }
 
-      // private destructor, only deleted by ptr (a friend)
-      virtual ~raw() {};
+
+      virtual raw* clone_empty() {
+	return new raw(get_type(), len);
+      }
 
       // no copying.
       raw(const raw &other);
       const raw& operator=(const raw &other);
 
+      // private constructor, use factory functions to enforce
+      // type-specific invariants
+      raw(uint8_t flags, unsigned len, char *data = NULL)
+	: data(data), len(len), nref(0), flags(flags),
+	  crc_lock("buffer::raw::crc_lock", false, false)
+      {
+	switch (get_type()) {
+	case type_malloc:
+	  init_malloc();
+	  break;
+	}
+      }
+
+      // private destructor, only deleted by ptr (a friend)
+      virtual ~raw()
+      {
+	switch (get_type()) {
+	case type_malloc:
+	  cleanup_malloc();
+	  break;
+	}
+      }
+
     public:
       virtual char *get_data() {
 	return data;
       }
-
-      virtual raw* clone_empty() = 0;
 
       raw *clone() {
 	raw *c = clone_empty();
@@ -154,8 +188,12 @@ namespace ceph {
 
       static raw* create(unsigned len);
       static raw* claim_char(unsigned len, char *buf);
-      static raw* create_malloc(unsigned len);
-      static raw* claim_malloc(unsigned len, char *buf);
+      static raw* create_malloc(unsigned len) {
+	return new raw(type_malloc, len);
+      }
+      static raw* claim_malloc(unsigned len, char *buf) {
+	return new raw(type_malloc, len, buf);
+      }
       static raw* create_static(unsigned len, char *buf);
       static raw* create_page_aligned(unsigned len);
       static raw* create_zero_copy(unsigned len, int fd, int64_t *offset);
@@ -166,39 +204,6 @@ namespace ceph {
 
       friend class ptr;
       friend std::ostream& operator<<(std::ostream& out, const raw &r);
-    };
-
-    class raw_malloc : public raw {
-    public:
-      raw_malloc(unsigned l) : raw(type_malloc, l) {
-	if (len) {
-	  data = (char *)malloc(len);
-	  if (!data)
-	    throw bad_alloc();
-	} else {
-	  data = 0;
-	}
-	inc_total_alloc(len);
-	bdout << "raw_malloc " << this << " alloc " << (void *)data << " "
-	      << l << " " << buffer::get_total_alloc() << bendl;
-      }
-
-      raw_malloc(unsigned l, char *b) : raw(type_malloc, l, b) {
-	inc_total_alloc(len);
-	bdout << "raw_malloc " << this << " alloc " << (void *)data << " "
-	      << l << " " << buffer::get_total_alloc() << bendl;
-      }
-
-      ~raw_malloc() {
-	free(data);
-	dec_total_alloc(len);
-	bdout << "raw_malloc " << this << " free " << (void *)data << " "
-	      << buffer::get_total_alloc() << bendl;
-      }
-
-      raw* clone_empty() {
-	return new raw_malloc(len);
-      }
     };
 
 #ifndef __CYGWIN__
@@ -518,14 +523,6 @@ namespace ceph {
 
     inline raw* raw::claim_char(unsigned len, char *buf) {
       return new raw_char(len, buf);
-    }
-
-    inline raw* raw::create_malloc(unsigned len) {
-      return new raw_malloc(len);
-    }
-
-    inline raw* raw::claim_malloc(unsigned len, char *buf) {
-      return new raw_malloc(len, buf);
     }
 
     inline raw* raw::create_static(unsigned len, char *buf) {
