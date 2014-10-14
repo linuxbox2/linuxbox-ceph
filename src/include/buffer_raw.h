@@ -44,6 +44,7 @@ extern "C" {
 #include "buffer_int.h"
 
 #ifdef HAVE_XIO
+struct xio_mempool_obj;
 class XioCompletionHook;
 #endif
 
@@ -86,6 +87,13 @@ namespace ceph {
 
       mutable Mutex crc_lock;
       map<pair<size_t, size_t>, pair<uint32_t, uint32_t> > crc_map;
+
+#ifdef HAVE_XIO
+      union {
+	xio_mempool_obj *mp;	  // type_xio
+	XioCompletionHook *hook;  // type_xio_msg
+      } xio;
+#endif
 
       int get_type() const { return flags & type_mask; }
 
@@ -298,13 +306,15 @@ namespace ceph {
       }
 
 
-      virtual raw* clone_empty() {
+      raw* clone_empty() const {
 	switch (get_type()) {
 	case type_pipe:
 	  // cloning doesn't make sense for pipe-based buffers,
 	  // and is only used by unit tests for other types of buffers
 	  return NULL;
 	case type_static:
+	case type_xio:
+	case type_xio_msg:
 	  return new raw(type_char, len);
 	default:
 	  return new raw(get_type(), len);
@@ -335,13 +345,15 @@ namespace ceph {
 	  init_char();
 	  break;
 	case type_static:
-	  assert(data);
-	  break; // noop
+	case type_xio:
+	case type_xio_msg:
+	  assert(data); // noop
+	  break;
 	}
       }
 
       // private destructor, only deleted by ptr (a friend)
-      virtual ~raw()
+      ~raw()
       {
 	switch (get_type()) {
 	case type_malloc:
@@ -357,25 +369,30 @@ namespace ceph {
 	  cleanup_char();
 	  break;
 	case type_static:
+	case type_xio:
+	case type_xio_msg:
 	  break; // noop
 	}
       }
+#ifdef HAVE_XIO
+      static void operator delete(void *p);
+#endif // HAVE_XIO
 
     public:
       char *get_data() {
 	switch (get_type()) {
+	case type_pipe:
+	  return copy_pipe();
 	case type_aligned:
 	  if (flags & flag_alignment_hack)
 	    return data + CEPH_PAGE_SIZE - ((ptrdiff_t)data & ~CEPH_PAGE_MASK);
 	  return data;
-	case type_pipe:
-	  return copy_pipe();
 	default:
 	  return data;
 	}
       }
 
-      raw *clone() {
+      raw *clone() const {
 	raw *c = clone_empty();
 	memcpy(c->data, data, len);
 	return c;
@@ -415,7 +432,7 @@ namespace ceph {
       }
 #endif // CEPH_HAVE_SPLICE
 
-      bool is_page_aligned() {
+      bool is_page_aligned() const {
 	switch (get_type()) {
 	case type_aligned:
 	  return true;
@@ -426,7 +443,7 @@ namespace ceph {
 	}
       }
 
-      bool is_n_page_sized() {
+      bool is_n_page_sized() const {
 	return (len & ~CEPH_PAGE_MASK) == 0;
       }
 
@@ -483,7 +500,10 @@ namespace ceph {
 #ifdef HAVE_XIO
       static raw* create_xio_msg(unsigned len, char *buf,
 				 XioCompletionHook *hook);
-#endif
+      static raw* create_xio(unsigned len, struct xio_mempool_obj *mp);
+
+      struct xio_mempool_obj* get_xio_mp() const;
+#endif // HAVE_XIO
 
       friend class ptr;
       friend std::ostream& operator<<(std::ostream& out, const raw &r);

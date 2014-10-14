@@ -560,7 +560,7 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg*& req,
       //break;
     default:
     {
-      struct xio_mempool_obj *mp = get_xio_mp(*pb);
+      struct xio_mempool_obj *mp = pb->get_raw()->get_xio_mp();
       iov->mr = (mp) ? mp->mr : NULL;
     }
       break;

@@ -18,66 +18,49 @@
 
 #if defined(HAVE_XIO)
 
-#include "buffer_raw.h"
 #include "buffer_ptr.h" // includes buffer_raw.h
-
-#include "include/atomic.h"
 #include "msg/XioMsg.h"
 
 namespace ceph {
 
-  /* re-open buffer namespace  */
   namespace buffer {
 
-    class xio_msg_buffer : public raw {
-    private:
-      XioCompletionHook* m_hook;
-    public:
-      xio_msg_buffer(XioCompletionHook* _m_hook, const char *d, unsigned l) :
-	raw(type_xio_msg, l, (char*)d), m_hook(_m_hook->get()) {}
-
-      static void operator delete(void *p)
-	{
-	  xio_msg_buffer *buf = static_cast<xio_msg_buffer*>(p);
-	  // return hook ref (counts against pool);  it appears illegal
-	  // to do this in our dtor, because this fires after that
-	  buf->m_hook->put();
-	}
-      raw* clone_empty() {
-	return raw::create(len);
+    // pool-allocated raw objects must release their memory in operator delete
+    inline void raw::operator delete(void *p) {
+      raw *r = static_cast<raw*>(p);
+      switch (r->get_type()) {
+      case type_xio:
+	xio_mempool_free(r->xio.mp);
+	break;
+	case
+	  type_xio_msg:
+	  r->xio.hook->put();
+	break;
+      default:
+	break;
       }
-    };
-
-    class xio_mempool : public raw {
-    public:
-      struct xio_mempool_obj *mp;
-      xio_mempool(struct xio_mempool_obj *_mp, unsigned l) :
-	raw(type_xio, l, (char*)mp->addr), mp(_mp)
-	{ }
-      ~xio_mempool() {}
-      raw* clone_empty() {
-	return raw::create(len);
-      }
-    };
-
-    inline raw* raw::create_xio_msg(
-      unsigned len, char *buf, XioCompletionHook *m_hook) {
-      XioPool& pool = m_hook->get_pool();
-      raw* bp =
-	static_cast<raw*>(pool.alloc(sizeof(xio_msg_buffer)));
-      new (bp) xio_msg_buffer(m_hook, buf, len);
-      return bp;
     }
 
-  inline struct xio_mempool_obj* get_xio_mp(const ptr& bp)
-  {
-    buffer::xio_mempool *mb =
-      dynamic_cast<buffer::xio_mempool*>(bp.get_raw());
-    if (mb) {
-      return mb->mp;
-      }
-    return NULL;
-  }
+    inline raw* raw::create_xio(unsigned len, struct xio_mempool_obj *mp) {
+      raw *r = new raw(type_xio, len, static_cast<char*>(mp->addr));
+      r->xio.mp = mp;
+      return r;
+    }
+
+    inline raw* raw::create_xio_msg(unsigned len, char *buf,
+				    XioCompletionHook *hook) {
+      XioPool& pool = hook->get_pool();
+      void *p = pool.alloc(sizeof(raw));
+      raw *r = new (p) raw(type_xio_msg, len, buf);
+      r->xio.hook = hook;
+      return r;
+    }
+
+    inline struct xio_mempool_obj* raw::get_xio_mp() const {
+      if (get_type() == raw::type_xio)
+	return xio.mp;
+      return NULL;
+    }
 
   } /* namespace buffer */
 
