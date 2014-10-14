@@ -104,8 +104,8 @@ if(${WITH_RADOSGW})
     ${CMAKE_SOURCE_DIR}/src/rgw/rgw_json_enc.cc
   )
 endif(${WITH_RADOSGW})
-add_executable(dencoder ${dencoder_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
-target_link_libraries(dencoder
+add_executable(ceph-dencoder ${dencoder_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
+target_link_libraries(ceph-dencoder
   librados
   global
   osd
@@ -118,7 +118,7 @@ target_link_libraries(dencoder
   ${CMAKE_DL_LIBS}
   )
 if(${WITH_RADOSGW})
-  target_link_libraries(dencoder
+  target_link_libraries(ceph-dencoder
     ${EXTRALIBS}
     ${TCMALLOC_LIBS}
     ${CMAKE_DL_LIBS}
