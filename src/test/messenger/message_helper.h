@@ -73,7 +73,7 @@ static inline Message* new_ping_with_data(const char *tag, uint32_t size)
   uint32_t* t = (uint32_t* ) (((char*) p) + size - 32);
   *t = counter;
 
-  bl.append(ceph::buffer::create_static(size, (char*) p));
+  bl.append(ceph::buffer::raw::create_static(size, (char*) p));
   m->set_data(bl);
 
   return static_cast<Message*>(m);
@@ -116,7 +116,7 @@ static inline Message* new_simple_ping_with_data(const char *tag,
     *t = counter;
     t[1] = i;
 
-    bl.append(ceph::buffer::create_static(segsize, (char*) p));
+    bl.append(ceph::buffer::raw::create_static(segsize, (char*) p));
   }
   m->set_data(bl);
 

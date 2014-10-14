@@ -183,7 +183,7 @@ TEST(TestFileJournal, WriteManyVecs) {
 
   bufferlist bl;
   for (int i=0; i<IOV_MAX * 2; i++) {
-    bufferptr bp = ceph::buffer::create_page_aligned(4096);
+    bufferptr bp = ceph::buffer::raw::create_page_aligned(4096);
     memset(bp.c_str(), (char)i, 4096);
     bl.append(bp);
   }

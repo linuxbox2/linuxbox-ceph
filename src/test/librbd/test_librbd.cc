@@ -1547,7 +1547,7 @@ void scribble(librbd::Image& image, int n, int max, interval_set<uint64_t> *exis
 
     } else {
       bufferlist bl;
-      bl.append(ceph::buffer::create(len));
+      bl.append(ceph::buffer::raw::create(len));
       bl.zero();
       ASSERT_EQ((int)len, image.write(off, len, bl));
       interval_set<uint64_t> w;
