@@ -177,7 +177,7 @@ struct xio_msg_ex
     // minimal initialize an "out" msg
     msg.request = NULL;
     msg.type = XIO_MSG_TYPE_ONE_WAY;
-    msg.more_in_batch = 0;
+    // msg.more_in_batch = 0;
     // for now, we DO NEED receipts for every msg
     msg.flags = 0;
     msg.user_context = user_context;

@@ -291,8 +291,9 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_QUEUE_DEPTH,
 		  &xopt, sizeof(unsigned));
 
-      xopt = 512;
-       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_TRANS_BUF_THRESHOLD,
+      xopt = 0;
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO,
+		  XIO_OPTNAME_TRANS_BUF_THRESHOLD,
 		  &xopt, sizeof(unsigned));
 
       /* and unregisterd one */
@@ -620,7 +621,7 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg*& req,
     if (unlikely(msg_off >= XIO_MSGR_IOVLEN || req_size >= MAX_XIO_BUF_SIZE)) {
       /* finish this request */
       req->out.pdata_iov.nents = msg_off;
-      req->more_in_batch = 1;
+      // req->more_in_batch = 1;
       /* advance to next, and write in it if it's not the last one. */
       if (++req_off >= ex_cnt) {
 	req = 0;	/* poison.  trap if we try to use it. */
