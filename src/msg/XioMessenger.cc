@@ -292,7 +292,10 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 		  &xopt, sizeof(unsigned));
 
       xopt = 0;
-      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO,
+      xio_set_opt(NULL, XIO_OPTLEVEL_RDMA,
+		  XIO_OPTNAME_TRANS_BUF_THRESHOLD,
+		  &xopt, sizeof(unsigned));
+      xio_set_opt(NULL, XIO_OPTLEVEL_TCP,
 		  XIO_OPTNAME_TRANS_BUF_THRESHOLD,
 		  &xopt, sizeof(unsigned));
 
