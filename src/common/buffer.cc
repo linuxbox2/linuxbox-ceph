@@ -562,6 +562,8 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     xio_mempool_alloc(xio_msgr_noreg_mpool, sizeof(xio_mempool), &mp);
     buffer::raw* bp = static_cast<buffer::raw*>(mp.addr);
     xio_mempool_alloc(xio_msgr_reg_mpool, iov->iov_len, &mp2);
+    iov->iov_base = mp2.addr;
+    iov->mr = mp2.mr;
     // placement construct it
     new (bp) xio_mempool(mp, mp2, iov->iov_len);
     return bp;

@@ -228,7 +228,7 @@ public:
       if (! req->in.header.iov_len) {
 	lsubdout(cct, xio, 0) << __func__ <<
 	  " empty header: packet out of sequence?" << dendl;
-	xio_release_msg(req);
+	/*xio_release_msg(req);*/
 	return 0;
       }
       XioMsgCnt
@@ -246,7 +246,7 @@ public:
 			     << " sn " << req->sn << dendl;
       assert(session == this->session);
       in_seq.cnt = msg_cnt.msg_cnt;
-      in_seq.p = true;
+    //  in_seq.p = true;
     } else {
       /* XXX major sequence error */
       assert(! req->in.header.iov_len);
