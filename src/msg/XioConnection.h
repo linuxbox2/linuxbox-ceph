@@ -103,7 +103,6 @@ private:
     bool p;
     int cnt;
     std::list<struct xio_msg *> seq;
-    buffer::list bl;
 
     msg_seq(XioConnection *_xcon) : xcon(_xcon), p(false) {}
 
@@ -122,7 +121,6 @@ private:
 	}
       }
       seq.clear();
-      bl.clear(); // and disconnect buffers (released later)
     }
   } in_seq;
 

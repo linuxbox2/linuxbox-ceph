@@ -145,11 +145,23 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   /* XXX Accelio guarantees message ordering at
    * xio_session */
-  if (req->user_context != (void*) XMSGR_ASSIGN_BUF)
-    assign_data(req);
-
-  if (in_seq.cnt > 0)
+  if (! in_seq.p) {
+#if 0 /* XXX */
+    printf("receive req %p treq %p iov_base %p iov_len %d data_iovlen %d\n",
+	   req, treq, treq->in.header.iov_base,
+	   (int) treq->in.header.iov_len,
+	   (int) treq->in.data_iovlen);
+#endif
+    XioMsgCnt msg_cnt(
+      buffer::create_static(treq->in.header.iov_len,
+			    (char*) treq->in.header.iov_base));
+    in_seq.cnt = msg_cnt.msg_cnt;
+    in_seq.p = true;
+  }
+  in_seq.append(req);
+  if (in_seq.cnt > 0) {
     return 0;
+  }
   else
     in_seq.p = false;
 
