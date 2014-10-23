@@ -145,6 +145,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   /* XXX Accelio guarantees message ordering at
    * xio_session */
+  if (req->user_context != (void*) XMSGR_ASSIGN_BUF)
+    assign_data(req);
+
   if (in_seq.cnt > 0)
     return 0;
   else
@@ -176,8 +179,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
     }
   }
 
-  unsigned int blen, msg_off;
-  uint32_t take_len, left_len;
+  unsigned int blen, msg_off = 0;
+  uint32_t take_len, left_len = 0;
 
   blen = header.front_len;
   buffer::ptr mbuf;

@@ -49,6 +49,8 @@ public:
     }
 };
 
+#define XMSGR_ASSIGN_BUF 0x01 /* safe for marked pointers, etc */
+
 class XioConnection : public Connection
 {
 public:
@@ -228,7 +230,6 @@ public:
       if (! req->in.header.iov_len) {
 	lsubdout(cct, xio, 0) << __func__ <<
 	  " empty header: packet out of sequence?" << dendl;
-	/*xio_release_msg(req);*/
 	return 0;
       }
       XioMsgCnt
@@ -246,11 +247,13 @@ public:
 			     << " sn " << req->sn << dendl;
       assert(session == this->session);
       in_seq.cnt = msg_cnt.msg_cnt;
-    //  in_seq.p = true;
+      in_seq.p = true;
     } else {
       /* XXX major sequence error */
       assert(! req->in.header.iov_len);
     }
+    /* mark message */
+    req->user_context = (void*) XMSGR_ASSIGN_BUF;
     in_seq.append(req);
     struct xio_iovec_ex *iovs = vmsg_sglist(&req->in);
     int n_iovs = vmsg_sglist_nents(&req->in);
