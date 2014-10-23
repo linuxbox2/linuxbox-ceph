@@ -223,44 +223,16 @@ public:
   int passive_setup(); /* XXX */
 
   int assign_data(struct xio_msg *req) {
-    CephContext *cct = get_messenger()->cct;
-    /* XXX Accelio guarantees message ordering at
-     * xio_session */
-    if (! in_seq.p) {
-      if (! req->in.header.iov_len) {
-	lsubdout(cct, xio, 0) << __func__ <<
-	  " empty header: packet out of sequence?" << dendl;
-	return 0;
-      }
-      XioMsgCnt
-	msg_cnt(buffer::create_static(req->in.header.iov_len,
-				      (char*)req->in.header.iov_base));
-      lsubdout(cct, xio, 10) << __func__ << " receive req "
-			     << "treq " << req
-			     << " msg_cnt " << msg_cnt.msg_cnt
-			     << " iov_base "
-			     << req->in.header.iov_base
-			     << " iov_len "
-			     << (int) req->in.header.iov_len
-			     << " nents " << req->in.pdata_iov.nents
-			     << " conn " << conn << " sess " << session
-			     << " sn " << req->sn << dendl;
-      assert(session == this->session);
-      in_seq.cnt = msg_cnt.msg_cnt;
-      in_seq.p = true;
-    } else {
-      /* XXX major sequence error */
-      assert(! req->in.header.iov_len);
-    }
     /* mark message */
     req->user_context = (void*) XMSGR_ASSIGN_BUF;
-    in_seq.append(req);
     struct xio_iovec_ex *iovs = vmsg_sglist(&req->in);
     int n_iovs = vmsg_sglist_nents(&req->in);
-    // XXX do the simplest method (skip gather)
+    /* XXX do the simplest method (skip gather) */
     for (int ix = 0; ix < n_iovs; ++ix) {
       struct xio_iovec_ex *iov = &iovs[ix];
-      in_seq.bl.append(buffer::create_reg(iov));
+      /* we can recover the address of the buffer flyweight from
+       * iov->base, but, heck */
+      iov->user_context = (void*) buffer::create_reg(iov);
     }
     return 0;
   } /* assign_data */

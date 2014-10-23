@@ -155,7 +155,9 @@ public:
   static raw* create_zero_copy(unsigned len, int fd, int64_t *offset);
 
 #if defined(HAVE_XIO)
- static raw* create_reg(struct xio_iovec_ex *iov);
+  static raw* create_reg(struct xio_iovec_ex *iov);
+  static unsigned int sizeof_reg(void);
+  static raw* container_of_reg(void* addr);
 #endif
 
   /*

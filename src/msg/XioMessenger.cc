@@ -298,7 +298,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_set_opt(NULL, XIO_OPTLEVEL_TCP, XIO_OPTNAME_TRANS_BUF_THRESHOLD,
 		  &xopt, sizeof(unsigned));
 
-      /* and unregisterd one */
+      /* unregistered pool */
 #define XMSG_MEMPOOL_QUANTUM 4096
 
       xio_msgr_noreg_mpool =
@@ -322,32 +322,38 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 				       cct->_conf->xio_mp_max_page,
 				       XMSG_MEMPOOL_QUANTUM);
 
+      /* registered pool */
       xio_msgr_reg_mpool =
 	xio_mempool_create(-1 /* nodeid */,
 			   XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC |
 			   XIO_MEMPOOL_FLAG_REG_MR);
 
-      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, getpagesize(),
+      int pool_size = getpagesize() + buffer::sizeof_reg();
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_page,
 				       XMSG_MEMPOOL_QUANTUM);
 
-      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, 2 * getpagesize(),
+      pool_size = 2 * getpagesize() + buffer::sizeof_reg();
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_page,
 				       XMSG_MEMPOOL_QUANTUM);
 
-      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, 4 * getpagesize(),
+      pool_size = 4 * getpagesize() + buffer::sizeof_reg();
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_page,
 				       XMSG_MEMPOOL_QUANTUM);
 
-      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, 4*1024*1024,
+      pool_size = 4*1024*1024 + buffer::sizeof_reg();
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_page,
 				       XMSG_MEMPOOL_QUANTUM);
 
-      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, 8*1024*1024,
+      pool_size = 4*1024*1024 + buffer::sizeof_reg();
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       0,
 				       cct->_conf->xio_mp_max_page,
 				       XMSG_MEMPOOL_QUANTUM);
