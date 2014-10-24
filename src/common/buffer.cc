@@ -560,7 +560,8 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
 
   buffer::raw* buffer::create_reg(struct xio_iovec_ex *iov) {
     struct xio_mempool_obj mp;
-    xio_mempool_alloc(xio_msgr_reg_mpool, iov->iov_len, &mp);
+    xio_mempool_alloc(xio_msgr_reg_mpool,
+		      iov->iov_len+sizeof(xio_mempool), &mp);
     iov->iov_base = mp.addr;
     iov->mr = mp.mr;
     // placement construct it
