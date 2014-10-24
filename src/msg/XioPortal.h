@@ -166,9 +166,11 @@ public:
   void *entry()
     {
       int ix, size, code = 0;
+      uint32_t xio_qdepth;
       XioSubmit::Queue send_q;
       XioSubmit::Queue::iterator q_iter;
       struct xio_msg *msg = NULL;
+      XioConnection *xcon;
       XioSubmit *xs;
       XioMsg *xmsg;
 
@@ -184,37 +186,38 @@ public:
 	}
 
 	if (size > 0) {
-	  /* XXX look out, no flow control */
 	  for (ix = 0; ix < size; ++ix) {
 	    q_iter = send_q.begin();
 	    xs = &(*q_iter);
+	    xcon = xs->xcon;
+	    xmsg = static_cast<XioMsg*>(xs);
+
+	    /* guard Accelio send queue */
+	    xio_qdepth = xcon->xio_queue_depth();
+	    if (unlikely((xcon->send_ctr + xmsg->hdr.msg_cnt) > xio_qdepth))
+	      continue;
+
 	    send_q.erase(q_iter);
 
-	    switch(xs->type) {
-	    case XioSubmit::OUTGOING_MSG: /* it was an outgoing 1-way */
-	      xmsg = static_cast<XioMsg*>(xs);
+	    /* XXX we know we are not racing with a disconnect
+	     * thread */
+	    if (unlikely(!xcon->conn))
+	      code = ENOTCONN;
+	    else {
 	      msg = &xmsg->req_0.msg;
-	      /* XXX we know we are not racing with a disconnect
-	       * thread */
-	      if (unlikely(!xs->xcon->conn))
-		code = ENOTCONN;
-	      else {
-		code = xio_send_msg(xs->xcon->conn, msg);
-		/* header trace moved here to capture xio serial# */
-		if (dlog_p(ceph_subsys_xio, 11)) {
-		  print_xio_msg_hdr("xio_send_msg", xmsg->hdr, msg);
-		  print_ceph_msg("xio_send_msg", xmsg->m);
-		}
+	      code = xio_send_msg(xcon->conn, msg);
+	      /* header trace moved here to capture xio serial# */
+	      if (dlog_p(ceph_subsys_xio, 11)) {
+		print_xio_msg_hdr("xio_send_msg", xmsg->hdr, msg);
+		print_ceph_msg("xio_send_msg", xmsg->m);
 	      }
-	      if (unlikely(code)) {
-		xs->xcon->msg_send_fail(xmsg, code);
-	      } else
-		xs->xcon->send.set(msg->timestamp); /* XXX atomic? */
-	      break;
-	    default:
-	      abort();
-	    break;
-	    };
+	    }
+	    if (unlikely(code)) {
+	      xcon->msg_send_fail(xmsg, code);
+	    } else {
+	      xcon->send.set(msg->timestamp); // need atomic?
+	      xcon->send_ctr += xmsg->hdr.msg_cnt; // only inc if cb promised
+	    }
 	  }
 	}
 

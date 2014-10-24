@@ -89,6 +89,7 @@ XioConnection::XioConnection(XioMessenger* m,
   session(NULL),
   conn(NULL),
   magic(m->get_magic()),
+  send_ctr(0),
   in_seq(this)
 {
   pthread_spin_init(&sp, PTHREAD_PROCESS_PRIVATE);
@@ -399,6 +400,7 @@ int XioConnection::on_ow_msg_send_complete(struct xio_session *session,
     " type: " << xmsg->m->get_type() << " tid: " << xmsg->m->get_tid() <<
     " seq: " << xmsg->m->get_seq() << dendl;
 
+  --send_ctr; /* atomic, because portal thread */
   xmsg->put();
 
   return 0;
@@ -426,6 +428,6 @@ int XioConnection::on_msg_error(struct xio_session *session,
   XioMsg *xmsg = static_cast<XioMsg*>(msg->user_context);
   if (xmsg)
     xmsg->put();
-
+  --send_ctr; /* atomic, because portal thread */
   return 0;
 } /* on_msg_error */
