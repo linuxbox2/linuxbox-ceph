@@ -537,7 +537,7 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
     static void operator delete(void *p)
     {
       xio_mempool *xm = static_cast<xio_mempool*>(p);
-      xio_mempool_free(&xm->mp_this);
+      xpool_free(xm->len + sizeof(xio_mempool), &xm->mp_this);
     }
 
     raw* clone_empty() {
@@ -560,8 +560,7 @@ static uint32_t simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZE
 
   buffer::raw* buffer::create_reg(struct xio_iovec_ex *iov) {
     struct xio_mempool_obj mp;
-    xio_mempool_alloc(xio_msgr_reg_mpool,
-		      iov->iov_len+sizeof(xio_mempool), &mp);
+    xpool_alloc(xio_msgr_reg_mpool, iov->iov_len+sizeof(xio_mempool), &mp);
     iov->iov_base = mp.addr;
     iov->mr = mp.mr;
     // placement construct it

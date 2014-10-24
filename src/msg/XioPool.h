@@ -25,6 +25,7 @@ extern "C" {
 #include <vector>
 #include "common/likely.h"
 
+#define EST_SIZE_REG 56
 
 class XioPoolStats {
 private:
@@ -32,61 +33,111 @@ private:
     SLAB_64 = 0,
     SLAB_256,
     SLAB_1024,
-    SLAB_PAGE,
+    SLAB_8192,
+    SLAB_16384,
+    SLAB_32768,
+    SLAB_1M,
+    SLAB_4M,
+    SLAB_8M,
     SLAB_MAX
   };
 
-  std::vector<uint64_t> ctr_set;
+  std::vector<uint64_t> ctr_set; // in c++11 we would use array
 
 public:
-  XioPoolStats() : ctr_set(5, 0) {}
+  XioPoolStats() : ctr_set(10, 0) {}
 
   void dump(const char* tag) {
     std::cout << "\tpool objects:  "
 	      << "64: " << ctr_set[SLAB_64] << "  "
 	      << "256: " << ctr_set[SLAB_256] << "  "
 	      << "1024: " << ctr_set[SLAB_1024] << "  "
-	      << "page: " << ctr_set[SLAB_PAGE] << "  "
-	      << "max: " << ctr_set[SLAB_MAX] << "  "
+	      << "8192: " << ctr_set[SLAB_8192] << "  "
+	      << "16384: " << ctr_set[SLAB_16384] << "  "
+	      << "32768: " << ctr_set[SLAB_32768] << "  "
+	      << "1M: " << ctr_set[SLAB_1M] << "  "
+	      << "4M: " << ctr_set[SLAB_4M] << "  "
+	      << "8M: " << ctr_set[SLAB_8M] << "  "
+	      << "MAX: " << ctr_set[SLAB_MAX] << "  "
 	      << "(" << tag << ")"
 	      << std::endl;
   }
 
   void inc(uint64_t size) {
-    if (size <= 64) {
+    if (size <= 64+EST_SIZE_REG) {
       (ctr_set[SLAB_64])++;
       return;
     }
-    if (size <= 256) {
+    if (size <= 256+EST_SIZE_REG) {
       (ctr_set[SLAB_256])++;
       return;
     }
-    if (size <= 1024) {
+    if (size <= 1024+EST_SIZE_REG) {
       (ctr_set[SLAB_1024])++;
       return;
     }
-    if (size <= 8192) {
-      (ctr_set[SLAB_PAGE])++;
+    if (size <= 8192+EST_SIZE_REG) {
+      (ctr_set[SLAB_8192])++;
+      return;
+    }
+    if (size <= 16384+EST_SIZE_REG) {
+      (ctr_set[SLAB_16384])++;
+      return;
+    }
+    if (size <= 32768+EST_SIZE_REG) {
+      (ctr_set[SLAB_32768])++;
+      return;
+    }
+    if (size <= 1024*1024+EST_SIZE_REG) {
+      (ctr_set[SLAB_1M])++;
+      return;
+    }
+    if (size <= 4*1024*1024+EST_SIZE_REG) {
+      (ctr_set[SLAB_4M])++;
+      return;
+    }
+    if (size <= 8*1024*1024+EST_SIZE_REG) {
+      (ctr_set[SLAB_8M])++;
       return;
     }
     (ctr_set[SLAB_MAX])++;
   }
 
   void dec(uint64_t size) {
-    if (size <= 64) {
+    if (size <= 64+EST_SIZE_REG) {
       (ctr_set[SLAB_64])--;
       return;
     }
-    if (size <= 256) {
+    if (size <= 256+EST_SIZE_REG) {
       (ctr_set[SLAB_256])--;
       return;
     }
-    if (size <= 1024) {
+    if (size <= 1024+EST_SIZE_REG) {
       (ctr_set[SLAB_1024])--;
       return;
     }
-    if (size <= 8192) {
-      (ctr_set[SLAB_PAGE])--;
+    if (size <= 8192+EST_SIZE_REG) {
+      (ctr_set[SLAB_8192])--;
+      return;
+    }
+    if (size <= 16384+EST_SIZE_REG) {
+      (ctr_set[SLAB_16384])--;
+      return;
+    }
+    if (size <= 32768+EST_SIZE_REG) {
+      (ctr_set[SLAB_32768])--;
+      return;
+    }
+    if (size <= 1024*1024+EST_SIZE_REG) {
+      (ctr_set[SLAB_1M])--;
+      return;
+    }
+    if (size <= 4*1024*1024+EST_SIZE_REG) {
+      (ctr_set[SLAB_4M])--;
+      return;
+    }
+    if (size <= 8*1024*1024+EST_SIZE_REG) {
+      (ctr_set[SLAB_8M])--;
       return;
     }
     (ctr_set[SLAB_MAX])--;
