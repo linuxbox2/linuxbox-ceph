@@ -165,7 +165,7 @@ public:
 
   void *entry()
     {
-      int ix, size, code = 0;
+      int size, code = 0;
       uint32_t xio_qdepth;
       XioSubmit::Queue send_q;
       XioSubmit::Queue::iterator q_iter;
@@ -186,7 +186,7 @@ public:
 	}
 
 	if (size > 0) {
-	  for (ix = 0; ix < size; ++ix) {
+	  for (q_iter = send_q.begin(); q_iter != send_q.end(); ++q_iter) {
 	    q_iter = send_q.begin();
 	    xs = &(*q_iter);
 	    xcon = xs->xcon;
