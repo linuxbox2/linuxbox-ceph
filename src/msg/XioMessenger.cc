@@ -328,6 +328,24 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 			   XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC |
 			   XIO_MEMPOOL_FLAG_REG_MR);
 
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool,
+				       64 + buffer::sizeof_reg(),
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_64,
+				       XMSG_MEMPOOL_QUANTUM);
+
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool,
+				       256 + buffer::sizeof_reg(),
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_256,
+				       XMSG_MEMPOOL_QUANTUM);
+
+      (void) xio_mempool_add_allocator(xio_msgr_reg_mpool,
+				       1024 + buffer::sizeof_reg(),
+				       cct->_conf->xio_mp_min,
+				       cct->_conf->xio_mp_max_1k,
+				       XMSG_MEMPOOL_QUANTUM);
+
       int pool_size = getpagesize() + buffer::sizeof_reg();
       (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       cct->_conf->xio_mp_min,
