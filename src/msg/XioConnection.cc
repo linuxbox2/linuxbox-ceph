@@ -192,7 +192,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
 
   struct xio_iovec_ex *msg_iov, *iovs;
-  buffer::ptr* bp = NULL;
+  buffer::ptr bp;
   unsigned int ix, blen, iov_len, msg_off = 0;
   uint32_t take_len, left_len = 0;
 
@@ -204,17 +204,17 @@ int XioConnection::on_msg_req(struct xio_session *session,
     iovs = vmsg_sglist(&treq->in);
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &iovs[ix];
-      bp = reinterpret_cast<buffer::ptr*>(msg_iov->user_context);
+      bp = buffer::ptr(buffer::ptr_to_raw(msg_iov->user_context));
       /* XXX need to detect any buffer which needs to be
        * split due to coalescing of a segment (front, middle,
        * data) boundary */
       take_len = MIN(blen, msg_iov->iov_len);
       if (take_len == msg_iov->iov_len)
-	payload.append(*bp);
+	payload.append(bp);
       else {
 	// XXXX this means we need to deal with disposing bp when
-	// consumed?
-	payload.append(buffer::ptr(*bp, msg_off, take_len));
+	// consumed?  I think no.
+	payload.append(buffer::ptr(bp, msg_off, take_len));
       }
       blen -= take_len;
       if (! blen) {
@@ -243,7 +243,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   blen = header.middle_len;
 
   if (blen && left_len) {
-    middle.append(*bp, msg_off, left_len);
+    middle.append(bp, msg_off, left_len);
     left_len = 0;
   }
 
@@ -253,17 +253,17 @@ int XioConnection::on_msg_req(struct xio_session *session,
     iovs = vmsg_sglist(&treq->in);
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &iovs[ix];
-      bp = reinterpret_cast<buffer::ptr*>(msg_iov->user_context);
+      bp = buffer::ptr(buffer::ptr_to_raw(msg_iov->user_context));
       /* XXX need to detect any buffer which needs to be
        * split due to coalescing of a segment (front, middle,
        * data) boundary */
       take_len = MIN(blen, msg_iov->iov_len);
       if (take_len == msg_iov->iov_len)
-	middle.append(*bp);
+	middle.append(bp);
       else {
 	// XXXX this means we need to deal with disposing bp when
 	// consumed?
-	middle.append(buffer::ptr(*bp, msg_off, take_len));
+	middle.append(buffer::ptr(bp, msg_off, take_len));
       }
       blen -= take_len;
       if (! blen) {
@@ -284,7 +284,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   blen = header.data_len;
 
   if (blen && left_len) {
-    data.append(*bp, msg_off, left_len);
+    data.append(bp, msg_off, left_len);
     left_len = 0;
   }
 
@@ -294,17 +294,17 @@ int XioConnection::on_msg_req(struct xio_session *session,
     iovs = vmsg_sglist(&treq->in);
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &iovs[ix];
-      bp = reinterpret_cast<buffer::ptr*>(msg_iov->user_context);
+      bp = buffer::ptr(buffer::ptr_to_raw(msg_iov->user_context));
       /* XXX need to detect any buffer which needs to be
        * split due to coalescing of a segment (front, middle,
        * data) boundary */
       take_len = MIN(blen, msg_iov->iov_len);
       if (take_len == msg_iov->iov_len)
-	middle.append(*bp);
+	middle.append(bp);
       else {
 	// XXXX this means we need to deal with disposing bp when
 	// consumed?
-	middle.append(buffer::ptr(*bp, msg_off, take_len));
+	middle.append(buffer::ptr(bp, msg_off, take_len));
       }
       blen -= take_len;
       if (! blen) {
