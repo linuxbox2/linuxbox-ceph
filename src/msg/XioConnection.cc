@@ -191,22 +191,44 @@ int XioConnection::on_msg_req(struct xio_session *session,
     }
   }
 
-  unsigned int blen, msg_off = 0;
+  struct xio_iovec_ex *msg_iov, *iovs;
+  buffer::ptr* bp = NULL;
+  unsigned int ix, blen, iov_len, msg_off = 0;
   uint32_t take_len, left_len = 0;
 
+  ix = 0;
   blen = header.front_len;
-  buffer::ptr mbuf;
-
-  while (blen && in_seq.bl.length()) {
-    mbuf = in_seq.bl.pop_front();
-    msg_off = 0;
-    take_len = MIN(blen, mbuf.length());
-    payload.append(mbuf, msg_off, take_len);
-    blen -= take_len;
-    if (! blen) {
-      left_len = mbuf.length() - take_len;
-      if (left_len)
-	msg_off = take_len;
+  while (blen && (msg_iter != msg_seq.end())) {
+    treq = *msg_iter;
+    iov_len = vmsg_sglist_nents(&treq->in);
+    iovs = vmsg_sglist(&treq->in);
+    for (; blen && (ix < iov_len); ++ix) {
+      msg_iov = &iovs[ix];
+      bp = reinterpret_cast<buffer::ptr*>(msg_iov->user_context);
+      /* XXX need to detect any buffer which needs to be
+       * split due to coalescing of a segment (front, middle,
+       * data) boundary */
+      take_len = MIN(blen, msg_iov->iov_len);
+      if (take_len == msg_iov->iov_len)
+	payload.append(*bp);
+      else {
+	// XXXX this means we need to deal with disposing bp when
+	// consumed?
+	payload.append(buffer::ptr(*bp, msg_off, take_len));
+      }
+      blen -= take_len;
+      if (! blen) {
+	left_len = msg_iov->iov_len - take_len;
+	if (left_len)
+	  msg_off += take_len;
+      }
+    }
+    /* XXX as above, if a buffer is split, then we needed to track
+     * the new start (carry) and not advance */
+    if (ix == iov_len) {
+      ++msg_iter;
+      msg_off = 0;
+      ix = 0;
     }
   }
 
@@ -220,37 +242,83 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   blen = header.middle_len;
 
-  if (blen && left_len)
-    middle.append(mbuf, msg_off, left_len);
+  if (blen && left_len) {
+    middle.append(*bp, msg_off, left_len);
+    left_len = 0;
+  }
 
-  while (blen && in_seq.bl.length()) {
-    mbuf = in_seq.bl.pop_front();
-    msg_off = 0;
-    take_len = MIN(blen, mbuf.length());
-    middle.append(mbuf, msg_off, take_len);
-    blen -= take_len;
-    if (! blen) {
-      left_len = mbuf.length() - take_len;
-      if (left_len)
-	msg_off = take_len;
+  while (blen && (msg_iter != msg_seq.end())) {
+    treq = *msg_iter;
+    iov_len = vmsg_sglist_nents(&treq->in);
+    iovs = vmsg_sglist(&treq->in);
+    for (; blen && (ix < iov_len); ++ix) {
+      msg_iov = &iovs[ix];
+      bp = reinterpret_cast<buffer::ptr*>(msg_iov->user_context);
+      /* XXX need to detect any buffer which needs to be
+       * split due to coalescing of a segment (front, middle,
+       * data) boundary */
+      take_len = MIN(blen, msg_iov->iov_len);
+      if (take_len == msg_iov->iov_len)
+	middle.append(*bp);
+      else {
+	// XXXX this means we need to deal with disposing bp when
+	// consumed?
+	middle.append(buffer::ptr(*bp, msg_off, take_len));
+      }
+      blen -= take_len;
+      if (! blen) {
+	left_len = msg_iov->iov_len - take_len;
+	if (left_len)
+	  msg_off += take_len;
+      }
+    }
+    /* XXX as above, if a buffer is split, then we needed to track
+     * the new start (carry) and not advance */
+    if (ix == iov_len) {
+      ++msg_iter;
+      msg_off = 0;
+      ix = 0;
     }
   }
 
   blen = header.data_len;
 
-  if (blen && left_len)
-    data.append(mbuf, msg_off, left_len);
+  if (blen && left_len) {
+    data.append(*bp, msg_off, left_len);
+    left_len = 0;
+  }
 
-  while (blen && in_seq.bl.length()) {
-    mbuf = in_seq.bl.pop_front();
-    msg_off = 0;
-    take_len = MIN(blen, mbuf.length());
-    data.append(mbuf, msg_off, take_len);
-    blen -= take_len;
-    if (! blen) {
-      left_len = mbuf.length() - take_len;
-      if (left_len)
-	msg_off = take_len;
+  while (blen && (msg_iter != msg_seq.end())) {
+    treq = *msg_iter;
+    iov_len = vmsg_sglist_nents(&treq->in);
+    iovs = vmsg_sglist(&treq->in);
+    for (; blen && (ix < iov_len); ++ix) {
+      msg_iov = &iovs[ix];
+      bp = reinterpret_cast<buffer::ptr*>(msg_iov->user_context);
+      /* XXX need to detect any buffer which needs to be
+       * split due to coalescing of a segment (front, middle,
+       * data) boundary */
+      take_len = MIN(blen, msg_iov->iov_len);
+      if (take_len == msg_iov->iov_len)
+	middle.append(*bp);
+      else {
+	// XXXX this means we need to deal with disposing bp when
+	// consumed?
+	middle.append(buffer::ptr(*bp, msg_off, take_len));
+      }
+      blen -= take_len;
+      if (! blen) {
+	left_len = msg_iov->iov_len - take_len;
+	if (left_len)
+	  msg_off += take_len;
+      }
+    }
+    /* XXX as above, if a buffer is split, then we needed to track
+     * the new start (carry) and not advance */
+    if (ix == iov_len) {
+      ++msg_iter;
+      msg_off = 0;
+      ix = 0;
     }
   }
 
