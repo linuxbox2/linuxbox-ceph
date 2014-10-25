@@ -889,7 +889,6 @@ assert(req->out.pdata_iov.nents || !nbuffers);
      }
     tail->next = NULL;
   }
-  req->flags |= XIO_MSG_FLAG_LAST_IN_BATCH;
 
   xcon->portal->enqueue_for_send(xcon, xmsg);
 
