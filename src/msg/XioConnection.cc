@@ -147,24 +147,32 @@ int XioConnection::on_msg_req(struct xio_session *session,
   /* XXX Accelio guarantees message ordering at
    * xio_session */
   if (! in_seq.p) {
-#if 0 /* XXX */
-    printf("receive req %p treq %p iov_base %p iov_len %d data_iovlen %d\n",
-	   req, treq, treq->in.header.iov_base,
-	   (int) treq->in.header.iov_len,
-	   (int) treq->in.data_iovlen);
-#endif
     XioMsgCnt msg_cnt(
       buffer::create_static(treq->in.header.iov_len,
 			    (char*) treq->in.header.iov_base));
     in_seq.cnt = msg_cnt.msg_cnt;
     in_seq.p = true;
+    if (unlikely(magic & (MSG_MAGIC_TRACE_XCON))) {
+      dout(11) << __func__ << " !in_seq.p" <<
+	" req " << req <<
+	" in.header.iov_base " << req->in.header.iov_base <<
+	" in.header.iov_len " << (int) req->in.header.iov_len <<
+	" in_seq.cnt " << in_seq.cnt << dendl;
+    }
   }
   in_seq.append(req);
   if (in_seq.cnt > 0) {
+    if (unlikely(magic & (MSG_MAGIC_TRACE_XCON))) {
+      dout(11) << __func__ << " in_seq.cnt > 0 (" << in_seq.cnt << ")" << dendl;
+    }
     return 0;
   }
   else
     in_seq.p = false;
+
+  if (unlikely(magic & (MSG_MAGIC_TRACE_XCON))) {
+    dout(11) << __func__ << " start decode" << dendl;
+  }
 
   XioMessenger *msgr = static_cast<XioMessenger*>(get_messenger());
   ceph_msg_header header;
@@ -187,9 +195,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
   uint_to_timeval(t1, treq->timestamp);
 
   if (magic & (MSG_MAGIC_TRACE_XCON)) {
-    if (hdr.hdr->type == 43) {
       print_xio_msg_hdr("on_msg_req", hdr, NULL);
-    }
   }
 
   struct xio_iovec_ex *msg_iov, *iovs;
@@ -234,11 +240,9 @@ int XioConnection::on_msg_req(struct xio_session *session,
   }
 
   if (magic & (MSG_MAGIC_TRACE_XCON)) {
-    if (hdr.hdr->type == 43) {
       dout(4) << "front (payload) dump:";
       payload.hexdump( *_dout );
       *_dout << dendl;
-    }
   }
 
   blen = header.middle_len;
