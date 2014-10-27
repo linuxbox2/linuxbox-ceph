@@ -243,6 +243,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (blen && left_len) {
     middle.append(bp, msg_off, left_len);
+    blen -= left_len;
     left_len = 0;
   }
 
@@ -284,6 +285,7 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   if (blen && left_len) {
     data.append(bp, msg_off, left_len);
+    blen -= left_len;
     left_len = 0;
   }
 
@@ -299,11 +301,11 @@ int XioConnection::on_msg_req(struct xio_session *session,
        * data) boundary */
       take_len = MIN(blen, msg_iov->iov_len);
       if (take_len == msg_iov->iov_len)
-	middle.append(bp);
+	data.append(bp);
       else {
 	// XXXX this means we need to deal with disposing bp when
 	// consumed?
-	middle.append(buffer::ptr(bp, msg_off, take_len));
+	data.append(buffer::ptr(bp, msg_off, take_len));
       }
       blen -= take_len;
       if (! blen) {
