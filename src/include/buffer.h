@@ -188,6 +188,7 @@ public:
 
     raw *clone();
     void swap(ptr& other);
+    ptr& strong_claim();
 
     // misc
     bool at_buffer_head() const { return _off == 0; }
@@ -580,10 +581,18 @@ public:
     void rebuild(ptr& nb);
     void rebuild_page_aligned();
 
-    // sort-of-like-assignment-op
-    void claim(list& bl);
-    void claim_append(list& bl);
-    void claim_prepend(list& bl);
+    // assignment-op w/move semantics
+    void claim(list& bl, bool strong=false /* if true, dup/retire volatile */);
+    void claim_append(list& bl, bool strong=false);
+    void claim_prepend(list& bl, bool strong=false);
+
+    // non-destructively replace volatile buffers
+    void strong_claim_inplace() {
+      std::list<buffer::ptr>::iterator pb;
+      for (pb = _buffers.begin(); pb != _buffers.end(); ++pb) {
+	(void) pb->strong_claim();
+      }
+    }
 
     iterator begin() {
       return iterator(this, 0);
