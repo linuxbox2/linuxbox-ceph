@@ -792,6 +792,20 @@ int XioMessenger::send_message(Message *m, Connection *con)
   buffer::list &middle = m->get_middle();
   buffer::list &data = m->get_data();
 
+  if (magic & (MSG_MAGIC_TRACE_XCON)) {
+    dout(11) << "XioMessenger::send_message msg detail"
+	     << " payload: " << payload.length()
+	     << " (" << payload.buffers().size() << ")"
+	     << " middle: " << middle.length()
+	     << " (" << middle.buffers().size() << ")"
+	     << " data: " << data.length()
+	     << " (" << data.buffers().size() << ")"
+	     << dendl;
+      dout(11) << "XioMessenger::send_message: front payload dump:";
+      payload.hexdump( *_dout );
+      *_dout << dendl;
+  }
+
   int msg_off = 0;
   int req_off = 0;
   int req_size = 0;

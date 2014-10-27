@@ -239,12 +239,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
     }
   }
 
-  if (magic & (MSG_MAGIC_TRACE_XCON)) {
-      dout(4) << "front (payload) dump:";
-      payload.hexdump( *_dout );
-      *_dout << dendl;
-  }
-
   blen = header.middle_len;
 
   if (blen && left_len) {
@@ -325,6 +319,20 @@ int XioConnection::on_msg_req(struct xio_session *session,
       msg_off = 0;
       ix = 0;
     }
+  }
+
+  if (magic & (MSG_MAGIC_TRACE_XCON)) {
+    dout(11) << "XioConnection.cc:on_msg_req msg detail"
+	     << " payload: " << payload.length()
+	     << " (" << payload.buffers().size() << ")"
+	     << " middle: " << middle.length()
+	     << " (" << middle.buffers().size() << ")"
+	     << " data: " << data.length()
+	     << " (" << data.buffers().size() << ")"
+	     << dendl;
+    dout(11) << "XioConnection.cc:on_msg_req payload dump: ";
+    payload.hexdump( *_dout );
+    *_dout << dendl;
   }
 
   in_seq.release(); // release Accelio msgs, clear buffers
