@@ -299,7 +299,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 		  &xopt, sizeof(unsigned));
 
       /* unregistered pool */
-#define XMSG_MEMPOOL_QUANTUM 4096
+#define XMSG_MEMPOOL_QUANTUM_SMALL 4096
+#define XMSG_MEMPOOL_QUANTUM_LARGE 128
 
       xio_msgr_noreg_mpool =
 	xio_mempool_create(-1 /* nodeid */,
@@ -308,19 +309,19 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 64,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_64,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_SMALL);
       (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 256,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_256,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_SMALL);
       (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 1024,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_1k,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_SMALL);
       (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, getpagesize(),
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_page,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_SMALL);
 
       /* registered pool */
       xio_msgr_reg_mpool =
@@ -332,55 +333,55 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 				       64 + buffer::sizeof_reg(),
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_64,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_SMALL);
 
       (void) xio_mempool_add_allocator(xio_msgr_reg_mpool,
 				       256 + buffer::sizeof_reg(),
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_256,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_SMALL);
 
       (void) xio_mempool_add_allocator(xio_msgr_reg_mpool,
 				       1024 + buffer::sizeof_reg(),
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_1k,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_SMALL);
 
       int pool_size = getpagesize() + buffer::sizeof_reg();
       (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_page,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_SMALL);
 
       pool_size = 2 * getpagesize() + buffer::sizeof_reg();
       (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_page,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_SMALL);
 
       pool_size = 4 * getpagesize() + buffer::sizeof_reg();
       (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_page,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_SMALL);
 
       pool_size = 1024*1024 + buffer::sizeof_reg();
       (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_page,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_LARGE);
 
       pool_size = 4*1024*1024 + buffer::sizeof_reg();
       (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       cct->_conf->xio_mp_min,
 				       cct->_conf->xio_mp_max_page,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_LARGE);
 
       pool_size = 8*1024*1024 + buffer::sizeof_reg();
       (void) xio_mempool_add_allocator(xio_msgr_reg_mpool, pool_size,
 				       0,
 				       cct->_conf->xio_mp_max_page,
-				       XMSG_MEMPOOL_QUANTUM);
+				       XMSG_MEMPOOL_QUANTUM_LARGE);
 
       /* initialize ops singleton */
       xio_msgr_ops.on_session_event = on_session_event;
@@ -410,10 +411,13 @@ int XioMessenger::pool_hint(uint32_t dsize) {
   if (dsize > 1024*1024)
     return 0;
 
+  unsigned int quantum = (dsize > 4*getpagesize()) ?
+    XMSG_MEMPOOL_QUANTUM_SMALL : XMSG_MEMPOOL_QUANTUM_LARGE;
+
   /* if dsize is already present, returns -EEXIST */
   return xio_mempool_add_allocator(xio_msgr_noreg_mpool, dsize, 0,
 				   cct->_conf->xio_mp_max_hint,
-				   XMSG_MEMPOOL_QUANTUM);
+				   quantum);
 }
 
 int XioMessenger::new_session(struct xio_session *session,
