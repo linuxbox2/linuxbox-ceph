@@ -308,7 +308,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       xio_msgr_noreg_mpool =
 	xio_mempool_create(-1 /* nodeid */,
-			   XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC);
+			   XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC |
+			   XIO_MEMPOOL_FLAG_USE_SMALLEST_SLAB);
 
       (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 64,
 				       cct->_conf->xio_mp_min,
@@ -331,6 +332,7 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       xio_msgr_reg_mpool =
 	xio_mempool_create(-1 /* nodeid */,
 			   XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC |
+			   XIO_MEMPOOL_FLAG_USE_SMALLEST_SLAB |
 			   XIO_MEMPOOL_FLAG_REG_MR);
 
       (void) xio_mempool_add_allocator(xio_msgr_reg_mpool,
@@ -415,7 +417,7 @@ int XioMessenger::pool_hint(uint32_t dsize) {
   if (dsize > 1024*1024)
     return 0;
 
-  unsigned int quantum = (dsize > 4*getpagesize()) ?
+  unsigned int quantum = (dsize > 4*uint32_t(getpagesize())) ?
     XMSG_MEMPOOL_QUANTUM_SMALL : XMSG_MEMPOOL_QUANTUM_LARGE;
 
   /* if dsize is already present, returns -EEXIST */
