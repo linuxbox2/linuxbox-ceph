@@ -337,10 +337,10 @@ public:
   }
 
   bufferlist& get_data() { return data; }
-  void claim_data(bufferlist& bl) {
+  void claim_data(bufferlist& bl, bool clone_nonsharable=true) {
     if (byte_throttler)
       byte_throttler->put(data.length());
-    bl.claim(data);
+    bl.claim(data, clone_nonsharable);
   }
   off_t get_data_len() { return data.length(); }
 
