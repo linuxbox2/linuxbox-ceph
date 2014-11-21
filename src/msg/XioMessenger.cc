@@ -577,7 +577,6 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg*& req,
     if (unlikely(msg_off >= XIO_MSGR_IOVLEN || req_size >= MAX_XIO_BUF_SIZE)) {
       /* finish this request */
       req->out.pdata_iov.nents = msg_off;
-      req->more_in_batch = 1;
       /* advance to next, and write in it if it's not the last one. */
       if (++req_off >= ex_cnt) {
 	req = 0;	/* poison.  trap if we try to use it. */
