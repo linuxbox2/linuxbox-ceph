@@ -285,7 +285,8 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       xio_msgr_noreg_mpool =
 	xio_mempool_create(-1 /* nodeid */,
-			   XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC);
+			   XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC |
+			   XIO_MEMPOOL_FLAG_USE_SMALLEST_SLAB);
 
       (void) xio_mempool_add_allocator(xio_msgr_noreg_mpool, 32,
 				       cct->_conf->xio_mp_min,
