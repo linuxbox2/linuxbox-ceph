@@ -205,7 +205,6 @@ int XioConnection::on_msg_req(struct xio_session *session,
 			      void *cb_user_context)
 {
   struct xio_msg *treq = req;
-  bool xio_ptr;
 
   /* XXX Accelio guarantees message ordering at
    * xio_session */
@@ -277,9 +276,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = msg_iter;
-    xio_ptr = (req->in.sgl_type == XIO_SGL_TYPE_IOV_PTR);
-    iov_len = (xio_ptr) ? treq->in.pdata_iov.nents : treq->in.data_iov.nents;
-    iovs = (xio_ptr) ? treq->in.pdata_iov.sglist : treq->in.data_iov.sglist;
+    iov_len = vmsg_sglist_nents(&treq->in);
+    iovs = vmsg_sglist(&treq->in);
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &iovs[ix];
 
@@ -325,9 +323,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = msg_iter;
-    xio_ptr = (req->in.sgl_type == XIO_SGL_TYPE_IOV_PTR);
-    iov_len = (xio_ptr) ? treq->in.pdata_iov.nents : treq->in.data_iov.nents;
-    iovs = (xio_ptr) ? treq->in.pdata_iov.sglist : treq->in.data_iov.sglist;
+    iov_len = vmsg_sglist_nents(&treq->in);
+    iovs = vmsg_sglist(&treq->in);
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &iovs[ix];
       take_len = MIN(blen, msg_iov->iov_len);
@@ -358,9 +355,8 @@ int XioConnection::on_msg_req(struct xio_session *session,
 
   while (blen && (msg_iter != msg_seq.end())) {
     treq = msg_iter;
-    xio_ptr = (req->in.sgl_type == XIO_SGL_TYPE_IOV_PTR);
-    iov_len = (xio_ptr) ? treq->in.pdata_iov.nents : treq->in.data_iov.nents;
-    iovs = (xio_ptr) ? treq->in.pdata_iov.sglist : treq->in.data_iov.sglist;
+    iov_len = vmsg_sglist_nents(&treq->in);
+    iovs = vmsg_sglist(&treq->in);
     for (; blen && (ix < iov_len); ++ix) {
       msg_iov = &iovs[ix];
       data.append(
