@@ -162,6 +162,10 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
     bool is_n_page_sized() {
       return (len & ~CEPH_PAGE_MASK) == 0;
     }
+    virtual bool sharable() {
+      // true if safe to claim-hold due to, e.g., special registration
+      return true;
+    }
     bool get_crc(const pair<size_t, size_t> &fromto,
 		 pair<uint32_t, uint32_t> *crc) const {
       Mutex::Locker l(crc_lock);
@@ -601,6 +605,18 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
   buffer::raw *buffer::ptr::clone()
   {
     return _raw->clone();
+  }
+
+  buffer::ptr& buffer::ptr::clone_nonsharable() {
+    if (_raw && !_raw->sharable()) {
+      buffer::raw *tr = _raw;
+      _raw = tr->clone();
+      _raw->nref.set(1);
+      if (unlikely(tr->nref.dec() == 0)) {
+        delete tr;
+      }
+    }
+    return *this;
   }
 
   void buffer::ptr::swap(ptr& other)
@@ -1171,27 +1187,31 @@ void buffer::list::rebuild_page_aligned()
 }
 
   // sort-of-like-assignment-op
-  void buffer::list::claim(list& bl)
+  void buffer::list::claim(list& bl, bool clone_nonsharable)
   {
     // free my buffers
     clear();
-    claim_append(bl);
+    claim_append(bl, clone_nonsharable);
   }
 
-  void buffer::list::claim_append(list& bl)
+  void buffer::list::claim_append(list& bl, bool clone_nonsharable)
   {
     // steal the other guy's buffers
     _len += bl._len;
-    _buffers.splice( _buffers.end(), bl._buffers );
+    if (clone_nonsharable)
+       bl.clone_nonsharable();
+    _buffers.splice(_buffers.end(), bl._buffers );
     bl._len = 0;
     bl.last_p = bl.begin();
   }
 
-  void buffer::list::claim_prepend(list& bl)
+  void buffer::list::claim_prepend(list& bl, bool clone_nonsharable)
   {
     // steal the other guy's buffers
     _len += bl._len;
-    _buffers.splice( _buffers.begin(), bl._buffers );
+    if (clone_nonsharable)
+       bl.clone_nonsharable();
+    _buffers.splice(_buffers.begin(), bl._buffers );
     bl._len = 0;
     bl.last_p = bl.begin();
   }
