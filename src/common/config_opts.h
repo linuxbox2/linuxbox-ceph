@@ -51,8 +51,11 @@ OPTION(xio_trace_msgcnt, OPT_BOOL, false) // incoming/outgoing msg counters
 OPTION(xio_trace_xcon, OPT_BOOL, false) // Xio message encode/decode trace
 OPTION(xio_queue_depth, OPT_INT, 512) // depth of Accelio msg queue
 OPTION(xio_mp_min, OPT_INT, 128) // default min mempool size
+OPTION(xio_mp_max_32, OPT_INT, 65536) // max 32-byte chunks
 OPTION(xio_mp_max_64, OPT_INT, 65536) // max 64-byte chunks (buffer is 40)
+OPTION(xio_mp_max_128, OPT_INT, 8192) // max 128-byte chunks
 OPTION(xio_mp_max_256, OPT_INT, 8192) // max 256-byte chunks
+OPTION(xio_mp_max_512, OPT_INT, 8192) // max 512-byte chunks
 OPTION(xio_mp_max_1k, OPT_INT, 8192) // max 1K chunks
 OPTION(xio_mp_max_page, OPT_INT, 4096) // max 1K chunks
 OPTION(xio_mp_max_hint, OPT_INT, 4096) // max size-hint chunks
