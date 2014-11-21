@@ -139,7 +139,7 @@ static int on_msg(struct xio_session *session,
   static uint32_t nreqs;
   if (unlikely(XioPool::trace_mempool)) {
     if (unlikely((++nreqs % 65536) == 0)) {
-      xp_stats.dump(__func__);
+      xp_stats.dump(__func__, nreqs);
     }
   }
 
@@ -460,6 +460,9 @@ int XioMessenger::session_event(struct xio_session *session,
     break;
   case XIO_SESSION_TEARDOWN_EVENT:
     ldout(cct,2) << "xio_session_teardown " << session << dendl;
+    if (unlikely(XioPool::trace_mempool)) {
+      xp_stats.dump("xio session dtor", reinterpret_cast<uint64_t>(session));
+    }
     xio_session_destroy(session);
     if (nsessions.dec() == 0) {
       Mutex2::Locker lck(sh_mtx);
@@ -698,7 +701,7 @@ int XioMessenger::_send_message(Message *m, Connection *con)
   static uint32_t nreqs;
   if (unlikely(XioPool::trace_mempool)) {
     if (unlikely((++nreqs % 65536) == 0)) {
-      xp_stats.dump(__func__);
+      xp_stats.dump(__func__, nreqs);
     }
   }
 
