@@ -315,7 +315,10 @@ public:
     nrefs(1),
     cl_flag(false),
     mp_this(_mp)
-    { xpool_inc_hookcnt(); }
+    {
+      ++xcon->n_reqs; // atomicity by portal thread
+      xpool_inc_hookcnt();
+    }
 
   virtual void finish(int r) {
     this->put();
@@ -357,6 +360,7 @@ public:
   }
 
   ~XioCompletionHook() {
+    --xcon->n_reqs; // atomicity by portal thread
     xpool_dec_hookcnt();
     xcon->put();
   }
