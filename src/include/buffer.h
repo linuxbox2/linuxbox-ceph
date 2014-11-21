@@ -179,6 +179,7 @@ public:
 
     raw *clone();
     void swap(ptr& other);
+    ptr& strong_claim();
 
     // misc
     bool at_buffer_head() const { return _off == 0; }
@@ -323,11 +324,16 @@ public:
     }
     ~list() {}
     
-    list(const list& other) : _buffers(other._buffers), _len(other._len), last_p(this) { }
+    list(const list& other) : _buffers(other._buffers), _len(other._len), last_p(this) {
+      // make strong-claim semantics the unmarked case
+      strong_claim_inplace();
+    }
     list& operator= (const list& other) {
       if (this != &other) {
         _buffers = other._buffers;
         _len = other._len;
+        // make strong-claim semantics the unmarked case
+        strong_claim_inplace();
       }
       return *this;
     }
@@ -391,10 +397,30 @@ public:
     void rebuild(ptr& nb);
     void rebuild_page_aligned();
 
-    // sort-of-like-assignment-op
-    void claim(list& bl);
-    void claim_append(list& bl);
-    void claim_prepend(list& bl);
+    // assignment-op with move semantics
+    void claim(list& bl, bool strong=true);
+    void claim_append(list& bl, bool strong=true);
+    void claim_prepend(list& bl, bool strong=true);
+
+    // non-destructively replace volatile buffers
+    void strong_claim_inplace() {
+      std::list<buffer::ptr>::iterator pb;
+      for (pb = _buffers.begin(); pb != _buffers.end(); ++pb) {
+        (void) pb->strong_claim();
+      }
+    }
+
+    // copy with explicit volatile-sharing semantics
+    void share(list& bl)
+    {
+      if (this != &bl) {
+        clear();
+        std::list<buffer::ptr>::iterator pb;
+        for (pb = bl._buffers.begin(); pb != bl._buffers.end(); ++pb) {
+          push_back(*pb);
+        }
+      }
+    }
 
     iterator begin() {
       return iterator(this, 0);
