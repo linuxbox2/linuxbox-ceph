@@ -164,6 +164,7 @@ static int on_ow_msg_send_complete(struct xio_session *session,
 
 static int on_msg_error(struct xio_session *session,
 			enum xio_status error,
+			enum xio_msg_direction dir,
 			struct xio_msg  *msg,
 			void *conn_user_context)
 {
@@ -271,26 +272,36 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
       // claim a reference to the first context we see
       xio_log::context = cct->get();
 
-      unsigned xopt;
+      int xopt;
       xopt = xio_log::get_level();
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_LEVEL,
-		  &xopt, sizeof(unsigned));
+		  &xopt, sizeof(xopt));
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_FN,
 		  (const void*)xio_log::log_dout, sizeof(xio_log_fn));
 
       xopt = 1;
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_DISABLE_HUGETBL,
-		  &xopt, sizeof(unsigned));
+		  &xopt, sizeof(xopt));
 
       xopt = XIO_MSGR_IOVLEN;
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_IN_IOVLEN,
-		  &xopt, sizeof(unsigned));
+		  &xopt, sizeof(xopt));
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_OUT_IOVLEN,
-		  &xopt, sizeof(unsigned));
+		  &xopt, sizeof(xopt));
 
       xopt = cct->_conf->xio_queue_depth; // defaults to 512
-      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_QUEUE_DEPTH,
-		  &xopt, sizeof(unsigned));
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_SND_QUEUE_DEPTH,
+		  &xopt, sizeof(xopt));
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_RCV_QUEUE_DEPTH,
+		  &xopt, sizeof(xopt));
+
+      /* and set threshold for buffer callouts */
+      xopt = 8192;
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_INLINE_DATA,
+                 &xopt, sizeof(xopt));
+      xopt = 216;
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_INLINE_HEADER,
+                 &xopt, sizeof(xopt));
 
       /* and unregisterd one */
 #define XMSG_MEMPOOL_QUANTUM 4096
@@ -589,7 +600,6 @@ xio_place_buffers(buffer::list& bl, XioMsg *xmsg, struct xio_msg*& req,
     if (unlikely(msg_off >= XIO_MSGR_IOVLEN || req_size >= MAX_XIO_BUF_SIZE)) {
       /* finish this request */
       req->out.pdata_iov.nents = msg_off;
-      req->more_in_batch = 1;
       /* advance to next, and write in it if it's not the last one. */
       if (++req_off >= ex_cnt) {
 	req = 0;	/* poison.  trap if we try to use it. */

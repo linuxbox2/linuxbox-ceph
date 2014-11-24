@@ -30,7 +30,7 @@ static inline int xpool_alloc(struct xio_mempool *pool, uint64_t size,
 			      struct xio_mempool_obj* mp);
 static inline void xpool_free(uint64_t size, struct xio_mempool_obj* mp);
 
-using ceph::atomic_t
+using ceph::atomic_t;
 
 class XioPool
 {
