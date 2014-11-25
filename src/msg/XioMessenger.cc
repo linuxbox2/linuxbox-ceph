@@ -263,28 +263,28 @@ XioMessenger::XioMessenger(CephContext *cct, entity_name_t name,
 
       xopt = xio_log::get_level();
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_LEVEL,
-		  &xopt, sizeof(unsigned));
+		  &xopt, sizeof(xopt));
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_LOG_FN,
 		  (const void*)xio_log::log_dout, sizeof(xio_log_fn));
 
       xopt = 1;
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_DISABLE_HUGETBL,
-		  &xopt, sizeof(unsigned));
+		  &xopt, sizeof(xopt));
 
       xopt = XIO_MSGR_IOVLEN;
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_IN_IOVLEN,
-		  &xopt, sizeof(unsigned));
+		  &xopt, sizeof(xopt));
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_OUT_IOVLEN,
-		  &xopt, sizeof(unsigned));
+		  &xopt, sizeof(xopt));
 
       xopt = cct->_conf->xio_queue_depth; // defaults to 512
-      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_SND_QUEUE_DEPTH,
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_SND_QUEUE_DEPTH_MSGS,
 		  &xopt, sizeof(xopt));
-      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_RCV_QUEUE_DEPTH,
+      xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_RCV_QUEUE_DEPTH_MSGS,
 		  &xopt, sizeof(xopt));
 
       /* and set 0 threshold for buffer callouts */
-      xopt = 0;
+      xopt = 16384;
       xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_MAX_INLINE_DATA,
 		  &xopt, sizeof(xopt));
       xopt = 216;
