@@ -126,11 +126,12 @@ add_subdirectory(json_spirit)
 set(xio_common_srcs)
 if(HAVE_XIO)
   list(APPEND xio_common_srcs
-    msg/XioConnection.cc
-    msg/XioMsg.cc
-    msg/XioMessenger.cc
-    msg/XioPortal.cc
-    msg/QueueStrategy.cc)
+    msg/xio/XioConnection.cc
+    msg/xio/XioMsg.cc
+    msg/xio/XioPool.cc
+    msg/xio/XioMessenger.cc
+    msg/xio/XioPortal.cc
+    msg/xio/QueueStrategy.cc)
 endif(HAVE_XIO)
 
 set(libcommon_files
