@@ -21,10 +21,10 @@ using namespace std;
 
 #include "common/config.h"
 #include "msg/msg_types.h"
-#include "msg/XioMessenger.h"
-#include "msg/FastStrategy.h"
-#include "msg/QueueStrategy.h"
-#include "msg/XioMsg.h"
+#include "msg/xio/XioMessenger.h"
+#include "msg/xio/FastStrategy.h"
+#include "msg/xio/QueueStrategy.h"
+#include "msg/xio/XioMsg.h"
 #include "messages/MPing.h"
 #include "common/Timer.h"
 #include "common/ceph_argparse.h"
@@ -33,7 +33,7 @@ using namespace std;
 #include "common/address_helper.h"
 #include "message_helper.h"
 #include "xio_dispatcher.h"
-#include "msg/XioConnection.h"
+#include "msg/xio/XioConnection.h"
 
 #define dout_subsys ceph_subsys_xio_client
 
