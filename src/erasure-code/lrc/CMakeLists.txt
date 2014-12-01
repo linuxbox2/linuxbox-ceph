@@ -1,8 +1,8 @@
 # LRC plugin
 
 set(lrc_srcs
-  ErasureCodePluginLRC.cc
-  ErasureCodeLRC.cc
+  ErasureCodePluginLrc.cc
+  ErasureCodeLrc.cc
   $<TARGET_OBJECTS:erasure_code_objs>
 )
 

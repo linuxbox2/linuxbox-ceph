@@ -124,12 +124,12 @@ set(crush_srcs
 set(xio_common_srcs)
 if(HAVE_XIO)
   list(APPEND xio_common_srcs
-    msg/XioConnection.cc
-    msg/XioMsg.cc
-    msg/XioPool.cc
-    msg/XioMessenger.cc
-    msg/XioPortal.cc
-    msg/QueueStrategy.cc)
+    msg/xio/XioConnection.cc
+    msg/xio/XioMsg.cc
+    msg/xio/XioPool.cc
+    msg/xio/XioMessenger.cc
+    msg/xio/XioPortal.cc
+    msg/xio/QueueStrategy.cc)
 endif(HAVE_XIO)
 
 add_subdirectory(json_spirit)
@@ -148,6 +148,7 @@ set(libcommon_files
   common/admin_socket.cc
   common/admin_socket_client.cc
   common/bloom_filter.cc
+  common/Readahead.cc
   ${crush_srcs}
   common/cmdparse.cc
   common/escape.c
@@ -180,16 +181,22 @@ set(libcommon_files
   mon/MonCap.cc
   mon/MonClient.cc
   mon/MonMap.cc
-  msg/Accepter.cc
-  msg/DispatchQueue.cc
+  msg/simple/Accepter.cc
+  msg/simple/DispatchQueue.cc
   msg/Message.cc
   osd/ECMsgTypes.cc
   osd/HitSet.cc
   common/RefCountedObj.cc
   msg/Messenger.cc
-  msg/Pipe.cc
-  msg/PipeConnection.cc
-  msg/SimpleMessenger.cc
+  msg/simple/Pipe.cc
+  msg/simple/PipeConnection.cc
+  msg/simple/SimpleMessenger.cc
+  msg/async/AsyncConnection.cc
+  msg/async/AsyncMessenger.cc
+  msg/async/Event.cc
+  msg/async/EventEpoll.cc
+  msg/async/EventSelect.cc
+  msg/async/net_handler.cc
   ${xio_common_srcs}
   msg/msg_types.cc
   common/hobject.cc
@@ -475,6 +482,7 @@ if(${WITH_MDS})
   set(mds_srcs 
     mds/Capability.cc
     mds/MDS.cc
+    mds/Beacon.cc
     mds/flock.cc
     mds/locks.c
     mds/journal.cc
@@ -498,6 +506,7 @@ if(${WITH_MDS})
     mds/snap.cc
     mds/SessionMap.cc
     mds/MDSContext.cc
+    mds/MDSAuthCaps.cc
     mds/MDLog.cc
     mds/JournalPointer.cc
     ${CMAKE_SOURCE_DIR}/src/osdc/Journaler.cc)
@@ -612,7 +621,7 @@ if(WITH_LIBCEPHFS)
     client/MetaSession.cc
     client/Trace.cc)
   add_library(client ${libclient_srcs})
-  target_link_libraries(client osdc ${LIBEDIT_LIBS})
+  target_link_libraries(client osdc mds ${LIBEDIT_LIBS})
   set(libcephfs_srcs libcephfs.cc)
   add_library(cephfs SHARED ${libcephfs_srcs})
   target_link_libraries(cephfs client global)
