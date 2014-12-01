@@ -17,7 +17,7 @@
 #define XIO_IN_SEQ_H
 
 #include <boost/intrusive/list.hpp>
-#include "SimplePolicyMessenger.h"
+#include "msg/SimplePolicyMessenger.h"
 extern "C" {
 #include "libxio.h"
 }
