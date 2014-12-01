@@ -63,22 +63,22 @@ endif
 
 if ENABLE_XIO
 libmsg_la_SOURCES += \
-	msg/QueueStrategy.cc \
-	msg/XioConnection.cc \
-	msg/XioMessenger.cc \
-	msg/XioMsg.cc \
-	msg/XioPortal.cc
+	msg/xio/QueueStrategy.cc \
+	msg/xio/XioConnection.cc \
+	msg/xio/XioMessenger.cc \
+	msg/xio/XioMsg.cc \
+	msg/xio/XioPortal.cc
 
 noinst_HEADERS += \
-	msg/DispatchStrategy.h \
-	msg/FastStrategy.h \
-	msg/QueueStrategy.h \
-	msg/XioConnection.h \
-	msg/XioInSeq.h \
-	msg/XioMessenger.h \
-	msg/XioMsg.h \
-	msg/XioPool.h \
-	msg/XioPortal.h
+	msg/xio/DispatchStrategy.h \
+	msg/xio/FastStrategy.h \
+	msg/xio/QueueStrategy.h \
+	msg/xio/XioConnection.h \
+	msg/xio/XioInSeq.h \
+	msg/xio/XioMessenger.h \
+	msg/xio/XioMsg.h \
+	msg/xio/XioPool.h \
+	msg/xio/XioPortal.h
 endif
 
 noinst_LTLIBRARIES += libmsg.la
