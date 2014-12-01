@@ -24,8 +24,8 @@ using namespace std;
 
 #include "msg/Messenger.h"
 #if defined(HAVE_XIO)
-#include "msg/XioMessenger.h"
-#include "msg/QueueStrategy.h"
+#include "msg/xio/XioMessenger.h"
+#include "msg/xio/QueueStrategy.h"
 #endif
 
 #include "mon/MonClient.h"
