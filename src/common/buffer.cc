@@ -24,7 +24,7 @@
 #include "include/types.h"
 #include "include/compat.h"
 #if defined(HAVE_XIO)
-#include "msg/XioMsg.h"
+#include "msg/xio/XioMsg.h"
 #endif
 
 #include <errno.h>
