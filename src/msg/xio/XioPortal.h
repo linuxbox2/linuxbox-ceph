@@ -21,7 +21,7 @@ extern "C" {
 }
 #include "XioInSeq.h"
 #include <boost/lexical_cast.hpp>
-#include "SimplePolicyMessenger.h"
+#include "msg/SimplePolicyMessenger.h"
 #include "XioConnection.h"
 #include "XioMsg.h"
 

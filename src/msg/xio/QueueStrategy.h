@@ -18,7 +18,7 @@
 
 #include <boost/intrusive/list.hpp>
 #include "DispatchStrategy.h"
-#include "Messenger.h"
+#include "msg/Messenger.h"
 
 namespace bi = boost::intrusive;
 

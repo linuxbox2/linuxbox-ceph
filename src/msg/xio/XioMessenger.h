@@ -16,7 +16,7 @@
 #ifndef XIO_MESSENGER_H
 #define XIO_MESSENGER_H
 
-#include "SimplePolicyMessenger.h"
+#include "msg/SimplePolicyMessenger.h"
 extern "C" {
 #include "libxio.h"
 }

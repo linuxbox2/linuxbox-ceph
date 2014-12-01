@@ -22,8 +22,8 @@ extern "C" {
 #include "libxio.h"
 }
 #include "XioInSeq.h"
-#include "Connection.h"
-#include "Messenger.h"
+#include "msg/Connection.h"
+#include "msg/Messenger.h"
 #include "include/atomic.h"
 
 #define XIO_ALL_FEATURES (CEPH_FEATURES_ALL & \
