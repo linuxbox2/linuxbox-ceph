@@ -20,9 +20,9 @@
 using namespace std;
 
 #include "common/config.h"
-#include "msg/XioMessenger.h"
-#include "msg/FastStrategy.h"
-#include "msg/QueueStrategy.h"
+#include "msg/xio/XioMessenger.h"
+#include "msg/xio/FastStrategy.h"
+#include "msg/xio/QueueStrategy.h"
 #include "common/Timer.h"
 #include "common/ceph_argparse.h"
 #include "global/global_init.h"
