@@ -4296,7 +4296,7 @@ int Client::mds_command(
     // Construct and send MCommand
     MCommand *m = new MCommand(monclient->get_fsid());
     m->cmd = cmd;
-    m->set_data(inbl);
+    m->set_data(const_cast<bufferlist&>(inbl));
     m->set_tid(tid);
     conn->send_message(m);
   }
