@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 2.8.11)
 
 project(Ceph)
-set(VERSION "0.80")
+set(VERSION "0.88")
+
+# Tweak policies (this one disables "missing" dependency warning)
+cmake_policy(SET CMP0046 OLD)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
