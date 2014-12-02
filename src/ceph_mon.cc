@@ -787,6 +787,9 @@ int main(int argc, const char **argv)
   unregister_async_signal_handler(SIGTERM, handle_mon_signal);
   shutdown_async_signal_handler();
 
+  // not optional, due to assert(!is_open) in dtor
+  store->close();
+
   delete mon;
   delete store;
   delete messenger;
