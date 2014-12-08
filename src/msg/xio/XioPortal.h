@@ -159,7 +159,7 @@ public:
     {
       if (! _shutdown) {
 	submit_q.enq(xcon, xs);
-	xio_context_stop_loop(ctx, false);
+	xio_context_stop_loop(ctx);
 	return;
       }
 
@@ -260,7 +260,7 @@ public:
   void shutdown()
     {
 	pthread_spin_lock(&sp);
-	xio_context_stop_loop(ctx, false);
+	xio_context_stop_loop(ctx);
 	_shutdown = true;
 	pthread_spin_unlock(&sp);
     }
