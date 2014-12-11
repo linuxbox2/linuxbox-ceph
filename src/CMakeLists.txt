@@ -87,8 +87,8 @@ configure_file(
   @ONLY)
 
 set(arch_files
+  arch/arm.c
   arch/intel.c
-  arch/neon.c
   arch/probe.cc)
 
 set(auth_files
