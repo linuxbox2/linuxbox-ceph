@@ -916,11 +916,16 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
 
     /* this should cause callbacks with user context of conn, but
      * we can always set it explicitly */
-    struct xio_connection_params xcp;
-    xcp.session = xcon->session;
-    xcp.ctx = this->portals.get_portal0()->ctx;
-    xcp.conn_idx = 0; /* XXX auto_count */
-    xcp.conn_user_context = xcon;
+    struct xio_connection_params xcp = {
+      .session           = xcon->session,
+      .ctx               = this->portals.get_portal0()->ctx,
+      .conn_idx          = 0, /* XXX auto_count */
+      .enable_tos        = 0,
+      .tos               = 0,
+      .pad               = 0,
+      .out_addr          = NULL,
+      .conn_user_context = xcon
+    };
     xcon->conn = xio_connect(&xcp);
     xcon->connected.set(true);
 
