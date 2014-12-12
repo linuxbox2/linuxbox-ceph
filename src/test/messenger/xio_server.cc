@@ -89,7 +89,6 @@ int main(int argc, const char **argv)
 				     entity_name_t::GENERIC(),
 				     "xio_server",
 				     0 /* nonce */,
-				     2 /* portals */,
 				     dstrategy);
 	static_cast<XioMessenger*>(messenger)->set_special_handling(MSG_SPECIAL_HANDLING_REDUPE);
 

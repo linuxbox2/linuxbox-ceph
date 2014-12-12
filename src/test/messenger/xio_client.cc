@@ -118,7 +118,6 @@ int main(int argc, const char **argv)
 				     entity_name_t::GENERIC(),
 				     "xio_client",
 				     0 /* nonce */,
-				     0 /* portals */,
 				     dstrategy);
 
 	static_cast<XioMessenger*>(messenger)->set_special_handling(
