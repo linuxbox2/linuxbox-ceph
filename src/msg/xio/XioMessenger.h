@@ -22,7 +22,7 @@ extern "C" {
 }
 #include "XioConnection.h"
 #include "XioPortal.h"
-#include "DispatchStrategy.h"
+#include "QueueStrategy.h"
 #include "include/atomic.h"
 #include "common/Thread.h"
 #include "common/Mutex.h"
@@ -47,7 +47,7 @@ private:
 public:
   XioMessenger(CephContext *cct, entity_name_t name,
 	       string mname, uint64_t nonce,
-	       DispatchStrategy* ds);
+	       DispatchStrategy* ds = new QueueStrategy(1));
 
   virtual ~XioMessenger();
 
