@@ -400,7 +400,6 @@ int main(int argc, const char **argv)
     g_ceph_context,
     entity_name_t::OSD(whoami), "xio client",
     getpid(),
-    2 /* portals */,
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_public->set_cluster_protocol(CEPH_OSD_PROTOCOL);
@@ -409,7 +408,6 @@ int main(int argc, const char **argv)
     g_ceph_context,
     entity_name_t::OSD(whoami), "xio cluster",
     getpid(),
-    2 /* portals */,
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_cluster->set_cluster_protocol(CEPH_OSD_PROTOCOL);
@@ -418,7 +416,6 @@ int main(int argc, const char **argv)
     g_ceph_context,
     entity_name_t::OSD(whoami), "xio objecter",
     getpid(),
-    2 /* portals */,
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_objecter->set_cluster_protocol(CEPH_OSD_PROTOCOL);
@@ -427,7 +424,6 @@ int main(int argc, const char **argv)
     g_ceph_context,
     entity_name_t::OSD(whoami), "xio objecter",
     getpid(),
-    2 /* portals */,
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_hb_cl->set_cluster_protocol(CEPH_OSD_PROTOCOL);
@@ -436,7 +432,6 @@ int main(int argc, const char **argv)
     g_ceph_context,
     entity_name_t::OSD(whoami), "xio objecter",
     getpid(),
-    2 /* portals */,
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_hb_fs->set_cluster_protocol(CEPH_OSD_PROTOCOL);
@@ -445,7 +440,6 @@ int main(int argc, const char **argv)
     g_ceph_context,
     entity_name_t::OSD(whoami), "xio objecter",
     getpid(),
-    2 /* portals */,
     new QueueStrategy(2) /* dispatch strategy */);
 
   ms_xio_hb_bs->set_cluster_protocol(CEPH_OSD_PROTOCOL);

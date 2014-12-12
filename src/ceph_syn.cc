@@ -73,7 +73,7 @@ int main(int argc, const char **argv, char *envp[])
     if (g_conf->client_rdma) {
       messengers[i] = new XioMessenger(g_ceph_context,
 				       entity_name_t::CLIENT(-1), "synclient",
-				       i * 1000000 + getpid(), 0,
+				       i * 1000000 + getpid(),
 				       new QueueStrategy(2));
     }
     else

@@ -216,8 +216,7 @@ int librados::RadosClient::connect()
 #if defined(HAVE_XIO)
   if (cct->_conf->client_rdma) {
     messenger = new XioMessenger(cct, entity_name_t::CLIENT(-1), "radosclient",
-				 nonce, 0 /* portals */,
-				 new QueueStrategy(2) /* dispatch strategy */);
+				 nonce, new QueueStrategy(2));
   } else
 #endif /* HAVE_XIO */
   {

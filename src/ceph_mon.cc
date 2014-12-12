@@ -757,7 +757,6 @@ int main(int argc, const char **argv)
 					 entity_name_t::MON(rank),
 					 "xio mon",
 					 0 /* nonce */,
-					 2 /* portals */,
 					 new QueueStrategy(2) /* dispatch strategy */);
 
   xmsgr->set_cluster_protocol(CEPH_MON_PROTOCOL);

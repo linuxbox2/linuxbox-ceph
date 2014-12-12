@@ -128,7 +128,7 @@ int main(int argc, const char **argv, const char *envp[]) {
     if (g_conf->client_rdma) {
       XioMessenger *xmsgr
 	= new XioMessenger(g_ceph_context, entity_name_t::CLIENT(-1),
-			   "xio client", getpid(), 0 /* portals */,
+			   "xio client", getpid(),
 			   new QueueStrategy(2) /* dispatch strategy */);
       messenger = xmsgr;
     } else
