@@ -279,10 +279,7 @@ public:
       /* portal0 */
       portals.push_back(new XioPortal(msgr));
 
-      /* n bound session portals */
-      for (int ix = 1; ix < n; ++ix) {
-	portals.push_back(new XioPortal(msgr));
-      }
+      /* additional portals allocated on bind() */
     }
 
   vector<XioPortal*>& get() { return portals; }
