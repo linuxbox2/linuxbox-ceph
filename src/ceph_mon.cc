@@ -29,10 +29,6 @@ using namespace std;
 #include "mon/MonClient.h"
 
 #include "msg/Messenger.h"
-#if defined(HAVE_XIO)
-#include "msg/xio/XioMessenger.h"
-#include "msg/xio/QueueStrategy.h"
-#endif
 
 #include "include/CompatSet.h"
 
@@ -442,7 +438,7 @@ int main(int argc, const char **argv)
     }
     assert(r == 0);
 
-    Monitor mon(g_ceph_context, g_conf->name.get_id(), &store, 0, 0, &monmap);
+    Monitor mon(g_ceph_context, g_conf->name.get_id(), &store, 0, &monmap);
     r = mon.mkfs(osdmapbl);
     if (r < 0) {
       cerr << argv[0] << ": error creating monfs: " << cpp_strerror(r) << std::endl;
@@ -691,13 +687,10 @@ int main(int argc, const char **argv)
   // bind
   int rank = monmap.get_rank(g_conf->name.get_id());
 
-  /* SimpleMessenger */
-  Messenger *simple_msgr = Messenger::create(g_ceph_context,
-					     entity_name_t::MON(rank),
-					     "mon",
-					     0);
-  simple_msgr->set_cluster_protocol(CEPH_MON_PROTOCOL);
-  simple_msgr->set_default_send_priority(CEPH_MSG_PRIO_HIGH);
+  Messenger *msgr = Messenger::create(g_ceph_context,
+                                      entity_name_t::MON(rank), "mon", 0);
+  msgr->set_cluster_protocol(CEPH_MON_PROTOCOL);
+  msgr->set_default_send_priority(CEPH_MSG_PRIO_HIGH);
 
   uint64_t supported =
     CEPH_FEATURE_UID |
@@ -705,28 +698,27 @@ int main(int argc, const char **argv)
     CEPH_FEATURE_MONCLOCKCHECK |
     CEPH_FEATURE_PGID64 |
     CEPH_FEATURE_MSG_AUTH;
-  simple_msgr->set_default_policy(Messenger::Policy::stateless_server(
-				  supported, 0));
-  simple_msgr->set_policy(entity_name_t::TYPE_MON,
-			  Messenger::Policy::lossless_peer_reuse(
-			    supported,
-			    CEPH_FEATURE_UID |
-			    CEPH_FEATURE_PGID64 |
-			    CEPH_FEATURE_MON_SINGLE_PAXOS));
-  simple_msgr->set_policy(entity_name_t::TYPE_OSD,
-			  Messenger::Policy::stateless_server(
-			    supported,
-			    CEPH_FEATURE_PGID64 |
-			    CEPH_FEATURE_OSDENC));
-  simple_msgr->set_policy(entity_name_t::TYPE_CLIENT,
-			  Messenger::Policy::stateless_server(supported, 0));
-  simple_msgr->set_policy(entity_name_t::TYPE_MDS,
-			  Messenger::Policy::stateless_server(supported, 0));
+  msgr->set_default_policy(Messenger::Policy::stateless_server(supported, 0));
+  msgr->set_policy(entity_name_t::TYPE_MON,
+                   Messenger::Policy::lossless_peer_reuse(
+                       supported,
+                       CEPH_FEATURE_UID |
+                       CEPH_FEATURE_PGID64 |
+                       CEPH_FEATURE_MON_SINGLE_PAXOS));
+  msgr->set_policy(entity_name_t::TYPE_OSD,
+                   Messenger::Policy::stateless_server(
+                       supported,
+                       CEPH_FEATURE_PGID64 |
+                       CEPH_FEATURE_OSDENC));
+  msgr->set_policy(entity_name_t::TYPE_CLIENT,
+                   Messenger::Policy::stateless_server(supported, 0));
+  msgr->set_policy(entity_name_t::TYPE_MDS,
+                   Messenger::Policy::stateless_server(supported, 0));
 
   // throttle client traffic
   Throttle *client_throttler = new Throttle(g_ceph_context, "mon_client_bytes",
 					    g_conf->mon_client_bytes);
-  simple_msgr->set_policy_throttlers(entity_name_t::TYPE_CLIENT,
+  msgr->set_policy_throttlers(entity_name_t::TYPE_CLIENT,
 				     client_throttler, NULL);
 
   // throttle daemon traffic
@@ -734,9 +726,9 @@ int main(int argc, const char **argv)
   // monitors if they forward large update messages from daemons.
   Throttle *daemon_throttler = new Throttle(g_ceph_context, "mon_daemon_bytes",
 					    g_conf->mon_daemon_bytes);
-  simple_msgr->set_policy_throttlers(entity_name_t::TYPE_OSD, daemon_throttler,
+  msgr->set_policy_throttlers(entity_name_t::TYPE_OSD, daemon_throttler,
 				     NULL);
-  simple_msgr->set_policy_throttlers(entity_name_t::TYPE_MDS, daemon_throttler,
+  msgr->set_policy_throttlers(entity_name_t::TYPE_MDS, daemon_throttler,
 				     NULL);
 
   dout(0) << "starting " << g_conf->name << " rank " << rank
@@ -745,49 +737,11 @@ int main(int argc, const char **argv)
        << " fsid " << monmap.get_fsid()
        << dendl;
 
-  err = simple_msgr->bind(ipaddr);
+  err = msgr->bind(ipaddr);
   if (err < 0) {
     derr << "unable to bind monitor to " << ipaddr << dendl;
     prefork.exit(1);
   }
-
-#if defined(HAVE_XIO)
-  /* XioMessenger */
-  XioMessenger *xmsgr = new XioMessenger(g_ceph_context,
-					 entity_name_t::MON(rank),
-					 "xio mon",
-					 0 /* nonce */,
-					 new QueueStrategy(2) /* dispatch strategy */);
-
-  xmsgr->set_cluster_protocol(CEPH_MON_PROTOCOL);
-  xmsgr->set_default_send_priority(CEPH_MSG_PRIO_HIGH);
-
-  xmsgr->set_default_policy(Messenger::Policy::stateless_server(
-				  supported, 0));
-  xmsgr->set_policy(entity_name_t::TYPE_MON,
-			Messenger::Policy::lossless_peer_reuse(
-			  supported,
-			  CEPH_FEATURE_UID |
-			  CEPH_FEATURE_PGID64 |
-			  CEPH_FEATURE_MON_SINGLE_PAXOS));
-  xmsgr->set_policy(entity_name_t::TYPE_OSD,
-			Messenger::Policy::stateless_server(
-			  supported,
-			  CEPH_FEATURE_PGID64 |
-			  CEPH_FEATURE_OSDENC));
-  xmsgr->set_policy(entity_name_t::TYPE_CLIENT,
-			Messenger::Policy::stateless_server(supported, 0));
-  xmsgr->set_policy(entity_name_t::TYPE_MDS,
-			Messenger::Policy::stateless_server(supported, 0));
-
-  xmsgr->set_policy_throttlers(entity_name_t::TYPE_CLIENT,
-				   client_throttler, NULL);
-
-  xmsgr->set_policy_throttlers(entity_name_t::TYPE_OSD, daemon_throttler,
-				   NULL);
-  xmsgr->set_policy_throttlers(entity_name_t::TYPE_MDS, daemon_throttler,
-				   NULL);
-#endif
 
   cout << "starting " << g_conf->name << " rank " << rank
        << " at " << ipaddr
@@ -795,22 +749,9 @@ int main(int argc, const char **argv)
        << " fsid " << monmap.get_fsid()
        << std::endl;
 
-  Messenger *cluster_msgr = simple_msgr;
-  Messenger *xio_msgr = NULL;
-
-#if defined(HAVE_XIO)
-  err = xmsgr->bind(simple_msgr->get_myaddr());
-  if (err < 0)
-    prefork.exit(1);
-
-  if (g_conf->cluster_rdma)
-    cluster_msgr = xmsgr;
-  xio_msgr = xmsgr;
-#endif
-
   // start monitor
   mon = new Monitor(g_ceph_context, g_conf->name.get_id(), store,
-		    cluster_msgr, xio_msgr, &monmap);
+		    msgr, &monmap);
 
   if (force_sync) {
     derr << "flagging a forced sync ..." << dendl;
@@ -834,10 +775,7 @@ int main(int argc, const char **argv)
     prefork.daemonize();
   }
 
-  simple_msgr->start();
-#if defined(HAVE_XIO)
-  xmsgr->start();
-#endif
+  msgr->start();
 
   mon->init();
 
@@ -850,11 +788,7 @@ int main(int argc, const char **argv)
   if (g_conf->inject_early_sigterm)
     kill(getpid(), SIGTERM);
 
-  simple_msgr->wait();
-#if defined(HAVE_XIO)
-  if (xmsgr)
-    xmsgr->wait();
-#endif
+  msgr->wait();
 
   unregister_async_signal_handler(SIGHUP, sighup_handler);
   unregister_async_signal_handler(SIGINT, handle_mon_signal);
@@ -866,10 +800,7 @@ int main(int argc, const char **argv)
 
   delete mon;
   delete store;
-  delete simple_msgr;
-#if defined(HAVE_XIO)
-  delete xmsgr;
-#endif
+  delete msgr;
   delete client_throttler;
   delete daemon_throttler;
   g_ceph_context->put();

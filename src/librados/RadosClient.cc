@@ -31,10 +31,6 @@
 #include "messages/MWatchNotify.h"
 #include "messages/MLog.h"
 #include "msg/Messenger.h"
-#if defined(HAVE_XIO)
-#include "msg/xio/XioMessenger.h"
-#include "msg/xio/QueueStrategy.h"
-#endif
 
 // needed for static_cast
 #include "messages/PaxosServiceMessage.h"
@@ -213,16 +209,8 @@ int librados::RadosClient::connect()
 
   err = -ENOMEM;
   nonce = getpid() + (1000000 * (uint64_t)rados_instance.inc());
-#if defined(HAVE_XIO)
-  if (cct->_conf->client_rdma) {
-    messenger = new XioMessenger(cct, entity_name_t::CLIENT(-1), "radosclient",
-				 nonce, new QueueStrategy(2));
-  } else
-#endif /* HAVE_XIO */
-  {
-    messenger = Messenger::create(cct, entity_name_t::CLIENT(-1),
-				  "radosclient", nonce);
-  }
+  messenger = Messenger::create(cct, entity_name_t::CLIENT(-1),
+                                "radosclient", nonce);
   if (!messenger)
     goto out;
 

@@ -806,7 +806,7 @@ public:
 
  public:
   Monitor(CephContext *cct_, string nm, MonitorDBStore *s,
-	  Messenger *m, Messenger *xm, MonMap *map);
+	  Messenger *m, MonMap *map);
   ~Monitor();
 
   static int check_features(MonitorDBStore *store);
