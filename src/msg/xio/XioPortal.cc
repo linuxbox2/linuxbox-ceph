@@ -58,16 +58,20 @@ int XioPortals::bind(struct xio_session_ops *ops, const string& base_uri,
   /* a server needs at least 1 portal */
   if (n < 1)
     return EINVAL;
+  Messenger *msgr = portals[0]->msgr;
+  portals.resize(n);
 
   /* bind the portals */
   for (size_t i = 0; i < portals.size(); i++) {
+    if (!portals[i])
+      portals[i] = new XioPortal(msgr);
 
     uint16_t result_port;
     int r = portals[i]->bind(ops, base_uri, port, &result_port);
     if (r != 0)
       return r;
 
-    ldout(portals[i]->msgr->cct,5) << "xp::bind: portal " << i << " bind OK: "
+    ldout(msgr->cct,5) << "xp::bind: portal " << i << " bind OK: "
       << portals[i]->xio_uri << dendl;
 
     if (i == 0 && port0 != NULL)
