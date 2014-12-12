@@ -24,10 +24,6 @@ using namespace std;
 #include "client/fuse_ll.h"
 
 #include "msg/Messenger.h"
-#if defined(HAVE_XIO)
-#include "msg/xio/XioMessenger.h"
-#include "msg/xio/QueueStrategy.h"
-#endif
 
 #include "mon/MonClient.h"
 
@@ -124,20 +120,9 @@ int main(int argc, const char **argv, const char *envp[]) {
       goto out_mc_start_failed;
 
     // start up network
-#if defined(HAVE_XIO)
-    if (g_conf->client_rdma) {
-      XioMessenger *xmsgr
-	= new XioMessenger(g_ceph_context, entity_name_t::CLIENT(-1),
-			   "xio client", getpid(),
-			   new QueueStrategy(2) /* dispatch strategy */);
-      messenger = xmsgr;
-    } else
-#endif
-    {
-      messenger = Messenger::create(g_ceph_context,
-				    entity_name_t::CLIENT(), "client",
-				    getpid());
-    }
+    messenger = Messenger::create(g_ceph_context,
+                                  entity_name_t::CLIENT(), "client",
+                                  getpid());
     messenger->set_default_policy(Messenger::Policy::lossy_client(0, 0));
     messenger->set_policy(entity_name_t::TYPE_MDS,
 			  Messenger::Policy::lossless_client(0, 0));

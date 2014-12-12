@@ -29,10 +29,6 @@ using namespace std;
 #include "mds/MDS.h"
 
 #include "msg/Messenger.h"
-#if defined(HAVE_XIO)
-#include "msg/xio/XioMessenger.h"
-#include "msg/xio/QueueStrategy.h"
-#endif
 
 #include "common/Timer.h"
 #include "common/ceph_argparse.h"
@@ -155,23 +151,12 @@ int main(int argc, const char **argv)
       "MDS names may not start with a numeric digit." << dendl;
   }
 
-  Messenger *simple_msgr = Messenger::create(g_ceph_context,
-					   entity_name_t::MDS(-1), "mds",
-					   getpid());
-  simple_msgr->set_cluster_protocol(CEPH_MDS_PROTOCOL);
+  Messenger *msgr = Messenger::create(g_ceph_context,
+                                      entity_name_t::MDS(-1), "mds",
+                                      getpid());
+  msgr->set_cluster_protocol(CEPH_MDS_PROTOCOL);
 
-#if defined(HAVE_XIO)
-  XioMessenger *xmsgr = new XioMessenger(
-    g_ceph_context,
-    entity_name_t::MDS(-1),
-    "xio mds",
-    0 /* nonce */,
-    new QueueStrategy(2) /* dispatch strategy */);
-
-  xmsgr->set_cluster_protocol(CEPH_MDS_PROTOCOL);
-#endif
-
-  cout << "starting " << g_conf->name << " at " << simple_msgr->get_myaddr()
+  cout << "starting " << g_conf->name << " at " << msgr->get_myaddr()
        << std::endl;
   uint64_t supported =
     CEPH_FEATURE_UID |
@@ -184,37 +169,20 @@ int main(int argc, const char **argv)
   uint64_t required =
     CEPH_FEATURE_OSDREPLYMUX;
 
-  simple_msgr->set_default_policy(Messenger::Policy::lossy_client(supported, required));
-  simple_msgr->set_policy(entity_name_t::TYPE_MON,
-			Messenger::Policy::lossy_client(supported,
-							CEPH_FEATURE_UID |
-							CEPH_FEATURE_PGID64));
-  simple_msgr->set_policy(entity_name_t::TYPE_MDS,
-			Messenger::Policy::lossless_peer(supported,
-							 CEPH_FEATURE_UID));
-  simple_msgr->set_policy(entity_name_t::TYPE_CLIENT,
-			Messenger::Policy::stateful_server(supported, 0));
+  msgr->set_default_policy(Messenger::Policy::lossy_client(supported, required));
+  msgr->set_policy(entity_name_t::TYPE_MON,
+                   Messenger::Policy::lossy_client(supported,
+                                                   CEPH_FEATURE_UID |
+                                                   CEPH_FEATURE_PGID64));
+  msgr->set_policy(entity_name_t::TYPE_MDS,
+                   Messenger::Policy::lossless_peer(supported,
+                                                    CEPH_FEATURE_UID));
+  msgr->set_policy(entity_name_t::TYPE_CLIENT,
+                   Messenger::Policy::stateful_server(supported, 0));
 
-  int r = simple_msgr->bind(g_conf->public_addr);
+  int r = msgr->bind(g_conf->public_addr);
   if (r < 0)
     exit(1);
-
-#if defined(HAVE_XIO)
-  xmsgr->set_default_policy(Messenger::Policy::lossy_client(supported, required));
-  xmsgr->set_policy(entity_name_t::TYPE_MON,
-		    Messenger::Policy::lossy_client(supported,
-						    CEPH_FEATURE_UID |
-						    CEPH_FEATURE_PGID64));
-  xmsgr->set_policy(entity_name_t::TYPE_MDS,
-		    Messenger::Policy::lossless_peer(supported,
-						     CEPH_FEATURE_UID));
-  xmsgr->set_policy(entity_name_t::TYPE_CLIENT,
-		    Messenger::Policy::stateful_server(supported, 0));
-
-  r = xmsgr->bind(simple_msgr->get_myaddr());
-  if (r < 0)
-    exit(1);
-#endif
 
   if (shadow != MDSMap::STATE_ONESHOT_REPLAY)
     global_init_daemonize(g_ceph_context, 0);
@@ -226,19 +194,10 @@ int main(int argc, const char **argv)
     return -1;
   global_init_chdir(g_ceph_context);
 
-  simple_msgr->start();
-#if defined(HAVE_XIO)
-  xmsgr->start();
-#endif
-
-  Messenger *cluster_msgr = simple_msgr;
-#if defined(HAVE_XIO)
-  if (g_conf->cluster_rdma)
-    cluster_msgr = xmsgr;
-#endif
+  msgr->start();
 
   // start mds
-  mds = new MDS(g_conf->name.get_id().c_str(), cluster_msgr, &mc);
+  mds = new MDS(g_conf->name.get_id().c_str(), msgr, &mc);
 
   // in case we have to respawn...
   mds->orig_argc = argc;
@@ -260,10 +219,7 @@ int main(int argc, const char **argv)
   if (g_conf->inject_early_sigterm)
     kill(getpid(), SIGTERM);
 
-  simple_msgr->wait();
-#if defined(HAVE_XIO)
-  xmsgr->wait();
-#endif
+  msgr->wait();
 
   unregister_async_signal_handler(SIGHUP, sighup_handler);
   unregister_async_signal_handler(SIGINT, handle_mds_signal);

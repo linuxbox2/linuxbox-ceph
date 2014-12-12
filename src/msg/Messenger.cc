@@ -57,13 +57,7 @@ int Messenger::get_default_crc_flags(md_config_t * conf)
     r |= MSG_CRC_HEADER;
 
   if (r == MSG_CRC_DATA) {
-    bool cluster_rdma =
-#if defined(HAVE_XIO)
-      conf->cluster_rdma;
-#else
-    false;
-#endif
-    if (cluster_rdma)
+    if (conf->ms_type == "xio")
       r = 0;
     else if (conf->ms_nocrc)
       r = MSG_CRC_HEADER;

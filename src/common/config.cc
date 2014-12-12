@@ -419,7 +419,7 @@ int md_config_t::parse_argv(std::vector<const char*>& args)
       set_val_or_die("client_mountpoint", val.c_str());
     }
     else if (ceph_argparse_flag(args, i, "--xio", "-x", (char*)NULL)) {
-      set_val_or_die("client_rdma", "true");
+      set_val_or_die("ms_type", "xio");
     }
     else {
       parse_option(args, i, NULL);
