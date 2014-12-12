@@ -645,7 +645,7 @@ int XioMessenger::bind(const entity_addr_t& addr)
       const char *ep;
       if (!local_rdma_addr.parse(rdma_local_str.c_str(), &ep)) {
 	derr << "ERROR:  Cannot parse rdma local: " << rdma_local_str << dendl;
-	return -1;
+	return -EINVAL;
       }
       if (*ep) {
 	derr << "WARNING: 'rdma local trailing garbage ignored: '" << ep << dendl;
