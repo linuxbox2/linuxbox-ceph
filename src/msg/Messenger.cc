@@ -6,6 +6,9 @@
 
 #include "msg/simple/SimpleMessenger.h"
 #include "msg/async/AsyncMessenger.h"
+#ifdef HAVE_XIO
+#include "msg/xio/XioMessenger.h"
+#endif
 
 Messenger *Messenger::create(CephContext *cct,
 			     entity_name_t name,
@@ -14,11 +17,15 @@ Messenger *Messenger::create(CephContext *cct,
 {
   int r = -1;
   if (cct->_conf->ms_type == "random")
-    r = rand() % 2;
+    r = rand() % 2; // random does not include xio
   if (r == 0 || cct->_conf->ms_type == "simple")
     return new SimpleMessenger(cct, name, lname, nonce);
   else if (r == 1 || cct->_conf->ms_type == "async")
     return new AsyncMessenger(cct, name, lname, nonce);
+#ifdef HAVE_XIO
+  else if (cct->_conf->ms_type == "xio")
+    return new XioMessenger(cct, name, lname, nonce);
+#endif
   lderr(cct) << "unrecognized ms_type '" << cct->_conf->ms_type << "'" << dendl;
   return NULL;
 }
