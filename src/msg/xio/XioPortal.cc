@@ -29,12 +29,8 @@ int XioPortal::bind(struct xio_session_ops *ops, const string &base_uri,
 
   uint16_t assigned;
   server = xio_bind(ctx, ops, xio_uri.c_str(), &assigned, 0, msgr);
-  if (server == NULL) {
-    int err = xio_errno();
-    lderr(msgr->cct) << "xp::bind: portal " << xio_uri
-      << " failed to bind: " << xio_strerror(err) << dendl;
-    return err;
-  }
+  if (server == NULL)
+    return xio_errno();
 
   // update uri if port changed
   if (port != assigned) {
@@ -61,15 +57,35 @@ int XioPortals::bind(struct xio_session_ops *ops, const string& base_uri,
   Messenger *msgr = portals[0]->msgr;
   portals.resize(n);
 
+  uint16_t port_min = msgr->cct->_conf->ms_bind_port_min;
+  const uint16_t port_max = msgr->cct->_conf->ms_bind_port_max;
+
   /* bind the portals */
   for (size_t i = 0; i < portals.size(); i++) {
     if (!portals[i])
       portals[i] = new XioPortal(msgr);
 
     uint16_t result_port;
-    int r = portals[i]->bind(ops, base_uri, port, &result_port);
-    if (r != 0)
-      return r;
+    if (port != 0) {
+      // bind directly to the given port
+      int r = portals[i]->bind(ops, base_uri, port, &result_port);
+      if (r != 0)
+        return -r;
+    } else {
+      int r = EADDRINUSE;
+      // try ports within the configured range
+      for (; port_min <= port_max; port_min++) {
+        r = portals[i]->bind(ops, base_uri, port_min, &result_port);
+        if (r == 0)
+          break;
+      }
+      if (r != 0) {
+        lderr(msgr->cct) << "portal.bind unable to bind to " << base_uri
+            << " on any port in range " << msgr->cct->_conf->ms_bind_port_min
+            << "-" << port_max << ": " << xio_strerror(r) << dendl;
+        return -r;
+      }
+    }
 
     ldout(msgr->cct,5) << "xp::bind: portal " << i << " bind OK: "
       << portals[i]->xio_uri << dendl;
