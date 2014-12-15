@@ -419,9 +419,6 @@ int XioMessenger::session_event(struct xio_session *session,
     (void) entity_addr_from_sockaddr(&s_inst.addr,
 				     (struct sockaddr *) &xcona.peer_addr);
 
-    if (cct->_conf->xio_port_shift)
-      s_inst.addr.set_port(s_inst.addr.get_port() - cct->_conf->xio_port_shift);
-
     xcon = new XioConnection(this, XioConnection::PASSIVE, s_inst);
     xcon->session = session;
 
@@ -660,10 +657,6 @@ int XioMessenger::bind(const entity_addr_t& addr)
   }
 
   entity_addr_t shift_addr = *a;
-  if (cct->_conf->xio_port_shift && shift_addr.get_port() > 0) {
-    // don't shift port 0
-    shift_addr.set_port(shift_addr.get_port() + cct->_conf->xio_port_shift);
-  }
 
   string base_uri = xio_uri_from_entity(shift_addr, false /* want_port */);
   ldout(cct,4) << "XioMessenger " << this << " bind: xio_uri "
@@ -672,7 +665,6 @@ int XioMessenger::bind(const entity_addr_t& addr)
   uint16_t port0;
   int r = portals.bind(&xio_msgr_ops, base_uri, shift_addr.get_port(), &port0);
   if (r == 0) {
-    shift_addr.set_port(port0 - cct->_conf->xio_port_shift);
     set_myaddr(shift_addr);
   }
   return r;
@@ -902,13 +894,9 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
     return get_loopback_connection();
   }
 
-  entity_inst_t _dest = dest;
-  if (cct->_conf->xio_port_shift)
-    _dest.addr.set_port(_dest.addr.get_port() + cct->_conf->xio_port_shift);
-
   conns_sp.lock();
   XioConnection::EntitySet::iterator conn_iter =
-    conns_entity_map.find(_dest, XioConnection::EntityComp());
+    conns_entity_map.find(dest, XioConnection::EntityComp());
   if (conn_iter != conns_entity_map.end()) {
     ConnectionRef cref = &(*conn_iter);
     conns_sp.unlock();
@@ -916,7 +904,7 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
   }
   else {
     conns_sp.unlock();
-    string xio_uri = xio_uri_from_entity(_dest.addr, true /* want_port */);
+    string xio_uri = xio_uri_from_entity(dest.addr, true /* want_port */);
 
     ldout(cct,4) << "XioMessenger " << this << " get_connection: xio_uri "
       << xio_uri << dendl;
@@ -933,7 +921,7 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
     };
 
     XioConnection *xcon = new XioConnection(this, XioConnection::ACTIVE,
-					    _dest);
+					    dest);
 
     xcon->session = xio_session_create(&params);
     if (! xcon->session) {
