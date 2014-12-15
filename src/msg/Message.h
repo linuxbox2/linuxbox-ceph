@@ -171,6 +171,11 @@
 // Xio Testing
 #define MSG_DATA_PING		  0x602
 
+// Xio intends to define messages 0x603..0x606
+
+// Special
+#define MSG_NOP                   0x607
+
 // *** Message::encode() crcflags bits.
 #define MSG_CRC_DATA		1
 #define MSG_CRC_HEADER		2
