@@ -577,7 +577,6 @@ void XioConnection::mark_disposable()
   _mark_disposable(XioConnection::CState::OP_FLAG_NONE);
 }
 
-
 int XioConnection::_mark_disposable(uint32_t flags)
 {
   if (! (flags & CState::OP_FLAG_LOCKED))
@@ -591,20 +590,24 @@ int XioConnection::_mark_disposable(uint32_t flags)
   return 0;
 }
 
-int XioConnection::CState::state_up_ready() {
-  dout(11) << __func__ << " ENTER " << dendl;
+int XioConnection::CState::state_up_ready(uint32_t flags)
+{
+  if (! (flags & CState::OP_FLAG_LOCKED))
+    pthread_spin_lock(&xcon->sp);
 
-  xcon->flush_input_queue(OP_FLAG_NONE);
+  xcon->flush_input_queue(flags);
 
   session_state.set(UP);
   startup_state.set(READY);
 
+  if (! (flags & CState::OP_FLAG_LOCKED))
+    pthread_spin_unlock(&xcon->sp);
+
   return (0);
 }
 
-int XioConnection::CState::state_discon() {
-  dout(11) << __func__ << " ENTER " << dendl;
-
+int XioConnection::CState::state_discon()
+{
   session_state.set(DISCONNECTED);
   startup_state.set(IDLE);
 

@@ -175,7 +175,7 @@ private:
     int msg_connect_auth(MConnectAuth *m);
     int msg_connect_auth_reply(MConnectAuthReply *m);
 #endif
-    int state_up_ready();
+    int state_up_ready(uint32_t flags);
     int state_flow_controlled(uint32_t flags);
     int state_discon();
     int state_fail(Message* m, uint32_t flags);

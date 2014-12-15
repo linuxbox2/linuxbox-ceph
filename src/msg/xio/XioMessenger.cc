@@ -964,6 +964,9 @@ ConnectionRef XioMessenger::get_connection(const entity_inst_t& dest)
     conns_entity_map.insert(*xcon);
     conns_sp.unlock();
 
+    /* XXXX pre-merge of session startup negotiation ONLY! */
+    xcon->cstate.state_up_ready(XioConnection::CState::OP_FLAG_NONE);
+
     return xcon->get(); /* nref +1 */
   }
 } /* get_connection */
