@@ -22,6 +22,7 @@
 #include "XioMsg.h"
 #include "XioMessenger.h"
 #include "common/address_helper.h"
+#include "messages/MNop.h"
 
 #define dout_subsys ceph_subsys_xio
 
@@ -721,14 +722,6 @@ static inline XioMsg* pool_alloc_xio_msg(Message *m, XioConnection *xcon,
 
 int XioMessenger::_send_message(Message *m, Connection *con)
 {
-
-  static uint32_t nreqs;
-  if (unlikely(XioPool::trace_mempool)) {
-    if (unlikely((++nreqs % 65536) == 0)) {
-      xp_stats.dump(__func__, nreqs);
-    }
-  }
-
   if (con == &loop_con) {
     m->set_connection(con);
     m->set_src(get_myinst().name);
@@ -739,10 +732,31 @@ int XioMessenger::_send_message(Message *m, Connection *con)
   }
 
   XioConnection *xcon = static_cast<XioConnection*>(con);
-  if (! xcon->is_connected())
-    return ENOTCONN;
 
+  /* If con is not in READY state, we have to enforce policy */
+  if (xcon->cstate.session_state.read() != XioConnection::UP) {
+    pthread_spin_lock(&xcon->sp);
+    if (xcon->cstate.session_state.read() != XioConnection::UP) {
+      xcon->outgoing.mqueue.push_back(*m);
+      pthread_spin_unlock(&xcon->sp);
+      return 0;
+    }
+    pthread_spin_unlock(&xcon->sp);
+  }
+
+  return _send_message_impl(m, xcon);
+} /* send_message(Message* m, Connection *con) */
+
+int XioMessenger::_send_message_impl(Message* m, XioConnection* xcon)
+{
   int code = 0;
+
+  static uint32_t nreqs;
+  if (unlikely(XioPool::trace_mempool)) {
+    if (unlikely((++nreqs % 65536) == 0)) {
+      xp_stats.dump(__func__, nreqs);
+    }
+  }
 
   m->set_seq(xcon->state.next_out_seq());
   m->set_magic(magic); // trace flag
@@ -958,6 +972,63 @@ ConnectionRef XioMessenger::get_loopback_connection()
 {
   return (loop_con.get());
 } /* get_loopback_connection */
+
+void XioMessenger::mark_down(const entity_addr_t& addr)
+{
+  entity_inst_t inst(entity_name_t(), addr);
+  Spinlock::Locker lckr(conns_sp);
+  XioConnection::EntitySet::iterator conn_iter =
+    conns_entity_map.find(inst, XioConnection::EntityComp());
+  if (conn_iter != conns_entity_map.end()) {
+      (*conn_iter)._mark_down(XioConnection::CState::OP_FLAG_NONE);
+    }
+} /* mark_down(const entity_addr_t& */
+
+void XioMessenger::mark_down(Connection* con)
+{
+  XioConnection *xcon = static_cast<XioConnection*>(con);
+  xcon->_mark_down(XioConnection::CState::OP_FLAG_NONE);
+} /* mark_down(Connection*) */
+
+void XioMessenger::mark_down_all()
+{
+  Spinlock::Locker lckr(conns_sp);
+  XioConnection::EntitySet::iterator conn_iter;
+  for (conn_iter = conns_entity_map.begin(); conn_iter !=
+	 conns_entity_map.begin(); ++conn_iter) {
+    (*conn_iter)._mark_down(XioConnection::CState::OP_FLAG_NONE);
+  }
+} /* mark_down_all */
+
+static inline XioMarkDownHook* pool_alloc_markdown_hook(
+  XioConnection *xcon, Message *m)
+{
+  struct xio_mempool_obj mp_mem;
+  int e = xio_mempool_alloc(xio_msgr_noreg_mpool,
+			    sizeof(XioMarkDownHook), &mp_mem);
+  if (!!e)
+    return NULL;
+  XioMarkDownHook *hook = static_cast<XioMarkDownHook*>(mp_mem.addr);
+  new (hook) XioMarkDownHook(xcon, m, mp_mem);
+  return hook;
+}
+
+void XioMessenger::mark_down_on_empty(Connection* con)
+{
+  XioConnection *xcon = static_cast<XioConnection*>(con);
+  MNop* m = new MNop();
+  m->tag = XIO_NOP_TAG_MARKDOWN;
+  m->set_completion_hook(pool_alloc_markdown_hook(xcon, m));
+  // stall new messages
+  xcon->cstate.session_state.set(XioConnection::BARRIER);
+  (void) _send_message_impl(m, xcon);
+}
+
+void XioMessenger::mark_disposable(Connection *con)
+{
+  XioConnection *xcon = static_cast<XioConnection*>(con);
+  xcon->_mark_disposable(XioConnection::CState::OP_FLAG_NONE);
+}
 
 void XioMessenger::try_insert(XioConnection *xcon)
 {

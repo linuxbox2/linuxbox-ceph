@@ -292,7 +292,7 @@ public:
     }
 };
 
-class XioCompletionHook : public Message::CompletionHook
+class XioDispatchHook : public Message::CompletionHook
 {
 private:
   XioConnection *xcon;
@@ -305,7 +305,7 @@ private:
 public:
   struct xio_mempool_obj mp_this;
 
-  XioCompletionHook(XioConnection *_xcon, Message *_m, XioInSeq& _msg_seq,
+  XioDispatchHook(XioConnection *_xcon, Message *_m, XioInSeq& _msg_seq,
 		    struct xio_mempool_obj& _mp) :
     CompletionHook(_m),
     xcon(_xcon->get()),
@@ -329,7 +329,7 @@ public:
 
   int release_msgs();
 
-  XioCompletionHook* get() {
+  XioDispatchHook* get() {
     nrefs.inc(); return this;
   }
 
@@ -342,8 +342,8 @@ public:
       if (!cl_flag && release_msgs())
 	return;
       struct xio_mempool_obj *mp = &this->mp_this;
-      this->~XioCompletionHook();
-      xpool_free(sizeof(XioCompletionHook), mp);
+      this->~XioDispatchHook();
+      xpool_free(sizeof(XioDispatchHook), mp);
     }
   }
 
@@ -358,18 +358,48 @@ public:
     this->finish(-1);
   }
 
-  ~XioCompletionHook() {
+  ~XioDispatchHook() {
     --xcon->n_reqs; // atomicity by portal thread
     xpool_dec_hookcnt();
     xcon->put();
   }
 };
 
+/* A sender-side CompletionHook that relies on the on_msg_delivered
+ * to complete a pending mark down. */
+class XioMarkDownHook : public Message::CompletionHook
+{
+private:
+  XioConnection* xcon;
+
+public:
+  struct xio_mempool_obj mp_this;
+
+  XioMarkDownHook(
+    XioConnection* _xcon, Message *_m, struct xio_mempool_obj& _mp) :
+    CompletionHook(_m), xcon(_xcon->get()), mp_this(_mp)
+    { }
+
+  virtual void claim(int r) {}
+
+  virtual void finish(int r) {
+    xcon->put();
+    struct xio_mempool_obj *mp = &this->mp_this;
+    this->~XioMarkDownHook();
+    xio_mempool_free(mp);
+  }
+
+  virtual void complete(int r) {
+    xcon->_mark_down(XioConnection::CState::OP_FLAG_NONE);
+    finish(r);
+  }
+};
+
 struct XioRsp : public XioSubmit
 {
-  XioCompletionHook *xhook;
+  XioDispatchHook *xhook;
 public:
-  XioRsp(XioConnection *_xcon, XioCompletionHook *_xhook)
+  XioRsp(XioConnection *_xcon, XioDispatchHook *_xhook)
     : XioSubmit(XioSubmit::INCOMING_MSG_RELEASE, _xcon /* not xcon! */),
       xhook(_xhook->get()) {
       // submit queue ref
@@ -380,7 +410,7 @@ public:
     return xhook->get_seq().dequeue();
   }
 
-  XioCompletionHook *get_xhook() { return xhook; }
+  XioDispatchHook* get_xhook() { return xhook; }
 
   void finalize() {
     xcon->put();
