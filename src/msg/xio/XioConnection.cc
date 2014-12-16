@@ -612,7 +612,7 @@ int XioConnection::CState::state_up_ready(uint32_t flags)
   if (! (flags & CState::OP_FLAG_LOCKED))
     pthread_spin_lock(&xcon->sp);
 
-  xcon->flush_input_queue(flags);
+  xcon->flush_input_queue(flags|CState::OP_FLAG_LOCKED);
 
   session_state.set(UP);
   startup_state.set(READY);
