@@ -51,7 +51,9 @@ private:
 
     Lane qlane[nlanes];
 
-    SubmitQueue()
+    int ix; /* atomicity by portal thread */
+
+    SubmitQueue() : ix(0)
       {
 	int ix;
 	Lane* lane;
@@ -90,22 +92,23 @@ private:
 
     void deq(XioSubmit::Queue& send_q)
       {
-	int ix;
 	Lane* lane;
-
-	for (ix = 0; ix < nlanes; ++ix) {
+	int cnt;
+	for (cnt = 0; cnt < nlanes; ++cnt, ++ix, ix = ix % nlanes) {
 	  lane = &qlane[ix];
 	  pthread_spin_lock(&lane->sp);
 	  if (lane->size > 0) {
 	    XioSubmit::Queue::const_iterator i1 = send_q.end();
 	    send_q.splice(i1, lane->q);
 	    lane->size = 0;
+	    ++ix, ix = ix % nlanes;
+	    break;
 	  }
 	  pthread_spin_unlock(&lane->sp);
 	}
       }
 
-  };
+  }; /* SubmitQueue */
 
   Messenger *msgr;
   struct xio_context *ctx;
@@ -235,10 +238,11 @@ public:
       do {
 	submit_q.deq(send_q);
 
+      restart_1:
 	/* shutdown() barrier */
 	pthread_spin_lock(&sp);
 
-      restart:
+      restart_2:
 	size = send_q.size();
 
 	if (_shutdown) {
@@ -259,7 +263,7 @@ public:
 	    if (unlikely((xcon->send_ctr + xmsg->hdr.msg_cnt) >
 			 xio_qdepth_high)) {
 	      requeue_all_xcon(xmsg, xcon, q_iter, send_q);
-	      goto restart;
+	      goto restart_2;
 	    }
 
 	    q_iter = send_q.erase(q_iter);
@@ -282,7 +286,7 @@ public:
 		case XIO_E_TX_QUEUE_OVERFLOW:
 		{
 		  requeue_all_xcon(xmsg, xcon, q_iter, send_q);
-		  goto restart;
+		  goto restart_2;
 		}
 		  break;
 		default:
@@ -303,6 +307,14 @@ public:
 	}
 
 	pthread_spin_unlock(&sp);
+
+	/* submit_q.deq returns early if work is found in any lane, but if
+	 * nothing was found, no lane had work */
+	submit_q.deq(send_q);
+	size = send_q.size();
+	if (size > 0)
+	  goto restart_1;
+
 	xio_context_run_loop(ctx, 300);
 
       } while ((!_shutdown) || (!drained));
