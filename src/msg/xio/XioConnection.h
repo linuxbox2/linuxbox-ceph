@@ -78,6 +78,7 @@ private:
   uint64_t scount;
   uint32_t send_ctr;
   int q_high_mark;
+  int q_low_mark;
 
   struct lifecycle {
     // different from Pipe states?
@@ -244,6 +245,10 @@ private:
 
   int xio_qdepth_high_mark() {
     return q_high_mark;
+  }
+
+  int xio_qdepth_low_mark() {
+    return q_low_mark;
   }
 
 public:

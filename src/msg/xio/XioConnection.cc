@@ -115,6 +115,7 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
 
   /* set high mark for send, reserved 20% for credits */
   q_high_mark = xopt - (xopt * 8 / 10);
+  q_low_mark = q_high_mark/2;
 
   /* set send & receive msgs queue depth */
   xio_set_opt(NULL, XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_SND_QUEUE_DEPTH_MSGS,
@@ -452,6 +453,16 @@ int XioConnection::on_ow_msg_send_complete(struct xio_session *session,
     " seq: " << xmsg->m->get_seq() << dendl;
 
   --send_ctr; /* atomic, because portal thread */
+
+  /* unblock flow-controlled connections, avoid oscillation */
+  if (unlikely(cstate.session_state.read() ==
+	       XioConnection::FLOW_CONTROLLED)) {
+    if ((send_ctr <= uint32_t(xio_qdepth_low_mark())) &&
+	(1 /* XXX memory <= memory low-water mark */))  {
+      cstate.state_up_ready(XioConnection::CState::OP_FLAG_NONE);
+    }
+  }
+
   xmsg->put();
 
   return 0;
