@@ -22,6 +22,7 @@ extern "C" {
 #include "libxio.h"
 }
 #include "XioConnection.h"
+#include "XioSubmit.h"
 #include "msg/msg_types.h"
 #include "XioPool.h"
 
@@ -134,29 +135,6 @@ public:
 };
 
 WRITE_CLASS_ENCODER(XioMsgHdr);
-
-struct XioSubmit
-{
-public:
-  enum submit_type
-  {
-    OUTGOING_MSG,
-    INCOMING_MSG_RELEASE
-  };
-  enum submit_type type;
-  bi::list_member_hook<> submit_list;
-  XioConnection *xcon;
-
-  XioSubmit(enum submit_type _type, XioConnection *_xcon) :
-    type(_type), xcon(_xcon)
-    {}
-
-  typedef bi::list< XioSubmit,
-		    bi::member_hook< XioSubmit,
-				     bi::list_member_hook<>,
-				     &XioSubmit::submit_list >
-		    > Queue;
-};
 
 extern struct xio_mempool *xio_msgr_noreg_mpool;
 

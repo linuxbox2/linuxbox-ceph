@@ -475,6 +475,12 @@ int XioConnection::flush_input_queue(uint32_t flags) {
   XioMessenger* msgr = static_cast<XioMessenger*>(get_messenger());
   if (! (flags & CState::OP_FLAG_LOCKED))
     pthread_spin_lock(&sp);
+
+  // send deferred 1 (direct backpresssure)
+  if (outgoing.requeue.size() > 0)
+    portal->requeue(this, outgoing.requeue);
+
+  // send deferred 2 (sent while deferred)
   int ix, q_size = outgoing.mqueue.size();
   for (ix = 0; ix < q_size; ++ix) {
     Message::Queue::iterator q_iter = outgoing.mqueue.begin();

@@ -22,6 +22,7 @@ extern "C" {
 #include "libxio.h"
 }
 #include "XioInSeq.h"
+#include "XioSubmit.h"
 #include "msg/Connection.h"
 #include "msg/Messenger.h"
 #include "include/atomic.h"
@@ -185,6 +186,7 @@ private:
   // message submission queue
   struct SendQ {
     Message::Queue mqueue; // deferred
+    XioSubmit::Queue requeue;
   } outgoing;
 
   // conns_entity_map comparison functor
