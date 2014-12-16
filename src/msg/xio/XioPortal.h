@@ -213,8 +213,8 @@ public:
 	  (xs->xcon != xcon))
 	continue;
       xmsg = static_cast<XioMsg*>(xs);
+      q_iter = send_q.erase(q_iter);
       requeue_q.push_back(*xmsg);
-      ++q_iter;
     }
     pthread_spin_lock(&xcon->sp);
     XioSubmit::Queue::const_iterator i1 = xcon->outgoing.requeue.begin();
