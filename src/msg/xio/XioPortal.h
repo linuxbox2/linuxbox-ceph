@@ -51,7 +51,9 @@ private:
 
     Lane qlane[nlanes];
 
-    SubmitQueue()
+    int ix; /* atomicity by portal thread */
+
+    SubmitQueue() : ix(0)
       {
 	int ix;
 	Lane* lane;
@@ -91,7 +93,6 @@ private:
     void deq(XioSubmit::Queue& send_q)
       {
 	Lane* lane;
-	static int ix; // atomicity from portal thread
 	int cnt;
 	for (cnt = 0; cnt < nlanes; ++cnt, ++ix, ix = ix % nlanes) {
 	  lane = &qlane[ix];
