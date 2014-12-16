@@ -102,6 +102,7 @@ private:
 	    send_q.splice(i1, lane->q);
 	    lane->size = 0;
 	    ++ix, ix = ix % nlanes;
+	    pthread_spin_unlock(&lane->sp);
 	    break;
 	  }
 	  pthread_spin_unlock(&lane->sp);
