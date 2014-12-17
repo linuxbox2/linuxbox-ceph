@@ -442,6 +442,9 @@ int XioMessenger::session_event(struct xio_session *session,
      * it's peer address */
     conns_sp.unlock();
 
+    /* XXXX pre-merge of session startup negotiation ONLY! */
+    xcon->cstate.state_up_ready(XioConnection::CState::OP_FLAG_NONE);
+
     ldout(cct,4) << "new connection session " << session
       << " xcon " << xcon << dendl;
   }
