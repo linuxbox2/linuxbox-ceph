@@ -114,7 +114,7 @@ XioConnection::XioConnection(XioMessenger *m, XioConnection::type _type,
     xopt = max_msgs;
 
   /* set high mark for send, reserved 20% for credits */
-  q_high_mark = xopt - (xopt * 8 / 10);
+  q_high_mark = xopt * 4 / 5;
   q_low_mark = q_high_mark/2;
 
   /* set send & receive msgs queue depth */
