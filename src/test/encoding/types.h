@@ -1,5 +1,5 @@
 #include "include/CompatSet.h"
-TYPE(CompatSet)
+TYPE_FEATUREFUL(CompatSet)
 
 #include "include/filepath.h"
 TYPE(filepath)
@@ -25,7 +25,7 @@ TYPE(SloppyCRCMap)
 
 #include "msg/msg_types.h"
 TYPE(entity_name_t)
-TYPE(entity_addr_t)
+TYPE_FEATUREFUL(entity_addr_t)
 
 #include "osd/OSDMap.h"
 TYPE(osd_info_t)
@@ -66,7 +66,7 @@ TYPE(pg_ls_response_t)
 TYPE(object_copy_cursor_t)
 TYPE(object_copy_data_t)
 TYPE(pg_create_t)
-TYPE(watch_info_t)
+TYPE_FEATUREFUL(watch_info_t)
 TYPE_FEATUREFUL(object_info_t)
 TYPE(SnapSet)
 TYPE_FEATUREFUL(ObjectRecoveryInfo)
@@ -167,7 +167,7 @@ TYPE_FEATUREFUL(MDSMap::mds_info_t)
 TYPE_NOCOPY(Capability)
 
 #include "mds/AnchorServer.h"
-TYPEWITHSTRAYDATA(AnchorServer)
+TYPEWITHSTRAYDATA_FEATUREFUL(AnchorServer)
 
 #include "mds/InoTable.h"
 TYPE(InoTable)
@@ -176,7 +176,7 @@ TYPE(InoTable)
 TYPEWITHSTRAYDATA(SnapServer)
 
 #include "mds/SessionMap.h"
-TYPE(SessionMap)
+TYPE_FEATUREFUL(SessionMap)
 
 #include "mds/events/ECommitted.h"
 TYPE_FEATUREFUL(ECommitted)
@@ -308,7 +308,7 @@ TYPE_FEATUREFUL(rados::cls::lock::locker_info_t)
 #include "cls/lock/cls_lock_ops.h"
 TYPE(cls_lock_lock_op)
 TYPE(cls_lock_unlock_op)
-TYPE(cls_lock_break_op)
+TYPE_FEATUREFUL(cls_lock_break_op)
 TYPE(cls_lock_get_info_op)
 TYPE_FEATUREFUL(cls_lock_get_info_reply)
 TYPE(cls_lock_list_locks_reply)
