@@ -396,6 +396,7 @@ public:
   void _save_finish(version_t v);
  
 };
+WRITE_CLASS_ENCODER_FEATURES(SessionMap);
 
 
 #endif

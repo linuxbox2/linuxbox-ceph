@@ -48,5 +48,6 @@ class EImportFinish : public LogEvent {
   void replay(MDS *mds);
 
 };
+WRITE_CLASS_ENCODER_FEATURES(EImportFinish)
 
 #endif

@@ -49,5 +49,6 @@ public:
   void replay(MDS *mds);
 
 };
+WRITE_CLASS_ENCODER_FEATURES(EExport)
 
 #endif
