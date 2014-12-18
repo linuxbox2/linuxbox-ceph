@@ -69,7 +69,7 @@ class AnchorServer : public MDSTableServer {
   static void generate_test_instances(list<AnchorServer*>& ls);
   // for the dencoder
   AnchorServer() : MDSTableServer(NULL, TABLE_ANCHOR) {}
-  void encode(bufferlist& bl) const {
+  void encode(bufferlist& bl, uint64_t features) const {
     encode_server_state(bl);
   }
   void decode(bufferlist::iterator& bl) {
@@ -82,6 +82,6 @@ class AnchorServer : public MDSTableServer {
   void _rollback(version_t tid);
   void handle_query(MMDSTableRequest *m);
 };
-
+WRITE_CLASS_ENCODER_FEATURES(AnchorServer)
 
 #endif
