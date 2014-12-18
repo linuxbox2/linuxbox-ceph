@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_MSG_TYPES_H
@@ -116,11 +116,11 @@ public:
 };
 WRITE_CLASS_ENCODER(entity_name_t)
 
-inline bool operator== (const entity_name_t& l, const entity_name_t& r) { 
+inline bool operator== (const entity_name_t& l, const entity_name_t& r) {
   return (l.type() == r.type()) && (l.num() == r.num()); }
-inline bool operator!= (const entity_name_t& l, const entity_name_t& r) { 
+inline bool operator!= (const entity_name_t& l, const entity_name_t& r) {
   return (l.type() != r.type()) || (l.num() != r.num()); }
-inline bool operator< (const entity_name_t& l, const entity_name_t& r) { 
+inline bool operator< (const entity_name_t& l, const entity_name_t& r) {
   return (l.type() < r.type()) || (l.type() == r.type() && l.num() < r.num()); }
 
 inline std::ostream& operator<<(std::ostream& out, const entity_name_t& addr) {
@@ -171,13 +171,15 @@ static inline void decode(sockaddr_storage& a, bufferlist::iterator& bl) {
 }
 
 struct entity_addr_t {
+#if 0
   typedef enum {
     TYPE_NONE = 0,
     TYPE_IPV4 = 1,
     TYPE_IPV6 = 2,
   } type_t;
+#endif
 
-  __u32 type;
+  __u32 transport_type;
   __u32 nonce;
   union {
     sockaddr_storage addr;
@@ -197,11 +199,11 @@ struct entity_addr_t {
     return sizeof(addr);
   }
 
-  entity_addr_t() : type(0), nonce(0) { 
+  entity_addr_t() : transport_type(0), nonce(0) {
     memset(&addr, 0, sizeof(addr));
   }
   entity_addr_t(const ceph_entity_addr &o) {
-    type = o.type;
+    transport_type = o.transport_type;
     nonce = o.nonce;
     addr = o.in_addr;
 #if !defined(__FreeBSD__)
@@ -212,10 +214,10 @@ struct entity_addr_t {
   __u32 get_nonce() const { return nonce; }
   void set_nonce(__u32 n) { nonce = n; }
 
-  unsigned get_type() const { return type; }
-  bool is_none() const { return type == TYPE_NONE; }
-  bool is_ipv4() const { return type == TYPE_IPV4; }
-  bool is_ipv6() const { return type == TYPE_IPV6; }
+  unsigned get_transport_type() const { return transport_type; }
+  bool is_none() const { return addr.ss_family == AF_UNSPEC; }
+  bool is_ipv4() const { return addr4.sin_family == PF_INET; }
+  bool is_ipv6() const { return addr6.sin6_family == PF_INET6; }
 
   int get_family() const {
     return addr.ss_family;
@@ -223,7 +225,7 @@ struct entity_addr_t {
   void set_family(int f) {
     addr.ss_family = f;
   }
-  
+
   sockaddr_storage &ss_addr() {
     return addr;
   }
@@ -243,6 +245,9 @@ struct entity_addr_t {
   bool set_sockaddr(struct sockaddr *sa)
   {
     switch (sa->sa_family) {
+    case AF_UNSPEC:
+      memcpy(&addr, sa, sizeof(sockaddr_storage));
+      break;
     case AF_INET:
       memcpy(&addr4, sa, sizeof(sockaddr_in));
       break;
@@ -286,7 +291,7 @@ struct entity_addr_t {
 
   operator ceph_entity_addr() const {
     ceph_entity_addr a;
-    a.type = 0;
+    a.transport_type = 0;
     a.nonce = nonce;
     a.in_addr = addr;
 #if !defined(__FreeBSD__)
@@ -306,7 +311,7 @@ struct entity_addr_t {
       return true;
     return false;
   }
-  
+
   bool is_same_host(const entity_addr_t &o) const {
     if (addr.ss_family != o.addr.ss_family)
       return false;
@@ -345,17 +350,17 @@ struct entity_addr_t {
     }
     ::encode((__u8)1, bl);
     ENCODE_START(1, 1, bl);
-    ::encode(type, bl);
+    ::encode(transport_type, bl);
     ::encode(nonce, bl);
     __u32 elen;
-    switch (type) {
-    case TYPE_NONE:
+    switch (addr.ss_family) {
+    case AF_UNSPEC:
       elen = 0;
       break;
-    case TYPE_IPV4:
+    case AF_INET:
       elen = sizeof(in4_addr());
       break;
-    case TYPE_IPV6:
+    case AF_INET6:
       elen = sizeof(in6_addr());
       break;
     default:
@@ -375,7 +380,7 @@ struct entity_addr_t {
       ::decode(marker, bl);
       __u16 rest;
       ::decode(rest, bl);
-      type = ((__u32)marker << 16) + rest;
+      transport_type = ((__u32)marker << 16) + rest;
       ::decode(nonce, bl);
       ::decode(addr, bl);
       return;
@@ -383,7 +388,7 @@ struct entity_addr_t {
     if (marker != 1)
       throw buffer::malformed_input("entity_addr_t marker != 1");
     DECODE_START(1, bl);
-    ::decode(type, bl);
+    ::decode(transport_type, bl);
     ::decode(nonce, bl);
     __u32 elen;
     ::decode(elen, bl);
@@ -464,13 +469,13 @@ struct entity_inst_t {
 WRITE_CLASS_ENCODER_FEATURES(entity_inst_t)
 
 
-inline bool operator==(const entity_inst_t& a, const entity_inst_t& b) { 
+inline bool operator==(const entity_inst_t& a, const entity_inst_t& b) {
   return a.name == b.name && a.addr == b.addr;
 }
-inline bool operator!=(const entity_inst_t& a, const entity_inst_t& b) { 
+inline bool operator!=(const entity_inst_t& a, const entity_inst_t& b) {
   return a.name != b.name || a.addr != b.addr;
 }
-inline bool operator<(const entity_inst_t& a, const entity_inst_t& b) { 
+inline bool operator<(const entity_inst_t& a, const entity_inst_t& b) {
   return a.name < b.name || (a.name == b.name && a.addr < b.addr);
 }
 inline bool operator<=(const entity_inst_t& a, const entity_inst_t& b) {
