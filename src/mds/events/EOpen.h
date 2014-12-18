@@ -52,5 +52,6 @@ public:
   void update_segment();
   void replay(MDS *mds);
 };
+WRITE_CLASS_ENCODER_FEATURES(EOpen)
 
 #endif

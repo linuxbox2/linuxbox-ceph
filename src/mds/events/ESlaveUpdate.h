@@ -145,5 +145,6 @@ public:
 
   void replay(MDS *mds);
 };
+WRITE_CLASS_ENCODER_FEATURES(ESlaveUpdate)
 
 #endif

@@ -49,5 +49,6 @@ public:
   void replay(MDS *mds);
   EMetaBlob const *get_metablob() const {return &metablob;}
 };
+WRITE_CLASS_ENCODER_FEATURES(EUpdate)
 
 #endif

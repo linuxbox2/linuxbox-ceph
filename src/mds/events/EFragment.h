@@ -76,5 +76,6 @@ public:
   static void generate_test_instances(list<EFragment*>& ls);
   void replay(MDS *mds);
 };
+WRITE_CLASS_ENCODER_FEATURES(EFragment)
 
 #endif

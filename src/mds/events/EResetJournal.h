@@ -34,5 +34,6 @@ class EResetJournal : public LogEvent {
 
   void replay(MDS *mds);
 };
+WRITE_CLASS_ENCODER_FEATURES(EResetJournal)
 
 #endif
