@@ -129,7 +129,7 @@ static int write_lock(cls_method_context_t hctx, const string& name, const lock_
   key.append(name);
 
   bufferlist lock_bl;
-  ::encode(lock, lock_bl);
+  ::encode(lock, lock_bl, CEPH_FEATURES_SUPPORTED_DEFAULT);
 
   int r = cls_cxx_setxattr(hctx, key.c_str(), &lock_bl);
   if (r < 0)
@@ -396,7 +396,7 @@ static int get_info(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   ret.lock_type = linfo.lock_type;
   ret.tag = linfo.tag;
 
-  ::encode(ret, *out);
+  ::encode(ret, *out, CEPH_FEATURES_SUPPORTED_DEFAULT);
 
   return 0;
 }
