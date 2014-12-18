@@ -13,12 +13,14 @@
 #define TYPEWITHSTRAYDATA(t)
 #define TYPE_FEATUREFUL(t)
 #define TYPE_NOCOPY(t)
+#define TYPEWITHSTRAYDATA_FEATUREFUL(t)
 #define MESSAGE(t)
 #include "types.h"
 #undef TYPE
 #undef TYPEWITHSTRAYDATA
 #undef TYPE_FEATUREFUL
 #undef TYPE_NOCOPY
+#undef TYPEWITHSTRAYDATA_FEATUREFUL
 #undef MESSAGE
 
 void usage(ostream &out)
@@ -241,11 +243,13 @@ int main(int argc, const char **argv)
 #define TYPEWITHSTRAYDATA(t) dencoders[T_STRINGIFY(t)] = new DencoderImplNoFeature<t>(true);
 #define TYPE_FEATUREFUL(t) dencoders[T_STRINGIFY(t)] = new DencoderImplFeatureful<t>(false);
 #define TYPE_NOCOPY(t) dencoders[T_STRINGIFY(t)] = new DencoderImplNoFeatureNoCopy<t>(false);
+#define TYPEWITHSTRAYDATA_FEATUREFUL(t) dencoders[T_STRINGIFY(t)] = new DencoderImplFeatureful<t>(true);
 #define MESSAGE(t) dencoders[T_STRINGIFY(t)] = new MessageDencoderImpl<t>;
 #include "types.h"
 #undef TYPE
 #undef TYPEWITHSTRAYDATA
 #undef TYPE_FEATUREFUL
+#undef TYPEWITHSTRAYDATA_FEATUREFUL
 #undef T_STR
 #undef T_STRINGIFY
 
