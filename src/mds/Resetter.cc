@@ -95,7 +95,7 @@ void Resetter::reset()
   LogEvent *le = new EResetJournal;
 
   bufferlist bl;
-  le->encode_with_header(bl);
+  le->encode_with_header(bl, CEPH_FEATURES_SUPPORTED_DEFAULT);
   
   cout << "writing EResetJournal entry" << std::endl;
   journaler->append_entry(bl);
