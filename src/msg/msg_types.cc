@@ -159,7 +159,7 @@ void entity_addrvec_t::decode(bufferlist::iterator& bl)
     __u16 rest;
     ::decode(rest, bl);
     entity_addr_t addr;
-    addr.type = ((__u32)marker << 16) + rest;
+    addr.transport_type = ((__u32)marker << 16) + rest;
     ::decode(addr.nonce, bl);
     ::decode(addr.addr, bl);
     v.clear();
