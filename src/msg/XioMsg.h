@@ -68,7 +68,7 @@ public:
   inline void encode_hdr(buffer::list& bl) const {
     ::encode(msg_cnt, bl);
     ::encode(peer_type, bl);
-    ::encode(addr, bl);
+    ::encode(addr, bl, 0);	/* XXX figure out how to get getpeername from accelio */
     ::encode(hdr->seq, bl);
     ::encode(hdr->tid, bl);
     ::encode(hdr->type, bl);
