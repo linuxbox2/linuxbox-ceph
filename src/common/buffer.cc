@@ -541,6 +541,7 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
 	unsigned l) :
       raw((char*)d, l), m_hook(_m_hook->get()) {}
 
+    bool is_shareable() { return false; }
     static void operator delete(void *p)
     {
       xio_msg_buffer *buf = static_cast<xio_msg_buffer*>(p);
