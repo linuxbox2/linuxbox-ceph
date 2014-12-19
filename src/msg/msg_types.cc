@@ -17,6 +17,12 @@ void entity_name_t::dump(Formatter *f) const
 
 void entity_addr_t::dump(Formatter *f) const
 {
+  switch(transport_type) {
+  case TRANSPORT_SIMPLE_MESSENGER:
+    break;
+  default:
+    f->dump_unsigned("transport", (unsigned)transport_type);
+  }
   f->dump_unsigned("nonce", nonce);
   f->dump_stream("addr") << addr;
 }
@@ -46,11 +52,33 @@ void entity_addr_t::generate_test_instances(list<entity_addr_t*>& o)
   o.push_back(b);
 }
 
+/*
+ * simplified grammar:
+ *
+ * entityaddr: type addr portno nonce ;
+ * type : "sm://" | "rdma://" | "xtcp://" | ;
+ * addr: "[" address "]" | address ;
+ * address: xx"."xx"."xx"."xx | xx":"xx":"xx":"xx":"xx":"xx ;
+ * port : ":"xx | ;
+ * nonce : "/"xx | ;
+ * xx: RE"[0-9a-fA-F]*";
+ */
 bool entity_addr_t::parse(const char *s, const char **end)
 {
+  unsigned type = 0;
   memset(this, 0, sizeof(*this));
-
   const char *start = s;
+
+  if (!strncmp(start, "sm://", 5)) {
+    type = TRANSPORT_SIMPLE_MESSENGER;
+    start += 5;
+  } else if (!strncmp(start, "rdma://", 7)) {
+    type = TRANSPORT_ACCELIO_RDMA;
+    start += 7;
+  } else if (!strncmp(start, "xtcp://", 7)) {
+    type = TRANSPORT_ACCELIO_TCP;
+    start += 7;
+  }
   bool brackets = false;
   if (*start == '[') {
     start++;
@@ -122,6 +150,8 @@ bool entity_addr_t::parse(const char *s, const char **end)
     while (*p && *p >= '0' && *p <= '9')
       p++;
   }
+
+  if (type) set_transport_type(type);
 
   if (end)
     *end = p;
@@ -213,4 +243,18 @@ ostream& operator<<(ostream& out, const sockaddr_storage &ss)
     return out << '[' << buf << "]:" << serv;
   return out //<< ss.ss_family << ":"
 	     << buf << ':' << serv;
+}
+
+ostream& operator<<(ostream& out, entity_addr_t::type_tt tt)
+{
+  switch(tt) {
+  case entity_addr_t::TRANSPORT_SIMPLE_MESSENGER:
+    return out;
+  case entity_addr_t::TRANSPORT_ACCELIO_RDMA:
+    return out << "rdma://";
+  case entity_addr_t::TRANSPORT_ACCELIO_TCP:
+    return out << "xtcp://";
+  default:
+    return out << "?" << ((unsigned)tt) << "?://";
+  }
 }

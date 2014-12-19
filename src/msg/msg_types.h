@@ -171,15 +171,13 @@ static inline void decode(sockaddr_storage& a, bufferlist::iterator& bl) {
 }
 
 struct entity_addr_t {
-#if 0
   typedef enum {
-    TYPE_NONE = 0,
-    TYPE_IPV4 = 1,
-    TYPE_IPV6 = 2,
-  } type_t;
-#endif
+    TRANSPORT_SIMPLE_MESSENGER = 0,	// must be zero
+    TRANSPORT_ACCELIO_RDMA = 1,
+    TRANSPORT_ACCELIO_TCP = 2,
+  } type_tt;
 
-  __u32 transport_type;
+  __u32 transport_type;	/* NB u24 useable */
   __u32 nonce;
   union {
     sockaddr_storage addr;
@@ -215,6 +213,8 @@ struct entity_addr_t {
   void set_nonce(__u32 n) { nonce = n; }
 
   unsigned get_transport_type() const { return transport_type; }
+  void set_transport_type(unsigned tt) { transport_type = tt; }
+
   bool is_none() const { return addr.ss_family == AF_UNSPEC; }
   bool is_ipv4() const { return addr4.sin_family == PF_INET; }
   bool is_ipv6() const { return addr6.sin6_family == PF_INET6; }
@@ -404,9 +404,12 @@ struct entity_addr_t {
 };
 WRITE_CLASS_ENCODER_FEATURES(entity_addr_t)
 
+extern ostream& operator<<(ostream& out, entity_addr_t::type_tt);
+
 inline ostream& operator<<(ostream& out, const entity_addr_t &addr)
 {
-  return out << addr.addr << '/' << addr.nonce;
+  return out << (entity_addr_t::type_tt) addr.transport_type
+    << addr.addr << '/' << addr.nonce;
 }
 
 inline bool operator==(const entity_addr_t& a, const entity_addr_t& b) { return memcmp(&a, &b, sizeof(a)) == 0; }
