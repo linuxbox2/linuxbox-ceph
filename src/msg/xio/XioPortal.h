@@ -257,23 +257,22 @@ public:
 	  while (q_iter != send_q.end()) {
 	    xs = &(*q_iter);
 	    xcon = xs->xcon;
-	    xmsg = static_cast<XioMsg*>(xs);
-
-	    /* guard Accelio send queue */
-	    xio_qdepth_high = xcon->xio_qdepth_high_mark();
-	    if (unlikely((xcon->send_ctr + xmsg->hdr.msg_cnt) >
-			 xio_qdepth_high)) {
-	      requeue_all_xcon(xmsg, xcon, q_iter, send_q);
-	      goto restart_2;
-	    }
-
-	    q_iter = send_q.erase(q_iter);
-
 	    switch (xs->type) {
 	    case XioSubmit::OUTGOING_MSG: /* it was an outgoing 1-way */
+	    {
+	      xmsg = static_cast<XioMsg*>(xs);
 	      if (unlikely(!xs->xcon->conn))
 		code = ENOTCONN;
 	      else {
+		/* XXX guard Accelio send queue (should be safe to rely
+		 * on Accelio's check on below, but this assures that
+		 * all chained xio_msg are accounted) */
+		xio_qdepth_high = xcon->xio_qdepth_high_mark();
+		if (unlikely((xcon->send_ctr + xmsg->hdr.msg_cnt) >
+			     xio_qdepth_high)) {
+		  requeue_all_xcon(xmsg, xcon, q_iter, send_q);
+		  goto restart_2;
+		}
 		msg = &xmsg->req_0.msg;
 		code = xio_send_msg(xcon->conn, msg);
 		/* header trace moved here to capture xio serial# */
@@ -281,14 +280,12 @@ public:
 		  print_xio_msg_hdr(msgr->cct, "xio_send_msg", xmsg->hdr, msg);
 		  print_ceph_msg(msgr->cct, "xio_send_msg", xmsg->m);
 		}
-	      }
+	      } /* !ENOTCONN */
 	      if (unlikely(code)) {
 		switch (code) {
 		case XIO_E_TX_QUEUE_OVERFLOW:
-		{
 		  requeue_all_xcon(xmsg, xcon, q_iter, send_q);
 		  goto restart_2;
-		}
 		  break;
 		default:
 		  xs->xcon->msg_send_fail(xmsg, code);
@@ -298,14 +295,18 @@ public:
 		xs->xcon->send.set(msg->timestamp); // need atomic?
 		xcon->send_ctr += xmsg->hdr.msg_cnt; // only inc if cb promised
 	      }
-	      break;
+	    } /* block */
+	    break;
 	    default:
 	      /* INCOMING_MSG_RELEASE */
+	      q_iter = send_q.erase(q_iter);
 	      release_xio_rsp(static_cast<XioRsp*>(xs));
+	      continue;
 	      break;
 	    }
-	  }
-	}
+	    q_iter = send_q.erase(q_iter);
+	  } /* while */
+	} /* size > 0 */
 
 	pthread_spin_unlock(&sp);
 
