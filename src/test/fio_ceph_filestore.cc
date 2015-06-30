@@ -166,8 +166,8 @@ static int fio_ceph_filestore_queue(struct thread_data *td, struct io_u *io_u)
 	uint64_t len = io_u->xfer_buflen;
 	uint64_t off = io_u->offset;
 	ObjectStore *fs = ceph_filestore_data->fs;
-	object_t poid(buf);
 	snprintf(buf, sizeof(buf), "XXX_%lu_%lu", io_u->start_time.tv_usec, io_u->start_time.tv_sec);
+	hobject_t oid = hobject_t::make_temp(buf);
 
 	fio_ro_check(td, io_u);
 
@@ -180,11 +180,11 @@ static int fio_ceph_filestore_queue(struct thread_data *td, struct io_u *io_u)
 			cout << "ObjectStore Transcation allocation failed." << std::endl;
 			goto failed;
 		}
-		t->write(coll_t(), hobject_t(poid), off, len, data);
+		t->write(coll_t(), oid, off, len, data);
 		//cout << "QUEUING transaction " << io_u << std::endl;
 		fs->queue_transaction(NULL, t, new OnApplied(io_u, t), new OnCommitted(io_u));
 	} else if (io_u->ddir == DDIR_READ) {
-		r = fs->read(coll_t(), hobject_t(poid), off, len, data);
+		r = fs->read(coll_t(), oid, off, len, data);
 		if (r < 0)
 			goto failed;
 		io_u->resid = len - r;
