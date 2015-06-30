@@ -208,6 +208,11 @@ option(WITH_RADOSGW "Rados Gateway is enabled" ON)
 #option for CephFS
 option(WITH_CEPHFS "CephFS is enabled" ON)
 
+option(WITH_FIO "Support for fio engines" OFF)
+if(WITH_FIO)
+  find_package(fio REQUIRED)
+endif(WITH_FIO)
+
 # Now create a useable config.h
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/include/config-h.in.cmake

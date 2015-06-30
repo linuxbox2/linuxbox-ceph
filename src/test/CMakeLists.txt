@@ -228,6 +228,17 @@ add_executable(ceph_objectstore_bench objectstore_bench.cc
   $<TARGET_OBJECTS:heap_profiler_objs>)
 target_link_libraries(ceph_objectstore_bench global os ${TCMALLOC_LIBS})
 
+# fio_ceph_filestore
+if (WITH_FIO)
+  include_directories(${FIO_INCLUDE_DIR})
+  add_library(fio_ceph_filestore SHARED fio_ceph_filestore.cc)
+  set_target_properties(fio_ceph_filestore PROPERTIES COMPILE_FLAGS
+    "-fpermissive -Wno-pointer-arith")
+  target_link_libraries(fio_ceph_filestore os global ${CRYPTO_LIBS}
+    ${EXTRA_LIBS})
+  install(TARGETS fio_ceph_filestore DESTINATION lib)
+endif (WITH_FIO)
+
 ## System tests
 
 # systest
