@@ -1,7 +1,7 @@
 ######################################################################
-# Example test for the external fio ioengine for FileStore.
+# Example test for the external fio ioengine for ObjectStore.
 # 
-# Runs a 4k random write test against a FileStore configuration.
+# Runs a 4k random write test against a ObjectStore configuration.
 #
 ######################################################################
 [global]

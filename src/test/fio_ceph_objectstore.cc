@@ -1,7 +1,7 @@
 /*
- *  Ceph FileStore engine
+ *  Ceph ObjectStore engine
  *
- * IO engine using Ceph's FileStore class to test low-level performance of
+ * IO engine using Ceph's ObjectStore class to test low-level performance of
  * Ceph OSDs.
  *
  */
@@ -11,17 +11,17 @@
 
 #include <fio.h>
 
-struct fio_ceph_filestore_iou {
+struct fio_ceph_os_iou {
 	struct io_u *io_u;
 	int io_complete;
 };
 
-struct ceph_filestore_data {
+struct ceph_os_data {
 	struct io_u **aio_events;
 	ObjectStore *fs;
 };
 
-struct ceph_filestore_options {
+struct ceph_os_options {
 	struct thread_data *td;
 	char *objectstore;
 	char *filestore_debug;
@@ -37,7 +37,7 @@ static struct fio_option* init_options() {
 	options[0].lname    = "ceph objectstore type";
 	options[0].type     = FIO_OPT_STR_STORE;
 	options[0].help     = "Type of ObjectStore to create";
-	options[0].off1     = offsetof(struct ceph_filestore_options, objectstore);
+	options[0].off1     = offsetof(struct ceph_os_options, objectstore);
 	options[0].category = FIO_OPT_C_ENGINE;
 	options[0].group    = FIO_OPT_G_RBD;
 
@@ -45,7 +45,7 @@ static struct fio_option* init_options() {
 	options[1].lname    = "ceph filestore debug level";
 	options[1].type     = FIO_OPT_STR_STORE;
 	options[1].help     = "Debug level for ceph filestore log output";
-	options[1].off1     = offsetof(struct ceph_filestore_options, filestore_debug);
+	options[1].off1     = offsetof(struct ceph_os_options, filestore_debug);
 	options[1].category = FIO_OPT_C_ENGINE;
 	options[1].group    = FIO_OPT_G_RBD;
 
@@ -53,7 +53,7 @@ static struct fio_option* init_options() {
 	options[2].lname    = "ceph filestore journal path";
 	options[2].type     = FIO_OPT_STR_STORE;
 	options[2].help     = "Path for a temporary journal file";
-	options[2].off1     = offsetof(struct ceph_filestore_options, filestore_journal);
+	options[2].off1     = offsetof(struct ceph_os_options, filestore_journal);
 	options[2].category = FIO_OPT_C_ENGINE;
 	options[2].group    = FIO_OPT_G_RBD;
 
@@ -76,10 +76,10 @@ struct OnApplied : public Context {
   OnApplied(struct io_u* io_u, ObjectStore::Transaction *t) : io_u(io_u), t(t) {}
   void finish(int r) {
 
-	struct fio_ceph_filestore_iou *fio_ceph_filestore_iou =
-	    (struct fio_ceph_filestore_iou *)io_u->engine_data;
+	struct fio_ceph_os_iou *fio_ceph_os_iou =
+	    (struct fio_ceph_os_iou *)io_u->engine_data;
 
-	fio_ceph_filestore_iou->io_complete = 1;
+	fio_ceph_os_iou->io_complete = 1;
 
 
 	delete t;
@@ -89,27 +89,27 @@ struct OnApplied : public Context {
 
 
 
-static int _fio_setup_ceph_filestore_data(struct thread_data *td,
-			       struct ceph_filestore_data **ceph_filestore_data_ptr)
+static int _fio_setup_ceph_os_data(struct thread_data *td,
+			       struct ceph_os_data **ceph_os_data_ptr)
 {
-	struct ceph_filestore_data *ceph_filestore_data;
+	struct ceph_os_data *ceph_os_data;
 
 	if (td->io_ops->data)
 		return 0;
 
-	ceph_filestore_data = (struct ceph_filestore_data*) malloc(sizeof(struct ceph_filestore_data));
-	if (!ceph_filestore_data)
+	ceph_os_data = (struct ceph_os_data*) malloc(sizeof(struct ceph_os_data));
+	if (!ceph_os_data)
 		goto failed;
 
-	memset(ceph_filestore_data, 0, sizeof(struct ceph_filestore_data));
+	memset(ceph_os_data, 0, sizeof(struct ceph_os_data));
 
-	ceph_filestore_data->aio_events = (struct io_u **) malloc(td->o.iodepth * sizeof(struct io_u *));
-	if (!ceph_filestore_data->aio_events)
+	ceph_os_data->aio_events = (struct io_u **) malloc(td->o.iodepth * sizeof(struct io_u *));
+	if (!ceph_os_data->aio_events)
 		goto failed;
 
-	memset(ceph_filestore_data->aio_events, 0, td->o.iodepth * sizeof(struct io_u *));
+	memset(ceph_os_data->aio_events, 0, td->o.iodepth * sizeof(struct io_u *));
 
-	*ceph_filestore_data_ptr = ceph_filestore_data;
+	*ceph_os_data_ptr = ceph_os_data;
 
 	return 0;
 
@@ -118,32 +118,32 @@ failed:
 
 }
 
-static struct io_u *fio_ceph_filestore_event(struct thread_data *td, int event)
+static struct io_u *fio_ceph_os_event(struct thread_data *td, int event)
 {
-	struct ceph_filestore_data *ceph_filestore_data = (struct ceph_filestore_data *) td->io_ops->data;
+	struct ceph_os_data *ceph_os_data = (struct ceph_os_data *) td->io_ops->data;
 
-	return ceph_filestore_data->aio_events[event];
+	return ceph_os_data->aio_events[event];
 }
 
-static int fio_ceph_filestore_getevents(struct thread_data *td, unsigned int min,
+static int fio_ceph_os_getevents(struct thread_data *td, unsigned int min,
 			     unsigned int max, struct timespec *t)
 {
-	struct ceph_filestore_data *ceph_filestore_data = (struct ceph_filestore_data *) td->io_ops->data;
+	struct ceph_os_data *ceph_os_data = (struct ceph_os_data *) td->io_ops->data;
 	unsigned int events = 0;
 	struct io_u *io_u;
 	unsigned int i;
-	struct fio_ceph_filestore_iou *fov;
+	struct fio_ceph_os_iou *fov;
 
 	do {
 		io_u_qiter(&td->io_u_all, io_u, i) {
 			if (!(io_u->flags & IO_U_F_FLIGHT))
 				continue;
 
-			fov = (struct fio_ceph_filestore_iou *)io_u->engine_data;
+			fov = (struct fio_ceph_os_iou *)io_u->engine_data;
 
 			if (fov->io_complete) {
 				fov->io_complete = 0;
-				ceph_filestore_data->aio_events[events] = io_u;
+				ceph_os_data->aio_events[events] = io_u;
 				events++;
 			}
 
@@ -158,14 +158,14 @@ static int fio_ceph_filestore_getevents(struct thread_data *td, unsigned int min
 	return events;
 }
 
-static int fio_ceph_filestore_queue(struct thread_data *td, struct io_u *io_u)
+static int fio_ceph_os_queue(struct thread_data *td, struct io_u *io_u)
 {
 	int r = -1;
 	char buf[32];
-	struct ceph_filestore_data *ceph_filestore_data = (struct ceph_filestore_data *) td->io_ops->data;
+	struct ceph_os_data *ceph_os_data = (struct ceph_os_data *) td->io_ops->data;
 	uint64_t len = io_u->xfer_buflen;
 	uint64_t off = io_u->offset;
-	ObjectStore *fs = ceph_filestore_data->fs;
+	ObjectStore *fs = ceph_os_data->fs;
 	snprintf(buf, sizeof(buf), "XXX_%lu_%lu", io_u->start_time.tv_usec, io_u->start_time.tv_sec);
 	hobject_t oid = hobject_t::make_temp(buf);
 
@@ -202,11 +202,11 @@ failed:
 	return FIO_Q_COMPLETED;
 }
 
-static int fio_ceph_filestore_init(struct thread_data *td)
+static int fio_ceph_os_init(struct thread_data *td)
 {
 	vector<const char*> args;
-	struct ceph_filestore_data *ceph_filestore_data = (struct ceph_filestore_data *) td->io_ops->data;
-	struct ceph_filestore_options *o = (struct ceph_filestore_options *) td->eo;
+	struct ceph_os_data *ceph_os_data = (struct ceph_os_data *) td->io_ops->data;
+	struct ceph_os_options *o = (struct ceph_os_options *) td->eo;
 	ObjectStore::Transaction ft;
 
 	global_init(NULL, args, CEPH_ENTITY_TYPE_OSD, CODE_ENVIRONMENT_UTILITY, 0);
@@ -236,46 +236,46 @@ static int fio_ceph_filestore_init(struct thread_data *td)
 	ft.create_collection(coll_t());
 	fs->apply_transaction(ft);
 
-	ceph_filestore_data->fs = fs;
+	ceph_os_data->fs = fs;
 	return 0;
 }
 
-static void fio_ceph_filestore_cleanup(struct thread_data *td)
+static void fio_ceph_os_cleanup(struct thread_data *td)
 {
-	struct ceph_filestore_data *ceph_filestore_data = (struct ceph_filestore_data *) td->io_ops->data;
+	struct ceph_os_data *ceph_os_data = (struct ceph_os_data *) td->io_ops->data;
 
-	if (ceph_filestore_data) {
-		if (ceph_filestore_data->fs) {
+	if (ceph_os_data) {
+		if (ceph_os_data->fs) {
 			// clean up ObjectStore
-			ceph_filestore_data->fs->umount();
-			delete ceph_filestore_data->fs;
+			ceph_os_data->fs->umount();
+			delete ceph_os_data->fs;
 		}
-		free(ceph_filestore_data->aio_events);
-		free(ceph_filestore_data);
+		free(ceph_os_data->aio_events);
+		free(ceph_os_data);
 	}
 
 }
 
-static int fio_ceph_filestore_setup(struct thread_data *td)
+static int fio_ceph_os_setup(struct thread_data *td)
 {
 	int r = 0;
 	struct fio_file *f;
-	struct ceph_filestore_data *ceph_filestore_data = NULL;
+	struct ceph_os_data *ceph_os_data = NULL;
 
-	/* allocate engine specific structure to deal with libceph_filestore. */
-	r = _fio_setup_ceph_filestore_data(td, &ceph_filestore_data);
+	/* allocate engine specific structure to deal with libceph_os. */
+	r = _fio_setup_ceph_os_data(td, &ceph_os_data);
 	if (r) {
-		log_err("fio_setup_ceph_filestore_data failed.\n");
+		log_err("fio_setup_ceph_os_data failed.\n");
 		goto cleanup;
 	}
-	td->io_ops->data = ceph_filestore_data;
+	td->io_ops->data = ceph_os_data;
 
 	/* taken from "net" engine. Pretend we deal with files,
 	 * even if we do not have any ideas about files.
-	 * The size of the FileStore is set instead of a artificial file.
+	 * The size of the ObjectStore is set instead of a artificial file.
 	 */
 	if (!td->files_index) {
-		add_file(td, td->o.filename ? : "ceph_filestore", 0, 0);
+		add_file(td, td->o.filename ? : "ceph_os", 0, 0);
 		td->o.nr_files = td->o.nr_files ? : 1;
 	}
 	f = td->files[0];
@@ -284,18 +284,18 @@ static int fio_ceph_filestore_setup(struct thread_data *td)
 	return 0;
 
 cleanup:
-	fio_ceph_filestore_cleanup(td);
+	fio_ceph_os_cleanup(td);
 	return r;
 }
 
-static int fio_ceph_filestore_open(struct thread_data *td, struct fio_file *f)
+static int fio_ceph_os_open(struct thread_data *td, struct fio_file *f)
 {
 	return 0;
 }
 
-static void fio_ceph_filestore_io_u_free(struct thread_data *td, struct io_u *io_u)
+static void fio_ceph_os_io_u_free(struct thread_data *td, struct io_u *io_u)
 {
-	struct fio_ceph_filestore_iou *o = (struct fio_ceph_filestore_iou *) io_u->engine_data;
+	struct fio_ceph_os_iou *o = (struct fio_ceph_os_iou *) io_u->engine_data;
 
 	if (o) {
 		io_u->engine_data = NULL;
@@ -303,11 +303,11 @@ static void fio_ceph_filestore_io_u_free(struct thread_data *td, struct io_u *io
 	}
 }
 
-static int fio_ceph_filestore_io_u_init(struct thread_data *td, struct io_u *io_u)
+static int fio_ceph_os_io_u_init(struct thread_data *td, struct io_u *io_u)
 {
-	struct fio_ceph_filestore_iou *o;
+	struct fio_ceph_os_iou *o;
 
-	o = (struct fio_ceph_filestore_iou *) malloc(sizeof(*o));
+	o = (struct fio_ceph_os_iou *) malloc(sizeof(*o));
 	o->io_complete = 0;
 	o->io_u = io_u;
 	io_u->engine_data = o;
@@ -322,20 +322,20 @@ void get_ioengine(struct ioengine_ops **ioengine_ptr) {
 
 	strcpy(ioengine->name, "cephobjectstore");
 	ioengine->version        = FIO_IOOPS_VERSION;
-	ioengine->setup          = fio_ceph_filestore_setup;
-	ioengine->init           = fio_ceph_filestore_init;
-	//ioengine->prep           = fio_ceph_filestore_prep;
-	ioengine->queue          = fio_ceph_filestore_queue;
-	//ioengine->cancel         = fio_ceph_filestore_cancel;
-	ioengine->getevents      = fio_ceph_filestore_getevents;
-	ioengine->event          = fio_ceph_filestore_event;
-	ioengine->cleanup        = fio_ceph_filestore_cleanup;
-	ioengine->open_file      = fio_ceph_filestore_open;
-	//ioengine->close_file     = fio_ceph_filestore_close;
-	ioengine->io_u_init      = fio_ceph_filestore_io_u_init;
-	ioengine->io_u_free      = fio_ceph_filestore_io_u_free;
+	ioengine->setup          = fio_ceph_os_setup;
+	ioengine->init           = fio_ceph_os_init;
+	//ioengine->prep           = fio_ceph_os_prep;
+	ioengine->queue          = fio_ceph_os_queue;
+	//ioengine->cancel         = fio_ceph_os_cancel;
+	ioengine->getevents      = fio_ceph_os_getevents;
+	ioengine->event          = fio_ceph_os_event;
+	ioengine->cleanup        = fio_ceph_os_cleanup;
+	ioengine->open_file      = fio_ceph_os_open;
+	//ioengine->close_file     = fio_ceph_os_close;
+	ioengine->io_u_init      = fio_ceph_os_io_u_init;
+	ioengine->io_u_free      = fio_ceph_os_io_u_free;
 	ioengine->options        = init_options();
-	ioengine->option_struct_size = sizeof(struct ceph_filestore_options);
+	ioengine->option_struct_size = sizeof(struct ceph_os_options);
 }
 }
 
