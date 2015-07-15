@@ -18,5 +18,5 @@ invalidate=0	# mandatory
 iodepth=1
 # create a journaled filestore
 objectstore=filestore
-osdpath=/mnt/fio_ceph_filestore.XXXXXXX
-journalpath=/var/lib/ceph/osd/journal-ram/fio_ceph_filestore.XXXXXXX
+directory=/mnt/fio_ceph_filestore.XXXXXXX
+filestore_journal=/var/lib/ceph/osd/journal-ram/fio_ceph_filestore.XXXXXXX
