@@ -83,7 +83,7 @@ CHECK_INCLUDE_FILES("openssl/ssl.h" HAVE_SSL_H)
 CHECK_INCLUDE_FILES("snappy.h" HAVE_SNAPPY_H)
 CHECK_INCLUDE_FILES("uuid/uuid.h" HAVE_UUID_H)
 CHECK_INCLUDE_FILES("atomic_ops.h" HAVE_ATOMIC_OPS)
-CHECK_INCLUDE_FILES("keyutils.h" HAVE_KEYUTILS_H)
+CHECK_INCLUDE_FILES("sys/types.h;keyutils.h" HAVE_KEYUTILS_H)
 
 include(CheckSymbolExists)
 CHECK_SYMBOL_EXISTS(__u8 "sys/types.h;linux/types.h" HAVE___U8)
