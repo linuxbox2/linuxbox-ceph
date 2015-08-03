@@ -271,7 +271,7 @@ ostream& operator<<(ostream& out, const entity_addrvec_t &addr)
   return out;
 }
 
-bool entity_addrvec_t::contains(entity_addr_t&a)
+bool entity_addrvec_t::contains(const entity_addr_t&a)
 {
   for (std::vector<entity_addr_t>::const_iterator i = this.v.begin();
 	i != this.v.end();
@@ -282,7 +282,7 @@ bool entity_addrvec_t::contains(entity_addr_t&a)
   return false;
 }
 
-bool entity_addrvec_t::contains_any_of(entity_addrvec_t&ls)
+bool entity_addrvec_t::contains_any_of(const entity_addrvec_t&ls)
 {
   for (std::vector<entity_addr_t>::const_iterator i = ls.v.begin();
 	i != ls.v.end();
