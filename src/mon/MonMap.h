@@ -117,11 +117,11 @@ class MonMap {
     return rank_name[n];
   }
   string get_name(const entity_addr_t& a) const {
-    map<entity_addr_t,string>::const_iterator p = addr_name.find(a);
-    if (p == addr_name.end())
-      return string();
-    else
-      return p->second;
+    for (map<entity_addrvec_t,string>::const_iterator p = addr_name.begin();
+	p != addr_name.end(); ++p) {
+	if (p->first.contains(a)) return p->second;
+    }
+    return string();
   }
 
   int get_rank(const string& n) {
@@ -132,26 +132,30 @@ class MonMap {
   }
   int get_rank(const entity_addr_t& a) {
     for (unsigned i=0; i<rank_addr.size(); i++)
-      if (rank_addr[i] == a)
+      if (rank_addr[i].contains(a))
 	return i;
     return -1;
   }
   bool get_addr_name(const entity_addr_t& a, string& name) {
-    if (addr_name.count(a) == 0)
-      return false;
-    name = addr_name[a];
-    return true;
+    for (map<entity_addrvec_t,string>::const_iterator p = addr_name.begin();
+	p != addr_name.end(); ++p) {
+	if (p->first.contains(a)) {
+	  name = p->second;
+	  return true;
+	}
+    }
+    return false;
   }
 
-  const entity_addr_t& get_addr(const string& n) {
+  const entity_addrvec_t& get_addr(const string& n) {
     assert(mon_addr.count(n));
     return mon_addr[n];
   }
-  const entity_addr_t& get_addr(unsigned m) {
+  const entity_addrvec_t& get_addr(unsigned m) {
     assert(m < rank_addr.size());
     return rank_addr[m];
   }
-  void set_addr(const string& n, const entity_addr_t& a) {
+  void set_addr(const string& n, const entity_addrvec_t& a) {
     assert(mon_addr.count(n));
     mon_addr[n] = a;
     calc_ranks();
