@@ -4,13 +4,11 @@ set(erasure_codelibdir ${LIBRARY_OUTPUT_PATH}/erasure-code)
 
 add_subdirectory(jerasure)
 add_subdirectory(lrc)
-add_subdirectory(isa)
 add_subdirectory(shec)
 
-#TODO: Understand and fix this conditional
-#if (HAVE_BETTER_YASM_ELF64)
-#  add_subdirectory(isa)
-#endif (HAVE_BETTER_YASM_ELF64)
+if (HAVE_BETTER_YASM_ELF64)
+  add_subdirectory(isa)
+endif (HAVE_BETTER_YASM_ELF64)
 
 add_library(erasure_code ErasureCodePlugin.cc)
 target_link_libraries(erasure_code dl)
