@@ -562,7 +562,9 @@ set(libos_srcs
   os/LFNIndex.cc
   os/IndexManager.cc
   os/LevelDBStore.cc
+  os/newstore/NewStore.cc
   os/DBObjectMap.cc 
+  os/newstore/newstore_types.cc
   os/Transaction.cc
   os/WBThrottle.cc
   os/GenericFileStoreBackend.cc
