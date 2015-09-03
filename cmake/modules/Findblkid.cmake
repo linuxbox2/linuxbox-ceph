@@ -48,5 +48,5 @@ endif ()
 
 mark_as_advanced(
   BLKID_LIBRARY
-  BLKID_I
+  BLKID_INCLUDE_DIR
 )
