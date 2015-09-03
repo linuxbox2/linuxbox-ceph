@@ -564,6 +564,7 @@ set(libos_srcs
   os/LevelDBStore.cc
   os/newstore/NewStore.cc
   os/DBObjectMap.cc 
+  os/fs/FS.cc
   os/newstore/newstore_types.cc
   os/Transaction.cc
   os/WBThrottle.cc
