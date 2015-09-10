@@ -38,6 +38,7 @@ static struct fio_option* init_options() {
 	options[0].type     = FIO_OPT_STR_STORE;
 	options[0].help     = "Type of ObjectStore to create";
 	options[0].off1     = offsetof(struct ceph_os_options, objectstore);
+	options[0].def      = "filestore";
 	options[0].category = FIO_OPT_C_ENGINE;
 	options[0].group    = FIO_OPT_G_RBD;
 
@@ -54,6 +55,7 @@ static struct fio_option* init_options() {
 	options[2].type     = FIO_OPT_STR_STORE;
 	options[2].help     = "Path for a temporary journal file";
 	options[2].off1     = offsetof(struct ceph_os_options, filestore_journal);
+	options[2].def      = "";
 	options[2].category = FIO_OPT_C_ENGINE;
 	options[2].group    = FIO_OPT_G_RBD;
 
