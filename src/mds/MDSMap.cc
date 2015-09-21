@@ -395,18 +395,19 @@ void MDSMap::get_health(list<pair<health_status_t,string> >& summary,
 
 void MDSMap::mds_info_t::encode_versioned(bufferlist& bl, uint64_t features) const
 {
-  ENCODE_START(4, 4, bl);
+  ENCODE_START(5, 4, bl);
   ::encode(global_id, bl);
   ::encode(name, bl);
   ::encode(rank, bl);
   ::encode(inc, bl);
   ::encode((int32_t)state, bl);
   ::encode(state_seq, bl);
-  ::encode(addr, bl);
+  ::encode(addr, bl, features);
   ::encode(laggy_since, bl);
   ::encode(standby_for_rank, bl);
   ::encode(standby_for_name, bl);
   ::encode(export_targets, bl);
+  ::encode(mds_features, bl);
   ENCODE_FINISH(bl);
 }
 
@@ -420,7 +421,7 @@ void MDSMap::mds_info_t::encode_unversioned(bufferlist& bl) const
   ::encode(inc, bl);
   ::encode((int32_t)state, bl);
   ::encode(state_seq, bl);
-  ::encode(addr, bl);
+  ::encode(addr, bl, 0);
   ::encode(laggy_since, bl);
   ::encode(standby_for_rank, bl);
   ::encode(standby_for_name, bl);
@@ -429,7 +430,7 @@ void MDSMap::mds_info_t::encode_unversioned(bufferlist& bl) const
 
 void MDSMap::mds_info_t::decode(bufferlist::iterator& bl)
 {
-  DECODE_START_LEGACY_COMPAT_LEN(4, 4, 4, bl);
+  DECODE_START_LEGACY_COMPAT_LEN(5, 4, 4, bl);
   ::decode(global_id, bl);
   ::decode(name, bl);
   ::decode(rank, bl);
@@ -442,6 +443,10 @@ void MDSMap::mds_info_t::decode(bufferlist::iterator& bl)
   ::decode(standby_for_name, bl);
   if (struct_v >= 2)
     ::decode(export_targets, bl);
+  if (struct_v >= 5)
+    ::decode(mds_features, bl);
+  else
+    mds_features = 0;
   DECODE_FINISH(bl);
 }
 
@@ -634,4 +639,29 @@ void MDSMap::decode(bufferlist::iterator& p)
     ::decode(damaged, p);
   }
   DECODE_FINISH(p);
+
+  decode_post();
+}
+
+
+void MDSMap::calc_up_in_features()
+{
+  in_features = 0;
+  bool first = true;
+  for (set<int32_t>::iterator p = in.begin(); p != in.end(); ++p) {
+    if (first)
+      in_features = mds_info[up[*p]].mds_features;
+    else
+      in_features &= mds_info[up[*p]].mds_features;
+  }
+
+  up_features = 0;
+  for (map<uint64_t, mds_info_t>::iterator p = mds_info.begin();
+       p != mds_info.end();
+       ++p) {
+    if (first)
+      up_features = p->second.mds_features;
+    else
+      up_features &= p->second.mds_features;
+  }
 }

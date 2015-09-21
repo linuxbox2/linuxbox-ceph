@@ -46,7 +46,7 @@ protected:
 
   EMetaBlob *get_metablob() { return &metablob; }
   
-  void encode(bufferlist &bl) const;
+  void encode(bufferlist &bl, uint64_t features) const;
   void decode(bufferlist::iterator &bl);
   void dump(Formatter *f) const;
   static void generate_test_instances(list<EImportStart*>& ls);

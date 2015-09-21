@@ -22,9 +22,9 @@ TYPE(SnapRealmInfo)
 TYPE(DecayCounter)
 
 #include "common/LogEntry.h"
-TYPE(LogEntryKey)
-TYPE(LogEntry)
-TYPE(LogSummary)
+TYPE_FEATUREFUL(LogEntryKey)
+TYPE_FEATUREFUL(LogEntry)
+TYPE_FEATUREFUL(LogSummary)
 
 #include "common/SloppyCRCMap.h"
 TYPE(SloppyCRCMap)
@@ -74,9 +74,9 @@ TYPE(object_copy_cursor_t)
 TYPE_FEATUREFUL(object_copy_data_t)
 TYPE(pg_create_t)
 TYPE(watch_info_t)
-TYPE(object_info_t)
+TYPE_FEATUREFUL(object_info_t)
 TYPE(SnapSet)
-TYPE(ObjectRecoveryInfo)
+TYPE_FEATUREFUL(ObjectRecoveryInfo)
 TYPE(ObjectRecoveryProgress)
 TYPE(ScrubMap::object)
 TYPE(ScrubMap)
@@ -85,8 +85,8 @@ TYPE(pg_hit_set_history_t)
 TYPE(osd_peer_stat_t)
 TYPE(clone_info)
 TYPE(obj_list_snap_response_t)
-TYPE(PullOp)
-TYPE(PushOp)
+TYPE_FEATUREFUL(PullOp)
+TYPE_FEATUREFUL(PushOp)
 TYPE(PushReplyOp)
 
 #include "osd/ECUtil.h"
@@ -158,7 +158,7 @@ TYPE(inode_t)
 TYPE(old_inode_t)
 TYPE(fnode_t)
 TYPE(old_rstat_t)
-TYPE(session_info_t)
+TYPE_FEATUREFUL(session_info_t)
 TYPE(string_snap_t)
 TYPE(MDSCacheObjectInfo)
 TYPE(mds_table_pending_t)
@@ -188,43 +188,43 @@ TYPE(InoTable)
 TYPEWITHSTRAYDATA(SnapServer)
 
 #include "mds/events/ECommitted.h"
-TYPE(ECommitted)
+TYPE_FEATUREFUL(ECommitted)
 #include "mds/events/EExport.h"
-TYPE(EExport)
+TYPE_FEATUREFUL(EExport)
 #include "mds/events/EFragment.h"
-TYPE(EFragment)
+TYPE_FEATUREFUL(EFragment)
 #include "mds/events/EImportFinish.h"
-TYPE(EImportFinish)
+TYPE_FEATUREFUL(EImportFinish)
 #include "mds/events/EImportStart.h"
-TYPE(EImportStart)
+TYPE_FEATUREFUL(EImportStart)
 #include "mds/events/EMetaBlob.h"
 TYPE_NOCOPY(EMetaBlob::fullbit)
 TYPE(EMetaBlob::remotebit)
 TYPE(EMetaBlob::nullbit)
 TYPE(EMetaBlob::dirlump)
-TYPE(EMetaBlob)
+TYPE_FEATUREFUL(EMetaBlob)
 #include "mds/events/EOpen.h"
-TYPE(EOpen)
+TYPE_FEATUREFUL(EOpen)
 #include "mds/events/EResetJournal.h"
-TYPE(EResetJournal)
+TYPE_FEATUREFUL(EResetJournal)
 #include "mds/events/ESession.h"
-TYPE(ESession)
+TYPE_FEATUREFUL(ESession)
 #include "mds/events/ESessions.h"
-TYPE(ESessions)
+TYPE_FEATUREFUL(ESessions)
 #include "mds/events/ESlaveUpdate.h"
 TYPE(link_rollback)
 TYPE(rmdir_rollback)
 TYPE(rename_rollback::drec)
 TYPE(rename_rollback)
-TYPE(ESlaveUpdate)
+TYPE_FEATUREFUL(ESlaveUpdate)
 #include "mds/events/ESubtreeMap.h"
-TYPE(ESubtreeMap)
+TYPE_FEATUREFUL(ESubtreeMap)
 #include "mds/events/ETableClient.h"
-TYPE(ETableClient)
+TYPE_FEATUREFUL(ETableClient)
 #include "mds/events/ETableServer.h"
-TYPE(ETableServer)
+TYPE_FEATUREFUL(ETableServer)
 #include "mds/events/EUpdate.h"
-TYPE(EUpdate)
+TYPE_FEATUREFUL(EUpdate)
 
 #include "librbd/WatchNotifyTypes.h"
 TYPE(librbd::WatchNotify::NotifyMessage)
@@ -324,14 +324,14 @@ TYPE(cls_rbd_snap)
 
 #include "cls/lock/cls_lock_types.h"
 TYPE(rados::cls::lock::locker_id_t)
-TYPE(rados::cls::lock::locker_info_t)
+TYPE_FEATUREFUL(rados::cls::lock::locker_info_t)
 
 #include "cls/lock/cls_lock_ops.h"
 TYPE(cls_lock_lock_op)
 TYPE(cls_lock_unlock_op)
 TYPE(cls_lock_break_op)
 TYPE(cls_lock_get_info_op)
-TYPE(cls_lock_get_info_reply)
+TYPE_FEATUREFUL(cls_lock_get_info_reply)
 TYPE(cls_lock_list_locks_reply)
 TYPE(cls_lock_assert_op)
 

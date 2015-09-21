@@ -58,7 +58,7 @@ public:
   }
   void encode_payload(uint64_t features) {
     ::encode(session_mon_tid, payload);
-    ::encode(dest, payload);
+    ::encode(dest, payload, features);
     if (features & CEPH_FEATURE_MON_NULLROUTE) {
       header.version = HEAD_VERSION;
       header.compat_version = COMPAT_VERSION;
