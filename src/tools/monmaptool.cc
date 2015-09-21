@@ -42,7 +42,7 @@ int main(int argc, const char **argv)
   bool modified = false;
   bool generate = false;
   bool filter = false;
-  map<string,entity_addr_t> add;
+  map<string,entity_addrvec_t> add;
   list<string> rm;
 
   global_init(NULL, args, CEPH_ENTITY_TYPE_CLIENT, CODE_ENVIRONMENT_UTILITY,
@@ -69,13 +69,17 @@ int main(int argc, const char **argv)
       i = args.erase(i);
       if (i == args.end())
 	usage();
-      entity_addr_t addr;
+      entity_addrvec_t addr;
       if (!addr.parse(*i)) {
 	cerr << me << ": invalid ip:port '" << *i << "'" << std::endl;
 	return -1;
       }
-      if (addr.get_port() == 0)
-	addr.set_port(CEPH_MON_PORT);
+      for (std::vector<entity_addr_t>::const_iterator i = addr.v.begin();
+	    i != addr.v_end();
+	    ++i) {
+	  if (i->get_port() == 0)
+	    i->set_port(CEPH_MON_PORT);
+      }
       add[name] = addr;
       modified = true;
       i = args.erase(i);
@@ -143,9 +147,9 @@ int main(int argc, const char **argv)
     get_str_list(g_conf->mon_initial_members, initial_members);
     if (!initial_members.empty()) {
       cout << "initial_members " << initial_members << ", filtering seed monmap" << std::endl;
-      set<entity_addr_t> removed;
+      set<entity_addrvec_t> removed;
       monmap.set_initial_members(g_ceph_context, initial_members,
-				 string(), entity_addr_t(),
+				 string(), entity_addrvec_t(),
 				 &removed);
       cout << "removed " << removed << std::endl;
     }
@@ -158,7 +162,7 @@ int main(int argc, const char **argv)
     modified = true;
   }
 
-  for (map<string,entity_addr_t>::iterator p = add.begin(); p != add.end(); ++p) {
+  for (map<string,entity_addrvec_t>::iterator p = add.begin(); p != add.end(); ++p) {
     if (monmap.contains(p->first)) {
       cerr << me << ": map already contains mon." << p->first << std::endl;
       usage();

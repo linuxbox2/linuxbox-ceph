@@ -29,26 +29,26 @@ class MonMap {
  public:
   epoch_t epoch;       // what epoch/version of the monmap
   uuid_d fsid;
-  map<string, entity_addr_t> mon_addr;
+  map<string, entity_addrvec_t> mon_addr;
   utime_t last_changed;
   utime_t created;
 
-  map<entity_addr_t,string> addr_name;
+  map<entity_addrvec_t,string> addr_name;
   vector<string> rank_name;
-  vector<entity_addr_t> rank_addr;
+  vector<entity_addrvec_t> rank_addr;
 
   void calc_ranks() {
     rank_name.resize(mon_addr.size());
     rank_addr.resize(mon_addr.size());
     addr_name.clear();
-    for (map<string,entity_addr_t>::iterator p = mon_addr.begin();
+    for (map<string,entity_addrvec_t>::iterator p = mon_addr.begin();
 	 p != mon_addr.end();
 	 ++p) {
       assert(addr_name.count(p->second) == 0);
       addr_name[p->second] = p->first;
     }
     unsigned i = 0;
-    for (map<entity_addr_t,string>::iterator p = addr_name.begin();
+    for (map<entity_addrvec_t,string>::iterator p = addr_name.begin();
 	 p != addr_name.end();
 	 ++p, i++) {
       rank_name[i] = p->second;
@@ -70,14 +70,14 @@ class MonMap {
   epoch_t get_epoch() { return epoch; }
   void set_epoch(epoch_t e) { epoch = e; }
 
-  void list_addrs(list<entity_addr_t>& ls) const {
-    for (map<string,entity_addr_t>::const_iterator p = mon_addr.begin();
+  void list_addrs(list<entity_addrvec_t>& ls) const {
+    for (map<string,entity_addrvec_t>::const_iterator p = mon_addr.begin();
 	 p != mon_addr.end();
 	 ++p)
       ls.push_back(p->second);
   }
 
-  void add(const string &name, const entity_addr_t &addr) {
+  void add(const string &name, const entity_addrvec_t &addr) {
     assert(mon_addr.count(name) == 0);
     assert(addr_name.count(addr) == 0);
     mon_addr[name] = addr;
@@ -102,11 +102,11 @@ class MonMap {
     return mon_addr.count(name);
   }
 
-  bool contains(const entity_addr_t &a) {
-    for (map<string,entity_addr_t>::iterator p = mon_addr.begin();
+  bool contains(const entity_addrvec_t &a) {
+    for (map<string,entity_addrvec_t>::iterator p = mon_addr.begin();
 	 p != mon_addr.end();
 	 ++p) {
-      if (p->second == a)
+      if (p->second.contains_any_of(a))
 	return true;
     }
     return false;
@@ -228,8 +228,8 @@ class MonMap {
    */
   void set_initial_members(CephContext *cct,
 			   list<std::string>& initial_members,
-			   string my_name, const entity_addr_t& my_addr,
-			   set<entity_addr_t> *removed);
+			   string my_name, const entity_addrvec_t& my_addr,
+			   set<entity_addrvec_t> *removed);
 
   void print(ostream& out) const;
   void print_summary(ostream& out) const;
