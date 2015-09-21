@@ -440,10 +440,12 @@ struct entity_addrvec_t {
   void encode(bufferlist& bl, uint64_t features) const;
   void decode(bufferlist::iterator& bl);
   void dump(Formatter *f) const;
+  bool contains_any_of(entity_addrvec_t&ls);
   static void generate_test_instances(list<entity_addrvec_t*>& ls);
 };
 WRITE_CLASS_ENCODER_FEATURES(entity_addrvec_t);
 
+extern ostream& operator<<(ostream& out, const entity_addrvec_t &addr);
 
 /*
  * a particular entity instance

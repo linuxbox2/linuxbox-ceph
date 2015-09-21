@@ -258,3 +258,36 @@ ostream& operator<<(ostream& out, entity_addr_t::type_tt tt)
     return out << "?" << ((unsigned)tt) << "?://";
   }
 }
+
+ostream& operator<<(ostream& out, const entity_addrvec_t &addr)
+{
+  const char *sep = "";
+  for (std::vector<entity_addr_t>::const_iterator i = addr.v.begin();
+	i != addr.v.end();
+	++i) {
+    out << sep << *i;
+    sep = ",";
+  }
+  return out;
+}
+
+bool entity_addrvec_t::contains(entity_addr_t&a)
+{
+  for (std::vector<entity_addr_t>::const_iterator i = this.v.begin();
+	i != this.v.end();
+	++i) {
+    if (probably_equals(*i, a))
+	return true;
+  }
+  return false;
+}
+
+bool entity_addrvec_t::contains_any_of(entity_addrvec_t&ls)
+{
+  for (std::vector<entity_addr_t>::const_iterator i = ls.v.begin();
+	i != ls.v.end();
+	++i) {
+    if (contains(*i)) return true;
+  }
+  return false;
+}
