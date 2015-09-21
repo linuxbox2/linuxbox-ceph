@@ -56,7 +56,7 @@ void entity_addr_t::generate_test_instances(list<entity_addr_t*>& o)
  * simplified grammar:
  *
  * entityaddr: type addr portno nonce ;
- * type : "sm://" | "rdma://" | "xtcp://" | ;
+ * type : "tcp://" | "xrdma://" | "xtcp://" | ;
  * addr: "[" address "]" | address ;
  * address: xx"."xx"."xx"."xx | xx":"xx":"xx":"xx":"xx":"xx ;
  * port : ":"xx | ;
@@ -65,14 +65,14 @@ void entity_addr_t::generate_test_instances(list<entity_addr_t*>& o)
  */
 bool entity_addr_t::parse(const char *s, const char **end)
 {
-  unsigned type = 0;
+  unsigned type = TRANSPORT_SIMPLE_MESSENGER;
   memset(this, 0, sizeof(*this));
   const char *start = s;
 
-  if (!strncmp(start, "sm://", 5)) {
+  if (!strncmp(start, "tcp://", 6)) {
     type = TRANSPORT_SIMPLE_MESSENGER;
     start += 5;
-  } else if (!strncmp(start, "rdma://", 7)) {
+  } else if (!strncmp(start, "xrdma://", 8)) {
     type = TRANSPORT_ACCELIO_RDMA;
     start += 7;
   } else if (!strncmp(start, "xtcp://", 7)) {
