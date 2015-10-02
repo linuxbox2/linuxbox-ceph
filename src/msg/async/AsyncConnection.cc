@@ -1076,7 +1076,7 @@ int AsyncConnection::_process_connection()
           return 0;
         }
 
-        ::encode(async_msgr->get_myaddr(), myaddrbl);
+        ::encode(async_msgr->get_myaddr(), myaddrbl, 0);	// XXX no features yet?
         r = try_send(myaddrbl);
         if (r == 0) {
           state = STATE_CONNECTING_SEND_CONNECT_MSG;
@@ -1291,7 +1291,7 @@ int AsyncConnection::_process_connection()
 
         bl.append(CEPH_BANNER, strlen(CEPH_BANNER));
 
-        ::encode(async_msgr->get_myaddr(), bl);
+        ::encode(async_msgr->get_myaddr(), bl, 0);	// XXX no features yet?
         port = async_msgr->get_myaddr().get_port();
         // and peer's socket addr (they might not know their ip)
         socklen_t len = sizeof(socket_addr.ss_addr());
@@ -1301,7 +1301,7 @@ int AsyncConnection::_process_connection()
                               << cpp_strerror(errno) << dendl;
           goto fail;
         }
-        ::encode(socket_addr, bl);
+        ::encode(socket_addr, bl, 0);	// XXX no features yet?
         ldout(async_msgr->cct, 1) << __func__ << " sd=" << sd << " " << socket_addr << dendl;
 
         r = try_send(bl);
