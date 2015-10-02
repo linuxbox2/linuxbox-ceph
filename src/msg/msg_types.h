@@ -440,7 +440,7 @@ struct entity_addrvec_t {
   void encode(bufferlist& bl, uint64_t features) const;
   void decode(bufferlist::iterator& bl);
   void dump(Formatter *f) const;
-  bool contains(const entity_addr_t&ls) const;
+  bool contains(const entity_addr_t&a) const;
   bool contains_any_of(const entity_addrvec_t&ls);
   static void generate_test_instances(list<entity_addrvec_t*>& ls);
 };

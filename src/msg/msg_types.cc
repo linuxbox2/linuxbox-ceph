@@ -271,12 +271,12 @@ ostream& operator<<(ostream& out, const entity_addrvec_t &addr)
   return out;
 }
 
-bool entity_addrvec_t::contains(const entity_addr_t&a)
+bool entity_addrvec_t::contains(const entity_addr_t&a) const
 {
-  for (std::vector<entity_addr_t>::const_iterator i = this.v.begin();
-	i != this.v.end();
+  for (std::vector<entity_addr_t>::const_iterator i = this->v.begin();
+	i != this->v.end();
 	++i) {
-    if (probably_equals(*i, a))
+    if (i->probably_equals(a))
 	return true;
   }
   return false;
