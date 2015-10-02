@@ -2064,7 +2064,9 @@ int main(int argc, char **argv)
     }
   }
 
-  ObjectStoreTool tool = ObjectStoreTool(file_fd, dry_run);
+	// XXX need way to set features - option above here?
+  ObjectStoreTool tool = ObjectStoreTool(file_fd, dry_run,
+					 CEPH_FEATURES_SUPPORTED_DEFAULT);
 
   if (vm.count("file") && file_fd == fd_none && !dry_run) {
     cerr << "--file option only applies to import, export, "
