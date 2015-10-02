@@ -648,7 +648,7 @@ void MDSMap::calc_up_in_features()
 {
   in_features = 0;
   bool first = true;
-  for (set<int32_t>::iterator p = in.begin(); p != in.end(); ++p) {
+  for (set<mds_rank_t>::iterator p = in.begin(); p != in.end(); ++p) {
     if (first)
       in_features = mds_info[up[*p]].mds_features;
     else
@@ -656,7 +656,7 @@ void MDSMap::calc_up_in_features()
   }
 
   up_features = 0;
-  for (map<uint64_t, mds_info_t>::iterator p = mds_info.begin();
+  for (map<mds_gid_t, mds_info_t>::iterator p = mds_info.begin();
        p != mds_info.end();
        ++p) {
     if (first)
