@@ -20,8 +20,8 @@
 class ObjectStoreTool : public RadosDump
 {
   public:
-    ObjectStoreTool(int file_fd, bool dry_run)
-      : RadosDump(file_fd, dry_run)
+    ObjectStoreTool(int file_fd, bool dry_run, uint64_t features_)
+      : RadosDump(file_fd, dry_run, features_)
     {}
 
     int do_import(ObjectStore *store, OSDSuperblock& sb, bool force,

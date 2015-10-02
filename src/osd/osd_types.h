@@ -3812,7 +3812,7 @@ struct obj_list_snap_response_t {
   vector<clone_info> clones;   // ascending
   snapid_t seq;
 
-  void encode(bufferlist& bl) const {
+  void encode(bufferlist& bl, uint64_t features) const {
     ENCODE_START(2, 1, bl);
     ::encode(clones, bl);
     ::encode(seq, bl);
@@ -3856,7 +3856,7 @@ struct obj_list_snap_response_t {
   }
 };
 
-WRITE_CLASS_ENCODER(obj_list_snap_response_t)
+WRITE_CLASS_ENCODER_FEATURES(obj_list_snap_response_t)
 
 enum scrub_error_type {
   CLEAN,

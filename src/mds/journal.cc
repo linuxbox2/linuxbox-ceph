@@ -3036,7 +3036,7 @@ void EResetJournal::replay(MDS *mds)
 }
 
 
-void ENoOp::encode(bufferlist &bl) const
+void ENoOp::encode(bufferlist &bl, uint64_t features) const
 {
   ENCODE_START(2, 2, bl);
   ::encode(pad_size, bl);

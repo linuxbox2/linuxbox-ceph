@@ -564,9 +564,7 @@ public:
    * get intersection of features supported by up osds
    */
   void calc_up_features();
-  uint64_t get_up_osd_features() const {
-    return up_features;
-  }
+  uint64_t get_up_osd_features() const;
 
   int apply_incremental(const Incremental &inc);
 

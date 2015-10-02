@@ -1931,9 +1931,9 @@ void OSDMap::encode(bufferlist& bl, uint64_t features) const
       for (ceph::unordered_map<entity_addr_t,utime_t>::const_iterator p =
 	     blacklist.begin(); p != blacklist.end(); ++p)
 	blacklist_map.insert(make_pair(p->first, p->second));
-      ::encode(blacklist_map, bl);
+      ::encode(blacklist_map, bl, features);
     }
-    ::encode(osd_addrs->cluster_addr, bl);
+    ::encode(osd_addrs->cluster_addr, bl, features);
     ::encode(cluster_snapshot_epoch, bl);
     ::encode(cluster_snapshot, bl);
     ::encode(*osd_uuid, bl);

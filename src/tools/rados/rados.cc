@@ -2749,6 +2749,7 @@ static int rados_tool_common(const std::map < std::string, std::string > &opts,
       usage_exit();
     }
 
+	// XXX need option here to set features.
     int file_fd;
     if (nargs.size() < 2 || std::string(nargs[1]) == "-") {
       file_fd = STDOUT_FILENO;
@@ -2762,7 +2763,7 @@ static int rados_tool_common(const std::map < std::string, std::string > &opts,
       }
     }
 
-    ret = PoolDump(file_fd).dump(&io_ctx);
+    ret = PoolDump(file_fd, CEPH_FEATURES_SUPPORTED_DEFAULT).dump(&io_ctx);
     if (ret < 0) {
       cerr << "error from export: "
 	   << cpp_strerror(ret) << std::endl;
@@ -2806,8 +2807,8 @@ static int rados_tool_common(const std::map < std::string, std::string > &opts,
         goto out;
       }
     }
-
-    ret = RadosImport(file_fd, 0, dry_run).import(io_ctx, no_overwrite);
+    ret = RadosImport(file_fd, 0, dry_run,
+		      CEPH_FEATURES_SUPPORTED_DEFAULT).import(io_ctx, no_overwrite);
     if (ret < 0) {
       cerr << "error from import: "
 	   << cpp_strerror(ret) << std::endl;

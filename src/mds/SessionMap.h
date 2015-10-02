@@ -451,6 +451,8 @@ public:
   }
 
   void dump();
+  void encode(bufferlist &bl, uint64_t features) const;
+  void decode(bufferlist::iterator &bl);
 
   void get_client_set(set<client_t>& s) {
     for (ceph::unordered_map<entity_name_t,Session*>::iterator p = session_map.begin();

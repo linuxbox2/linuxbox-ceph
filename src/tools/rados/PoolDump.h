@@ -25,7 +25,8 @@ namespace librados {
 class PoolDump : public RadosDump
 {
   public:
-    PoolDump(int file_fd_) : RadosDump(file_fd_, false) {}
+    PoolDump(int file_fd_, uint64_t features_)
+	: RadosDump(file_fd_, false, features_) {}
     int dump(librados::IoCtx *io_ctx);
 };
 
