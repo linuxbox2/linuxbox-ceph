@@ -963,14 +963,14 @@ if(${WITH_RADOSGW})
     rgw/rgw_loadgen.cc
     rgw/rgw_civetweb.cc
     rgw/rgw_civetweb_log.cc
-    civetweb/src/civetweb.c
     rgw/rgw_main.cc)
 
   set(radosgw_admin_srcs
     rgw/rgw_admin.cc
     rgw/rgw_orphan.cc)
 
-  add_executable(radosgw ${radosgw_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
+  add_executable(radosgw ${radosgw_srcs} $<TARGET_OBJECTS:civetweb_common_objs>
+		 $<TARGET_OBJECTS:heap_profiler_objs>)
   target_link_libraries(radosgw rgw_a librados
     cls_rgw_client cls_lock_client cls_refcount_client
     cls_log_client cls_statelog_client cls_version_client
