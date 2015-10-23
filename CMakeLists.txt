@@ -354,6 +354,9 @@ if (${WITH_RADOSGW})
   endif()
 endif (${WITH_RADOSGW})
 
+#option for STS
+option(WITH_RGW_STS "Rados Secure Token Service is enabled" OFF)
+
 #option for CephFS
 option(WITH_CEPHFS "CephFS is enabled" ON)
 

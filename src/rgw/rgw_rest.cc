@@ -1,6 +1,13 @@
 // -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 
+#define RGW_COMMON 1
+#define RGW_OBJSTORE 2
+#define RGW_STS 4
+#ifndef COMPILE_FOR
+#define COMPILE_FOR 3
+#endif
+#define COMPILE_FOR_(x)	(COMPILE_FOR & x)
 
 #include <errno.h>
 #include <limits.h>
@@ -32,6 +39,7 @@ struct rgw_http_status_code {
   const char *name;
 };
 
+#if COMPILE_FOR_(RGW_COMMON)
 const static struct rgw_http_status_code http_codes[] = {
   { 100, "Continue" },
   { 200, "OK" },
@@ -424,7 +432,9 @@ void dump_pair(struct req_state *s, const char *key, const char *value)
   if ( (strlen(key) > 0) && (strlen(value) > 0))
     STREAM_IO(s)->print("%s: %s\r\n", key, value);
 }
+#endif /* COMPILE_FOR_COMMON */
 
+#if COMPILE_FOR_(RGW_OBJSTORE)
 void dump_bucket_from_state(struct req_state *s)
 {
   int expose_bucket = g_conf->rgw_expose_bucket;
@@ -467,7 +477,9 @@ void dump_uri_from_state(struct req_state *s)
     STREAM_IO(s)->print("Location: \"%s\"\r\n", s->info.request_uri.c_str());
   }
 }
+#endif	/* COMPILE_FOR_OBJSTORE */
 
+#if COMPILE_FOR_(RGW_COMMON)
 void dump_redirect(struct req_state *s, const string& redirect)
 {
   if (redirect.empty())
@@ -533,7 +545,9 @@ void dump_time(struct req_state *s, const char *name, real_time *t)
 
   s->formatter->dump_string(name, buf2);
 }
+#endif /* COMPILE_FOR_COMMON */
 
+#if COMPILE_FOR_(RGW_OBJSTORE)
 void dump_owner(struct req_state *s, rgw_user& id, string& name,
 		const char *section)
 {
@@ -586,7 +600,9 @@ void dump_access_control(req_state *s, RGWOp *op)
   dump_access_control(s, origin.c_str(), method.c_str(), header.c_str(),
 		      exp_header.c_str(), max_age);
 }
+#endif	/* COMPILE_FOR_OBJSTORE */
 
+#if COMPILE_FOR_(RGW_COMMON)
 void dump_start(struct req_state *s)
 {
   if (!s->content_started) {
@@ -676,7 +692,9 @@ void end_header(struct req_state* s, boost::function<void()> dump_more,
   STREAM_IO(s)->set_account(true);
   rgw_flush_formatter_and_reset(s, s->formatter);
 }
+#endif /* COMPILE_FOR_COMMON */
 
+#if COMPILE_FOR_(RGW_OBJSTORE)
 void end_header(struct req_state* s, RGWOp* op, const char *content_type,
 		const int64_t proposed_content_length, bool force_content_type,
 		bool force_no_error)
@@ -687,7 +705,9 @@ void end_header(struct req_state* s, RGWOp* op, const char *content_type,
   end_header(s, dump_more, content_type,
 	proposed_content_length, force_content_type, force_no_error);
 }
+#endif	/* COMPILE_FOR_OBJSTORE */
 
+#if COMPILE_FOR_(RGW_COMMON)
 void abort_early(struct req_state *s, boost::function<void()> dump_more,
 		string& error_content, int err_no)
 {
@@ -746,7 +766,9 @@ void abort_early(struct req_state *s, boost::function<void()> dump_more,
   }
   perfcounter->inc(l_rgw_failed_req);
 }
+#endif /* COMPILE_FOR_COMMON */
 
+#if COMPILE_FOR_(RGW_OBJSTORE)
 void abort_early(struct req_state *s, RGWOp* op, int err_no,
 		RGWHandler* handler)
 {
@@ -770,7 +792,9 @@ void abort_early(struct req_state *s, RGWOp* op, int err_no,
   if (op) dump_more = op->dump_access_control_f();
   abort_early(s, dump_more, error_content, err_no);
 }
+#endif	/* COMPILE_FOR_OBJSTORE */
 
+#if COMPILE_FOR_(RGW_COMMON)
 void dump_continue(struct req_state *s)
 {
   STREAM_IO(s)->send_100_continue();
@@ -790,7 +814,9 @@ void dump_range(struct req_state *s, uint64_t ofs, uint64_t end,
     ldout(s->cct, 0) << "ERROR: s->cio->print() returned err=" << r << dendl;
   }
 }
+#endif /* COMPILE_FOR_COMMON */
 
+#if COMPILE_FOR_(RGW_OBJSTORE)
 int RGWGetObj_ObjStore::get_params()
 {
   range_str = s->info.env->get("HTTP_RANGE");
@@ -806,7 +832,9 @@ int RGWGetObj_ObjStore::get_params()
 
   return 0;
 }
+#endif	/* COMPILE_FOR_OBJSTORE */
 
+#if COMPILE_FOR_(RGW_COMMON)
 int RESTArgs::get_string(struct req_state *s, const string& name,
 			 const string& def_val, string *val, bool *existed)
 {
@@ -999,7 +1027,9 @@ void RGWRESTFlusher::do_flush()
 {
   rgw_flush_formatter(s, s->formatter);
 }
+#endif /* COMPILE_FOR_COMMON */
 
+#if COMPILE_FOR_(RGW_OBJSTORE)
 int RGWPutObj_ObjStore::verify_params()
 {
   if (s->length) {
@@ -1162,7 +1192,9 @@ int RGWPutACLs_ObjStore::get_params()
 
   return op_ret;
 }
+#endif	/* COMPILE_FOR_OBJSTORE */
 
+#if COMPILE_FOR_(RGW_COMMON)
 static int read_all_chunked_input(req_state *s, char **pdata, int *plen,
 				  int max_read)
 {
@@ -1251,7 +1283,9 @@ int rgw_rest_read_all_input(struct req_state *s, char **pdata, int *plen,
 
   return 0;
 }
+#endif /* COMPILE_FOR_COMMON */
 
+#if COMPILE_FOR_(RGW_OBJSTORE)
 int RGWCompleteMultipart_ObjStore::get_params()
 {
   upload_id = s->info.args.get("uploadId");
@@ -1362,7 +1396,9 @@ int RGWRESTOp::verify_permission()
 {
   return check_caps(s->user->caps);
 }
+#endif	/* COMPILE_FOR_OBJSTORE */
 
+#if COMPILE_FOR_(RGW_COMMON)
 RGWOp* RGWHandler_REST::get_op(RGWRados* store)
 {
   RGWOp *op;
@@ -1402,7 +1438,9 @@ void RGWHandler_REST::put_op(RGWOp* op)
 {
   delete op;
 } /* put_op */
+#endif /* COMPILE_FOR_COMMON */
 
+#if COMPILE_FOR_(RGW_OBJSTORE)
 int RGWHandler_REST::allocate_formatter(struct req_state *s,
 					int default_type,
 					bool configurable)
@@ -1518,7 +1556,9 @@ int RGWHandler_REST::validate_object_name(const string& object)
   }
   return 0;
 }
+#endif	/* COMPILE_FOR_OBJSTORE */
 
+#if COMPILE_FOR_(RGW_COMMON)
 static http_op op_from_method(const char *method)
 {
   if (!method)
@@ -1540,7 +1580,9 @@ static http_op op_from_method(const char *method)
 
   return OP_UNKNOWN;
 }
+#endif /* COMPILE_FOR_COMMON */
 
+#if COMPILE_FOR_(RGW_OBJSTORE)
 int RGWHandler_REST::init_permissions(RGWOp* op)
 {
   if (op->get_type() == RGW_OP_CREATE_BUCKET)
@@ -1587,7 +1629,9 @@ int RGWHandler_REST::read_permissions(RGWOp* op_obj)
 
   return do_read_permissions(op_obj, only_bucket);
 }
+#endif	/* COMPILE_FOR_OBJSTORE */
 
+#if COMPILE_FOR_(RGW_COMMON)
 void RGWRESTMgr::register_resource(string resource, RGWRESTMgr *mgr)
 {
   string r = "/";
@@ -1952,3 +1996,4 @@ RGWHandler_REST* RGWREST::get_handler(RGWRados *store, struct req_state *s,
 
   return handler;
 } /* get stream handler */
+#endif /* COMPILE_FOR_COMMON */

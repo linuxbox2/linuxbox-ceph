@@ -1320,6 +1320,15 @@ endif(${WITH_KVS})
 
 if(${WITH_RADOSGW})
 
+  set(rgw_rest_common_files rgw/rgw_rest.cc)
+  add_library(rgw_rest_common_objs OBJECT ${rgw_rest_common_files})
+  set_property(TARGET rgw_rest_common_objs
+	       APPEND PROPERTY COMPILE_DEFINITIONS COMPILE_FOR=RGW_COMMON)
+  set(rgw_rest_objstore_files rgw/rgw_rest.cc)
+  add_library(rgw_rest_objstore_objs OBJECT ${rgw_rest_objstore_files})
+  set_property(TARGET rgw_rest_objstore_objs
+	       APPEND PROPERTY COMPILE_DEFINITIONS COMPILE_FOR=RGW_OBJSTORE)
+
   set(rgw_a_srcs
     rgw/rgw_acl.cc
     rgw/rgw_acl_s3.cc
@@ -1368,7 +1377,6 @@ if(${WITH_RADOSGW})
     rgw/rgw_request.cc
     rgw/rgw_resolve.cc
     rgw/rgw_rest_bucket.cc
-    rgw/rgw_rest.cc
     rgw/rgw_rest_client.cc
     rgw/rgw_rest_config.cc
     rgw/rgw_rest_conn.cc
@@ -1388,6 +1396,10 @@ if(${WITH_RADOSGW})
     rgw/rgw_website.cc
     rgw/rgw_xml.cc
     rgw/rgw_xml_enc.cc
+    rgw/rgw_civetweb.cc
+    rgw/rgw_civetweb_log.cc
+    $<TARGET_OBJECTS:rgw_rest_common_objs>
+    $<TARGET_OBJECTS:civetweb_common_objs>
     )
 
   set(civetweb_common_files civetweb/src/civetweb.c)
@@ -1419,9 +1431,7 @@ if(${WITH_RADOSGW})
   set(radosgw_srcs
     rgw/rgw_fcgi_process.cc
     rgw/rgw_loadgen_process.cc
-    rgw/rgw_civetweb.cc
     rgw/rgw_civetweb_frontend.cc
-    rgw/rgw_civetweb_log.cc
     rgw/rgw_main.cc)
 
   set(radosgw_admin_srcs
@@ -1439,7 +1449,8 @@ if(${WITH_RADOSGW})
     rgw/rgw_file.cc
     )
 
-  add_library(rgw SHARED ${librgw_srcs})
+  add_library(rgw SHARED ${librgw_srcs}
+	$<TARGET_OBJECTS:rgw_rest_objstore_objs>)
   target_link_libraries(rgw LINK_PRIVATE
     rgw_a
     librados
@@ -1463,8 +1474,12 @@ if(${WITH_RADOSGW})
     include/rados/rgw_file.h
   DESTINATION include/rados)
 
-  add_executable(radosgw ${radosgw_srcs}  $<TARGET_OBJECTS:civetweb_common_objs>)
-  target_link_libraries(radosgw rgw_a librados
+#  add_executable(radosgw ${radosgw_srcs}  $<TARGET_OBJECTS:civetweb_common_objs>)
+  add_executable(radosgw ${radosgw_srcs}
+    $<TARGET_OBJECTS:rgw_rest_objstore_objs>
+    $<TARGET_OBJECTS:heap_profiler_objs>)
+  target_link_libraries(radosgw rgw_a
+    librados
     cls_rgw_client cls_lock_client cls_refcount_client
     cls_log_client cls_statelog_client cls_timeindex_client
     cls_version_client cls_replica_log_client cls_user_client
@@ -1490,7 +1505,8 @@ if(${WITH_RADOSGW})
     global ${ALLOC_LIBS})
   install(TARGETS radosgw-token DESTINATION bin)
 
-  add_executable(radosgw-object-expirer ${radosgw_object_expirer_srcs})
+  add_executable(radosgw-object-expirer ${radosgw_object_expirer_srcs}
+    $<TARGET_OBJECTS:rgw_rest_objstore_objs>)
   target_link_libraries(radosgw-object-expirer rgw_a librados
     cls_rgw_client cls_lock_client cls_refcount_client
     cls_log_client cls_statelog_client cls_timeindex_client
@@ -1552,3 +1568,21 @@ if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
     COMMAND git submodule update --force --init --recursive
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 endif()
+
+if(${WITH_RGW_STS})
+  set(rgw_sts_srcs
+    sts/sts_main.cc
+    sts/rgw_rest_sts.cc
+    sts/rgw_dummy.cc
+)
+
+  add_executable(rgw-sts ${rgw_sts_srcs} $<TARGET_OBJECTS:heap_profiler_objs>)
+  set_property(TARGET rgw-sts
+	       APPEND PROPERTY INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/src/rgw)
+  set_property(TARGET rgw-sts
+		APPEND PROPERTY LINK_FLAGS "-Wl,-z,muldefs")
+  target_link_libraries(rgw-sts rgw_a
+    curl expat global fcgi resolv ssl crypto
+    ${BLKID_LIBRARIES} ${CMAKE_DL_LIBS} ${ALLOC_LIBS})
+  install(TARGETS rgw-sts DESTINATION bin)
+endif(${WITH_RGW_STS})
