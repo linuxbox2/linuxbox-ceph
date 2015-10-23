@@ -867,7 +867,7 @@ if(WITH_KVS)
   add_subdirectory(key_value_store)
 endif(WITH_KVS)
 
-if(WITH_RADOSGW)
+if(WITH_RADOSGW OR WITH_RGW_STS)
   set(civetweb_common_files civetweb/src/civetweb.c)
   add_library(civetweb_common_objs OBJECT ${civetweb_common_files})
   target_include_directories(civetweb_common_objs PRIVATE
@@ -887,9 +887,14 @@ if(WITH_RADOSGW)
       APPEND PROPERTY COMPILE_DEFINITIONS CRYPTO_LIB="${LIBCRYPTO_SONAME}")
   endif()
 
-  add_subdirectory(rgw)
+  if(WITH_RADOSGW)
+    add_subdirectory(rgw)
+  endif(WITH_RADOSGW)
+  if(WITH_RGW_STS)
+    add_subdirectory(sts)
+  endif(WITH_RGW_STS)
 
-endif(WITH_RADOSGW)
+endif(WITH_RADOSGW OR WITH_RGW_STS)
 
 install(FILES
   sample.ceph.conf
