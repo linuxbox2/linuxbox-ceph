@@ -934,7 +934,23 @@ if(${WITH_RADOSGW})
     rgw/rgw_quota.cc
     rgw/rgw_dencoder.cc)
 
-  add_library(rgw_a STATIC ${rgw_a_srcs})
+  set(rgw_rest_srcs
+    rgw/rgw_resolve.cc
+    rgw/rgw_rest.cc
+    rgw/rgw_civetweb.cc
+    rgw/rgw_civetweb_log.cc)
+
+	## XXX get rid of this (once we know what in rgw_a req's rados...)
+  set(rgw_a_subset
+    rgw/rgw_common.cc
+    rgw/rgw_client_io.cc
+    rgw/rgw_env.cc
+    rgw/rgw_fcgi.cc
+    )
+
+  add_library(rgw_a STATIC
+# ${rgw_rest_srcs}
+${rgw_a_srcs})
 
   include_directories("${CMAKE_SOURCE_DIR}/src/civetweb/include")
 
@@ -944,8 +960,7 @@ if(${WITH_RADOSGW})
 	       APPEND PROPERTY COMPILE_DEFINITIONS NO_SSL_DL=1)
 
   set(radosgw_srcs
-    rgw/rgw_resolve.cc
-    rgw/rgw_rest.cc
+    rgw/rgw_rest_objstore.cc
     rgw/rgw_rest_swift.cc
     rgw/rgw_rest_s3.cc
     rgw/rgw_rest_usage.cc
@@ -961,15 +976,15 @@ if(${WITH_RADOSGW})
     rgw/rgw_swift.cc
     rgw/rgw_swift_auth.cc
     rgw/rgw_loadgen.cc
-    rgw/rgw_civetweb.cc
-    rgw/rgw_civetweb_log.cc
     rgw/rgw_main.cc)
 
   set(radosgw_admin_srcs
     rgw/rgw_admin.cc
     rgw/rgw_orphan.cc)
 
-  add_executable(radosgw ${radosgw_srcs} $<TARGET_OBJECTS:civetweb_common_objs>
+  add_executable(radosgw ${radosgw_srcs}
+${rgw_rest_srcs}	# for now...
+$<TARGET_OBJECTS:civetweb_common_objs>
 		 $<TARGET_OBJECTS:heap_profiler_objs>)
   target_link_libraries(radosgw rgw_a librados
     cls_rgw_client cls_lock_client cls_refcount_client
@@ -986,3 +1001,23 @@ if(${WITH_RADOSGW})
     curl expat global fcgi resolv ssl crypto ${BLKID_LIBRARIES} ${TCMALLOC_LIBS})
   install(TARGETS radosgw-admin DESTINATION bin)
 endif(${WITH_RADOSGW})
+
+if(${WITH_RGW_STS})
+  set(rgw_sts_srcs
+    sts/sts_main.cc
+    sts/rgw_rest_sts.cc
+    sts/rgw_dummy.cc
+)
+
+  add_executable(rgw-sts ${rgw_sts_srcs}
+${rgw_rest_srcs}	# for now...
+${rgw_a_subset}
+$<TARGET_OBJECTS:civetweb_common_objs>
+		 $<TARGET_OBJECTS:heap_profiler_objs>)
+  set_property(TARGET rgw-sts
+	       APPEND PROPERTY INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/src/rgw)
+  target_link_libraries(rgw-sts
+# rgw_a			EVENTUALLY
+    curl expat global fcgi resolv ssl crypto ${BLKID_LIBRARIES} ${TCMALLOC_LIBS})
+  install(TARGETS rgw-sts DESTINATION bin)
+endif(${WITH_RGW_STS})

@@ -17,6 +17,8 @@
 #include <set>
 #include <map>
 
+#include <boost/function.hpp>
+
 #include "rgw_common.h"
 #include "rgw_rados.h"
 #include "rgw_user.h"
@@ -112,6 +114,8 @@ public:
   virtual RGWOpType get_type() { return RGW_OP_UNKNOWN; }
 
   virtual uint32_t op_mask() { return 0; }
+
+  boost::function<void()> dump_access_control_f();
 };
 
 class RGWGetObj : public RGWOp {

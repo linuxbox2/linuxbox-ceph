@@ -170,7 +170,7 @@ done:
   if (!content_type)
     content_type = "binary/octet-stream";
 
-  end_header(s, this, content_type);
+  end_header(s, dump_access_control_f(), content_type);
 
   if (metadata_bl.length()) {
     s->cio->write(metadata_bl.c_str(), metadata_bl.length());
@@ -316,7 +316,7 @@ void RGWListBucket_ObjStore_S3::send_response()
     set_req_state_err(s, ret);
   dump_errno(s);
 
-  end_header(s, this, "application/xml");
+  end_header(s, dump_access_control_f(), "application/xml");
   dump_start(s);
   if (ret < 0)
     return;
@@ -378,7 +378,7 @@ void RGWListBucket_ObjStore_S3::send_response()
 void RGWGetBucketLogging_ObjStore_S3::send_response()
 {
   dump_errno(s);
-  end_header(s, this, "application/xml");
+  end_header(s, dump_access_control_f(), "application/xml");
   dump_start(s);
 
   s->formatter->open_object_section_in_ns("BucketLoggingStatus",
@@ -390,7 +390,7 @@ void RGWGetBucketLogging_ObjStore_S3::send_response()
 void RGWGetBucketLocation_ObjStore_S3::send_response()
 {
   dump_errno(s);
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
   dump_start(s);
 
   string location_constraint(s->bucket_info.region);
@@ -406,7 +406,7 @@ void RGWGetBucketLocation_ObjStore_S3::send_response()
 void RGWGetBucketVersioning_ObjStore_S3::send_response()
 {
   dump_errno(s);
-  end_header(s, this, "application/xml");
+  end_header(s, dump_access_control_f(), "application/xml");
   dump_start(s);
 
   s->formatter->open_object_section_in_ns("VersioningConfiguration",
@@ -512,7 +512,7 @@ void RGWStatBucket_ObjStore_S3::send_response()
   set_req_state_err(s, ret);
   dump_errno(s);
 
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
   dump_start(s);
 }
 
@@ -664,7 +664,7 @@ void RGWDeleteBucket_ObjStore_S3::send_response()
 
   set_req_state_err(s, r);
   dump_errno(s);
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
 
   if (s->system_request) {
     JSONFormatter f; /* use json formatter for system requests output */
@@ -721,7 +721,7 @@ void RGWPutObj_ObjStore_S3::send_response()
     dump_epoch_header(s, "Rgwx-Mtime", mtime);
   }
   dump_errno(s);
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
 }
 
 /*
@@ -1400,7 +1400,7 @@ done:
   if (ret >= 0) {
     dump_content_length(s, s->formatter->get_len());
   }
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
   if (ret != STATUS_CREATED)
     return;
 
@@ -1424,7 +1424,7 @@ void RGWDeleteObj_ObjStore_S3::send_response()
   if (delete_marker) {
     dump_string_header(s, "x-amz-delete-marker", "true");
   }
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
 }
 
 int RGWCopyObj_ObjStore_S3::init_dest_policy()
@@ -1503,7 +1503,7 @@ void RGWCopyObj_ObjStore_S3::send_partial_response(off_t ofs)
     set_req_state_err(s, ret);
     dump_errno(s);
 
-    end_header(s, this, "application/xml");
+    end_header(s, dump_access_control_f(), "application/xml");
     if (ret == 0) {
       s->formatter->open_object_section("CopyObjectResult");
     }
@@ -1537,7 +1537,7 @@ void RGWGetACLs_ObjStore_S3::send_response()
   if (ret)
     set_req_state_err(s, ret);
   dump_errno(s);
-  end_header(s, this, "application/xml");
+  end_header(s, dump_access_control_f(), "application/xml");
   dump_start(s);
   rgw_flush_formatter(s, s->formatter);
   s->cio->write(acls.c_str(), acls.size());
@@ -1567,7 +1567,7 @@ void RGWPutACLs_ObjStore_S3::send_response()
   if (ret)
     set_req_state_err(s, ret);
   dump_errno(s);
-  end_header(s, this, "application/xml");
+  end_header(s, dump_access_control_f(), "application/xml");
   dump_start(s);
 }
 
@@ -1709,7 +1709,7 @@ void RGWInitMultipart_ObjStore_S3::send_response()
   if (ret)
     set_req_state_err(s, ret);
   dump_errno(s);
-  end_header(s, this, "application/xml");
+  end_header(s, dump_access_control_f(), "application/xml");
   if (ret == 0) { 
     dump_start(s);
     s->formatter->open_object_section_in_ns("InitiateMultipartUploadResult",
@@ -1727,7 +1727,7 @@ void RGWCompleteMultipart_ObjStore_S3::send_response()
   if (ret)
     set_req_state_err(s, ret);
   dump_errno(s);
-  end_header(s, this, "application/xml");
+  end_header(s, dump_access_control_f(), "application/xml");
   if (ret == 0) { 
     dump_start(s);
     s->formatter->open_object_section_in_ns("CompleteMultipartUploadResult",
@@ -1750,7 +1750,7 @@ void RGWAbortMultipart_ObjStore_S3::send_response()
 
   set_req_state_err(s, r);
   dump_errno(s);
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
 }
 
 void RGWListMultipart_ObjStore_S3::send_response()
@@ -1758,7 +1758,7 @@ void RGWListMultipart_ObjStore_S3::send_response()
   if (ret)
     set_req_state_err(s, ret);
   dump_errno(s);
-  end_header(s, this, "application/xml");
+  end_header(s, dump_access_control_f(), "application/xml");
 
   if (ret == 0) { 
     dump_start(s);
@@ -1815,7 +1815,7 @@ void RGWListBucketMultiparts_ObjStore_S3::send_response()
     set_req_state_err(s, ret);
   dump_errno(s);
 
-  end_header(s, this, "application/xml");
+  end_header(s, dump_access_control_f(), "application/xml");
   dump_start(s);
   if (ret < 0)
     return;
@@ -1886,7 +1886,7 @@ void RGWDeleteMultiObj_ObjStore_S3::begin_response()
   }
 
   dump_start(s);
-  end_header(s, this, "application/xml");
+  end_header(s, dump_access_control_f(), "application/xml");
   s->formatter->open_object_section_in_ns("DeleteResult",
                                             "http://s3.amazonaws.com/doc/2006-03-01/");
 

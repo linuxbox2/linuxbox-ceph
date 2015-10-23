@@ -584,33 +584,33 @@ static int process_request(RGWRados *store, RGWREST *rest, RGWRequest *req, RGWC
   ret = handler->authorize();
   if (ret < 0) {
     dout(10) << "failed to authorize request" << dendl;
-    abort_early(s, op, ret);
+    abort_early(s, op->dump_access_control_f(), ret);
     goto done;
   }
 
   if (s->user.suspended) {
     dout(10) << "user is suspended, uid=" << s->user.user_id << dendl;
-    abort_early(s, op, -ERR_USER_SUSPENDED);
+    abort_early(s, op->dump_access_control_f(), -ERR_USER_SUSPENDED);
     goto done;
   }
   req->log(s, "reading permissions");
   ret = handler->read_permissions(op);
   if (ret < 0) {
-    abort_early(s, op, ret);
+    abort_early(s, op->dump_access_control_f(), ret);
     goto done;
   }
 
   req->log(s, "init op");
   ret = op->init_processing();
   if (ret < 0) {
-    abort_early(s, op, ret);
+    abort_early(s, op->dump_access_control_f(), ret);
     goto done;
   }
 
   req->log(s, "verifying op mask");
   ret = op->verify_op_mask();
   if (ret < 0) {
-    abort_early(s, op, ret);
+    abort_early(s, op->dump_access_control_f(), ret);
     goto done;
   }
 
@@ -620,7 +620,7 @@ static int process_request(RGWRados *store, RGWREST *rest, RGWRequest *req, RGWC
     if (s->system_request) {
       dout(2) << "overriding permissions due to system operation" << dendl;
     } else {
-      abort_early(s, op, ret);
+      abort_early(s, op->dump_access_control_f(), ret);
       goto done;
     }
   }
@@ -628,7 +628,7 @@ static int process_request(RGWRados *store, RGWREST *rest, RGWRequest *req, RGWC
   req->log(s, "verifying op params");
   ret = op->verify_params();
   if (ret < 0) {
-    abort_early(s, op, ret);
+    abort_early(s, op->dump_access_control_f(), ret);
     goto done;
   }
 
@@ -1079,7 +1079,7 @@ int main(int argc, const char **argv)
   }
   r = rgw_perf_start(g_ceph_context);
 
-  rgw_rest_init(g_ceph_context, store->region);
+  rgw_rest_init(g_ceph_context, store->region.hostnames);
 
   mutex.Lock();
   init_timer.cancel_all_events();

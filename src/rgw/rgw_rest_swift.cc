@@ -303,7 +303,7 @@ next:
 
   set_req_state_err(s, ret);
   dump_errno(s);
-  end_header(s, this, NULL, content_len);
+  end_header(s, dump_access_control_f(), NULL, content_len);
   if (ret < 0) {
     return;
   }
@@ -383,7 +383,7 @@ void RGWStatBucket_ObjStore_SWIFT::send_response()
   set_req_state_err(s, ret);
   dump_errno(s);
 
-  end_header(s, this,NULL,0, true);
+  end_header(s, dump_access_control_f(),NULL,0, true);
   dump_start(s);
 }
 
@@ -477,7 +477,7 @@ void RGWDeleteBucket_ObjStore_SWIFT::send_response()
 
   set_req_state_err(s, r);
   dump_errno(s);
-  end_header(s, this, NULL, 0);
+  end_header(s, dump_access_control_f(), NULL, 0);
   rgw_flush_formatter_and_reset(s, s->formatter);
 }
 
@@ -526,7 +526,7 @@ void RGWPutObj_ObjStore_SWIFT::send_response()
   dump_last_modified(s, mtime);
   set_req_state_err(s, ret);
   dump_errno(s);
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
   rgw_flush_formatter_and_reset(s, s->formatter);
 }
 
@@ -583,7 +583,7 @@ void RGWPutMetadataAccount_ObjStore_SWIFT::send_response()
   }
   set_req_state_err(s, ret);
   dump_errno(s);
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
   rgw_flush_formatter_and_reset(s, s->formatter);
 }
 
@@ -610,7 +610,7 @@ void RGWPutMetadataBucket_ObjStore_SWIFT::send_response()
   }
   set_req_state_err(s, ret);
   dump_errno(s);
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
   rgw_flush_formatter_and_reset(s, s->formatter);
 }
 
@@ -634,7 +634,7 @@ void RGWPutMetadataObject_ObjStore_SWIFT::send_response()
     dump_content_length(s, 0);
   }
   dump_errno(s);
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
   rgw_flush_formatter_and_reset(s, s->formatter);
 }
 
@@ -646,7 +646,7 @@ void RGWDeleteObj_ObjStore_SWIFT::send_response()
 
   set_req_state_err(s, r);
   dump_errno(s);
-  end_header(s, this);
+  end_header(s, dump_access_control_f());
   rgw_flush_formatter_and_reset(s, s->formatter);
 }
 
@@ -721,7 +721,7 @@ void RGWCopyObj_ObjStore_SWIFT::send_partial_response(off_t ofs)
       ret = STATUS_CREATED;
     set_req_state_err(s, ret);
     dump_errno(s);
-    end_header(s, this);
+    end_header(s, dump_access_control_f());
 
     /* Send progress information. Note that this diverge from the original swift
      * spec. We do this in order to keep connection alive.
@@ -766,7 +766,7 @@ void RGWCopyObj_ObjStore_SWIFT::send_response()
     dump_copy_info();
     get_contype_from_attrs(attrs, content_type);
     dump_object_metadata(s, attrs);
-    end_header(s, this, !content_type.empty() ? content_type.c_str() : "binary/octet-stream");
+    end_header(s, dump_access_control_f(), !content_type.empty() ? content_type.c_str() : "binary/octet-stream");
   } else {
     s->formatter->close_section();
     rgw_flush_formatter(s, s->formatter);
@@ -810,7 +810,7 @@ int RGWGetObj_ObjStore_SWIFT::send_response_data(bufferlist& bl, off_t bl_ofs, o
     dump_object_metadata(s, attrs);
   }
 
-  end_header(s, this, !content_type.empty() ? content_type.c_str() : "binary/octet-stream");
+  end_header(s, dump_access_control_f(), !content_type.empty() ? content_type.c_str() : "binary/octet-stream");
 
   sent_header = true;
 
