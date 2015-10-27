@@ -232,4 +232,7 @@
 /* Defined if XIO */
 #cmakedefine HAVE_XIO
 
+/* Defined if curl has curl_multi_wait */
+#cmakedefine HAVE_CURL_MULTI_WAIT
+
 #endif /* CONFIG_H */

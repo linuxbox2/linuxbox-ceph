@@ -185,7 +185,7 @@ int RGWHTTPClient::init_async(const char *method, const char *url, void **handle
   return 0;
 }
 
-#if HAVE_CURL_MULTI_WAIT
+#ifdef HAVE_CURL_MULTI_WAIT
 
 static int do_curl_wait(CephContext *cct, CURLM *handle)
 {
