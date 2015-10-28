@@ -428,6 +428,7 @@ void dump_trans_id(req_state *s)
     s->cio->print("X-Trans-Id: %s\r\n", s->trans_id.c_str());
   }
   else {
+if (s->trans_id.length())	// XXX fix formatting - if this is useful.
     s->cio->print("x-amz-request-id: %s\r\n", s->trans_id.c_str());
   }
 }
