@@ -255,11 +255,15 @@ enum RGWObjCategory {
 struct rgw_err {
   rgw_err();
   rgw_err(int http, const std::string &s3);
+  virtual ~rgw_err() { };
   void clear();
   bool is_clear() const;
   bool is_err() const;
   friend std::ostream& operator<<(std::ostream& oss, const rgw_err &err);
+  virtual void dump(Formatter *f) const;
+  virtual bool set_rgw_err(int);
 
+  bool is_website_redirect;
   int http_ret;
   int ret;
   std::string s3_code;
@@ -1251,7 +1255,7 @@ struct req_state {
   const char *length;
   int64_t content_length;
   map<string, string> generic_attrs;
-  struct rgw_err err;
+  rgw_err *err;
   bool expect_cont;
   bool header_ended;
   uint64_t obj_size;
@@ -1335,6 +1339,10 @@ struct req_state {
 
   req_state(CephContext* _cct, RGWEnv* e, RGWUserInfo* u);
   ~req_state();
+
+  void set_req_state_err(int err_no);
+  void set_req_state_err(int err_no, const string &err_msg);
+  bool is_err() const { return err && err->is_err(); }
 };
 
 /** Store basic data on an object */
