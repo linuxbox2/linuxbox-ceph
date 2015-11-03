@@ -16,7 +16,6 @@
 #include "rgw_rest_s3.h"
 #include "rgw_swift_auth.h"
 #include "rgw_cors_s3.h"
-#include "rgw_http_errors.h"
 
 #include "rgw_client_io.h"
 #include "rgw_resolve.h"
@@ -278,45 +277,18 @@ void rgw_flush_formatter(struct req_state *s, Formatter *formatter)
   }
 }
 
-void set_req_state_err(struct req_state *s, int err_no)
-{
-  const struct rgw_http_errors *r;
-
-  if (err_no < 0)
-    err_no = -err_no;
-  s->err.ret = -err_no;
-  if (s->prot_flags & RGW_REST_SWIFT) {
-    r = search_err(err_no, RGW_HTTP_SWIFT_ERRORS, ARRAY_LEN(RGW_HTTP_SWIFT_ERRORS));
-    if (r) {
-      s->err.http_ret = r->http_ret;
-      s->err.s3_code = r->s3_code;
-      return;
-    }
-  }
-  r = search_err(err_no, RGW_HTTP_ERRORS, ARRAY_LEN(RGW_HTTP_ERRORS));
-  if (r) {
-    s->err.http_ret = r->http_ret;
-    s->err.s3_code = r->s3_code;
-    return;
-  }
-  dout(0) << "WARNING: set_req_state_err err_no=" << err_no << " resorting to 500" << dendl;
-
-  s->err.http_ret = 500;
-  s->err.s3_code = "UnknownError";
-}
-
 void dump_errno(struct req_state *s)
 {
   char buf[32];
-  snprintf(buf, sizeof(buf), "%d", s->err.http_ret);
-  dump_status(s, buf, http_status_names[s->err.http_ret]);
+  snprintf(buf, sizeof(buf), "%d", s->err.http_ret_E);
+  dump_status(s, buf, http_status_names[s->err.http_ret_E]);
 }
 
 void dump_errno(struct req_state *s, int err)
 {
   char buf[32];
   snprintf(buf, sizeof(buf), "%d", err);
-  dump_status(s, buf, http_status_names[s->err.http_ret]);
+  dump_status(s, buf, http_status_names[s->err.http_ret_E]);
 }
 
 void dump_string_header(struct req_state *s, const char *name, const char *val)
@@ -433,6 +405,25 @@ if (s->trans_id.length())	// XXX fix formatting - if this is useful.
   }
 }
 
+class s3Error {
+private:
+  const string &s3_code;
+  const string &s3_message;
+public:
+  s3Error(const rgw_err &e) : s3_code(e.s3_code_E), s3_message(e.message_E) {}
+  void dump(Formatter *f);
+};
+
+void s3Error::dump(Formatter *f)
+{
+  f->open_object_section("Error");
+  if (!s3_code.empty())
+    f->dump_string("Code", s3_code);
+  if (!s3_message.empty())
+    f->dump_string("Message", s3_message);
+  f->close_section();
+}
+
 void end_header(struct req_state *s, boost::function<void()> dump_more, const char *content_type, const int64_t proposed_content_length,
 		bool force_content_type)
 {
@@ -468,12 +459,8 @@ void end_header(struct req_state *s, boost::function<void()> dump_more, const ch
   }
   if (s->err.is_err()) {
     dump_start(s);
-    s->formatter->open_object_section("Error");
-    if (!s->err.s3_code.empty())
-      s->formatter->dump_string("Code", s->err.s3_code);
-    if (!s->err.message.empty())
-      s->formatter->dump_string("Message", s->err.message);
-    s->formatter->close_section();
+    s3Error errobj(s->err);
+    errobj.dump(s->formatter);
     dump_content_length(s, s->formatter->get_len());
   } else {
     if (proposed_content_length != NO_CONTENT_LENGTH) {
@@ -503,7 +490,7 @@ void abort_early(struct req_state *s, boost::function<void()> dump_more, int err
     s->formatter = new JSONFormatter;
     s->format = RGW_FORMAT_JSON;
   }
-  set_req_state_err(s, err_no);
+  s->set_req_state_err(err_no);
   dump_errno(s);
   dump_bucket_from_state(s);
   if (err_no == -ERR_PERMANENT_REDIRECT && !s->region_endpoint.empty()) {
@@ -718,7 +705,7 @@ int RESTArgs::get_bool(struct req_state *s, const string& name, bool def_val, bo
 
 void RGWRESTFlusher::do_start(int ret)
 {
-  set_req_state_err(s, ret); /* no going back from here */
+  s->set_req_state_err(ret); /* no going back from here */
   dump_errno(s);
   dump_start(s);
   end_header(s, op);
