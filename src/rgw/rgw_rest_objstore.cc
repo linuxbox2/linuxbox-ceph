@@ -303,7 +303,7 @@ int RGWDeleteMultiObj_ObjStore::get_params()
 void RGWRESTOp::send_response()
 {
   if (!flusher.did_start()) {
-    set_req_state_err(s, http_ret);
+    s->set_req_state_err(http_ret);
     dump_errno(s);
     end_header(s, dump_access_control_f());
   }

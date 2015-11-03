@@ -100,10 +100,10 @@ static void dump_account_metadata(struct req_state * const s,
 void RGWListBuckets_ObjStore_SWIFT::send_response_begin(bool has_buckets)
 {
   if (ret) {
-    set_req_state_err(s, ret);
+    s->set_req_state_err(ret);
   } else if (!has_buckets && s->format == RGW_FORMAT_PLAIN) {
     ret = STATUS_NO_CONTENT;
-    set_req_state_err(s, ret);
+    s->set_req_state_err(ret);
   }
 
   if (!g_conf->rgw_swift_enforce_content_length) {
@@ -301,7 +301,7 @@ next:
     ret = 0;
   }
 
-  set_req_state_err(s, ret);
+  s->set_req_state_err(ret);
   dump_errno(s);
   end_header(s, dump_access_control_f(), NULL, content_len);
   if (ret < 0) {
@@ -365,7 +365,7 @@ void RGWStatAccount_ObjStore_SWIFT::send_response()
     dump_account_metadata(s, buckets_count, buckets_objcount, buckets_size, buckets_size_rounded, attrs);
   }
 
-  set_req_state_err(s, ret);
+  s->set_req_state_err(ret);
   dump_errno(s);
 
   end_header(s, NULL, NULL, 0,  true);
@@ -380,7 +380,7 @@ void RGWStatBucket_ObjStore_SWIFT::send_response()
     dump_container_metadata(s, bucket);
   }
 
-  set_req_state_err(s, ret);
+  s->set_req_state_err(ret);
   dump_errno(s);
 
   end_header(s, dump_access_control_f(),NULL,0, true);
@@ -462,7 +462,7 @@ void RGWCreateBucket_ObjStore_SWIFT::send_response()
     ret = STATUS_CREATED;
   else if (ret == -ERR_BUCKET_EXISTS)
     ret = STATUS_ACCEPTED;
-  set_req_state_err(s, ret);
+  s->set_req_state_err(ret);
   dump_errno(s);
   /* Propose ending HTTP header with 0 Content-Length header. */
   end_header(s, NULL, NULL, 0);
@@ -475,7 +475,7 @@ void RGWDeleteBucket_ObjStore_SWIFT::send_response()
   if (!r)
     r = STATUS_NO_CONTENT;
 
-  set_req_state_err(s, r);
+  s->set_req_state_err(r);
   dump_errno(s);
   end_header(s, dump_access_control_f(), NULL, 0);
   rgw_flush_formatter_and_reset(s, s->formatter);
@@ -524,7 +524,7 @@ void RGWPutObj_ObjStore_SWIFT::send_response()
     ret = STATUS_CREATED;
   dump_etag(s, etag.c_str());
   dump_last_modified(s, mtime);
-  set_req_state_err(s, ret);
+  s->set_req_state_err(ret);
   dump_errno(s);
   end_header(s, dump_access_control_f());
   rgw_flush_formatter_and_reset(s, s->formatter);
@@ -581,7 +581,7 @@ void RGWPutMetadataAccount_ObjStore_SWIFT::send_response()
   if (!ret) {
     ret = STATUS_NO_CONTENT;
   }
-  set_req_state_err(s, ret);
+  s->set_req_state_err(ret);
   dump_errno(s);
   end_header(s, dump_access_control_f());
   rgw_flush_formatter_and_reset(s, s->formatter);
@@ -608,7 +608,7 @@ void RGWPutMetadataBucket_ObjStore_SWIFT::send_response()
   if (!ret) {
     ret = STATUS_NO_CONTENT;
   }
-  set_req_state_err(s, ret);
+  s->set_req_state_err(ret);
   dump_errno(s);
   end_header(s, dump_access_control_f());
   rgw_flush_formatter_and_reset(s, s->formatter);
@@ -629,7 +629,7 @@ void RGWPutMetadataObject_ObjStore_SWIFT::send_response()
   if (!ret) {
     ret = STATUS_ACCEPTED;
   }
-  set_req_state_err(s, ret);
+  s->set_req_state_err(ret);
   if (!s->err.is_err()) {
     dump_content_length(s, 0);
   }
@@ -644,7 +644,7 @@ void RGWDeleteObj_ObjStore_SWIFT::send_response()
   if (!r)
     r = STATUS_NO_CONTENT;
 
-  set_req_state_err(s, r);
+  s->set_req_state_err(r);
   dump_errno(s);
   end_header(s, dump_access_control_f());
   rgw_flush_formatter_and_reset(s, s->formatter);
@@ -719,7 +719,7 @@ void RGWCopyObj_ObjStore_SWIFT::send_partial_response(off_t ofs)
   if (!sent_header) {
     if (!ret)
       ret = STATUS_CREATED;
-    set_req_state_err(s, ret);
+    s->set_req_state_err(ret);
     dump_errno(s);
     end_header(s, dump_access_control_f());
 
@@ -759,7 +759,7 @@ void RGWCopyObj_ObjStore_SWIFT::send_response()
     string content_type;
     if (!ret)
       ret = STATUS_CREATED;
-    set_req_state_err(s, ret);
+    s->set_req_state_err(ret);
     dump_errno(s);
     dump_etag(s, etag.c_str());
     dump_last_modified(s, mtime);
@@ -781,7 +781,7 @@ int RGWGetObj_ObjStore_SWIFT::send_response_data(bufferlist& bl, off_t bl_ofs, o
     goto send_data;
   }
 
-  set_req_state_err(s, (partial_content && !ret) ? STATUS_PARTIAL_CONTENT : ret);
+  s->set_req_state_err((partial_content && !ret) ? STATUS_PARTIAL_CONTENT : ret);
   dump_errno(s);
   if (s->err.is_err()) {
     end_header(s, NULL);
@@ -835,7 +835,7 @@ void RGWOptionsCORS_ObjStore_SWIFT::send_response()
   if (ret == -ENOENT)
     ret = -EACCES;
   if (ret < 0) {
-    set_req_state_err(s, ret);
+    s->set_req_state_err(ret);
     dump_errno(s);
     end_header(s, NULL);
     return;

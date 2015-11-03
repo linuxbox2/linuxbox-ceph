@@ -367,7 +367,6 @@ public:
 
 static const int64_t NO_CONTENT_LENGTH = -1;
 
-extern void set_req_state_err(struct req_state *s, int err_no);
 extern void dump_errno(struct req_state *s);
 extern void dump_errno(struct req_state *s, int ret);
 extern void end_header(struct req_state *s,
