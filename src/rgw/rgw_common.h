@@ -206,6 +206,8 @@ using ceph::crypto::MD5;
 #define UINT32_MAX (0xffffffffu)
 #endif
 
+struct req_state;
+
 typedef void *RGWAccessHandle;
 
 
@@ -266,13 +268,17 @@ enum RGWObjCategory {
 
 /** Store error returns for output at a different point in the program */
 struct rgw_err {
-  rgw_err();
-  rgw_err(int http, const std::string &s3);
+  rgw_err(req_state *s);
+  virtual ~rgw_err() { };
   void clear();
   bool is_clear() const;
   bool is_err() const;
   friend std::ostream& operator<<(std::ostream& oss, const rgw_err &err);
+  virtual void dump() const;
+  virtual bool set_rgw_err(int);
 
+  req_state &s;
+  bool is_website_redirect;
   int http_ret;
   int ret;
   std::string s3_code;
@@ -1134,8 +1140,6 @@ struct RGWStorageStats
   void dump(Formatter *f) const;
 };
 
-struct req_state;
-
 class RGWEnv;
 
 namespace rgw {
@@ -1288,7 +1292,7 @@ struct req_state {
   const char *length;
   int64_t content_length;
   map<string, string> generic_attrs;
-  struct rgw_err err;
+  rgw_err *err;
   bool expect_cont;
   bool header_ended;
   uint64_t obj_size;
@@ -1372,7 +1376,12 @@ struct req_state {
 
   req_state(CephContext* _cct, RGWEnv* e, RGWUserInfo* u);
   ~req_state();
+
+  void set_req_state_err(int err_no);
+  void set_req_state_err(int err_no, const string &err_msg);
+  bool is_err() const { return err && err->is_err(); }
 };
+void set_req_state_err(struct rgw_err&, int, const int);
 
 /** Store basic data on an object */
 struct RGWObjEnt {

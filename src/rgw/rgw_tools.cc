@@ -42,7 +42,6 @@ int rgw_get_system_obj(RGWRados *rgwstore, RGWObjectCtx& obj_ctx, rgw_bucket& bu
                        RGWObjVersionTracker *objv_tracker, real_time *pmtime, map<string, bufferlist> *pattrs,
                        rgw_cache_entry_info *cache_info)
 {
-  struct rgw_err err;
   bufferlist::iterator iter;
   int request_len = READ_CHUNK_LEN;
   rgw_obj obj(bucket, key);
@@ -53,7 +52,6 @@ int rgw_get_system_obj(RGWRados *rgwstore, RGWObjectCtx& obj_ctx, rgw_bucket& bu
 
     rop.stat_params.attrs = pattrs;
     rop.stat_params.lastmod = pmtime;
-    rop.stat_params.perr = &err;
 
     int ret = rop.stat(objv_tracker);
     if (ret < 0)

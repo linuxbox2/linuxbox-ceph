@@ -10,6 +10,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/optional.hpp>
 #include <boost/utility/in_place_factory.hpp>
+#include <boost/bind.hpp>
 
 #include "common/Clock.h"
 #include "common/armor.h"
@@ -272,7 +273,6 @@ static int get_obj_attrs(RGWRados *store, struct req_state *s, rgw_obj& obj, map
   RGWRados::Object::Read read_op(&op_target);
 
   read_op.params.attrs = &attrs;
-  read_op.params.perr = &s->err;
 
   return read_op.prepare();
 }
@@ -775,6 +775,15 @@ bool RGWOp::generate_cors_headers(string& origin, string& method, string& header
   return true;
 }
 
+/**
+ * Return a callable that can invoke dump_access_control().
+ */
+
+boost::function<void()> RGWOp::dump_access_control_f()
+{
+  return boost::bind(dump_access_control, s, this);
+}
+
 int RGWGetObj::read_user_manifest_part(rgw_bucket& bucket,
                                        const RGWObjEnt& ent,
                                        RGWAccessControlPolicy * const bucket_policy,
@@ -808,7 +817,6 @@ int RGWGetObj::read_user_manifest_part(rgw_bucket& bucket,
   read_op.conds.if_match = ent.etag.c_str();
   read_op.params.attrs = &attrs;
   read_op.params.obj_size = &obj_size;
-  read_op.params.perr = &s->err;
 
   op_ret = read_op.prepare();
   if (op_ret < 0)
@@ -1365,7 +1373,6 @@ void RGWGetObj::execute()
   read_op.params.attrs = &attrs;
   read_op.params.lastmod = &lastmod;
   read_op.params.obj_size = &s->obj_size;
-  read_op.params.perr = &s->err;
 
   op_ret = read_op.prepare();
   if (op_ret < 0)
@@ -3945,7 +3952,6 @@ void RGWCopyObj::execute()
 			   (version_id.empty() ? NULL : &version_id),
 			   &s->req_id, /* use req_id as tag */
 			   &etag,
-			   &s->err,
 			   copy_obj_progress_cb, (void *)this
     );
 }
