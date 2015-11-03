@@ -1440,9 +1440,8 @@ public:
         time_t *lastmod;
         uint64_t *obj_size;
         map<string, bufferlist> *attrs;
-        struct rgw_err *perr;
 
-        StatParams() : lastmod(NULL), obj_size(NULL), attrs(NULL), perr(NULL) {}
+        StatParams() : lastmod(NULL), obj_size(NULL), attrs(NULL)/* , perr(NULL)*/ {}
       } stat_params;
 
       struct ReadParams {
@@ -1544,9 +1543,8 @@ public:
         uint64_t *read_size;
         uint64_t *obj_size;
         map<string, bufferlist> *attrs;
-        struct rgw_err *perr;
 
-        Params() : lastmod(NULL), read_size(NULL), obj_size(NULL), attrs(NULL), perr(NULL) {}
+        Params() : lastmod(NULL), read_size(NULL), obj_size(NULL), attrs(NULL)/* , perr(NULL)*/ {}
       } params;
 
       Read(RGWRados::Object *_source) : source(_source) {}
@@ -1778,7 +1776,6 @@ public:
                        string *version_id,
                        string *ptag,
                        string *petag,
-                       struct rgw_err *err,
                        void (*progress_cb)(off_t, void *),
                        void *progress_data);
   int copy_obj_to_remote_dest(RGWObjState *astate,
@@ -1799,7 +1796,6 @@ public:
    *                               parameter, source object attributes are not copied;
    *            ATTRSMOD_MERGE - any conflicting meta keys on the source object's attributes
    *                             are overwritten by values contained in attrs parameter.
-   * err: stores any errors resulting from the get of the original object
    * Returns: 0 on success, -ERR# otherwise.
    */
   virtual int copy_obj(RGWObjectCtx& obj_ctx,
@@ -1825,7 +1821,6 @@ public:
                string *version_id,
                string *ptag,
                string *petag,
-               struct rgw_err *err,
                void (*progress_cb)(off_t, void *),
                void *progress_data);
 
@@ -1842,8 +1837,7 @@ public:
                uint64_t olh_epoch,
                string *version_id,
                string *ptag,
-               string *petag,
-               struct rgw_err *err);
+               string *petag);
 
   /**
    * Delete a bucket.
