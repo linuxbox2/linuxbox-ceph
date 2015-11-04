@@ -368,7 +368,6 @@ public:
 static const int64_t NO_CONTENT_LENGTH = -1;
 
 extern void dump_errno(struct req_state *s);
-extern void dump_errno(struct req_state *s, int ret);
 extern void end_header(struct req_state *s,
                        boost::function<void()> dump_more = 0,
                        const char *content_type = NULL,

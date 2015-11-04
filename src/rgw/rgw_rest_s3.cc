@@ -43,14 +43,13 @@ void dump_bucket(struct req_state *s, RGWBucketEnt& obj)
   s->formatter->close_section();
 }
 
-void rgw_get_errno_s3(rgw_http_errors *e , int err_no)
+void rgw_get_errno_s3(rgw_http_error *e , int err_no)
 {
-  const struct rgw_http_errors *r;
-  r = search_err(err_no, RGW_HTTP_ERRORS, ARRAY_LEN(RGW_HTTP_ERRORS));
+  rgw_http_errors::const_iterator r = rgw_http_s3_errors.find(err_no);
 
-  if (r) {
-    e->http_ret = r->http_ret;
-    e->s3_code = r->s3_code;
+  if (r != rgw_http_s3_errors.end()) {
+    e->http_ret = r->second.first;
+    e->s3_code = r->second.second;
   } else {
     e->http_ret = 500;
     e->s3_code = "UnknownError";
@@ -1908,7 +1907,7 @@ void RGWDeleteMultiObj_ObjStore_S3::send_partial_response(rgw_obj_key& key, bool
       }
       s->formatter->close_section();
     } else if (ret < 0) {
-      struct rgw_http_errors r;
+      struct rgw_http_error r;
       int err_no;
 
       s->formatter->open_object_section("Error");

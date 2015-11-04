@@ -280,15 +280,8 @@ void rgw_flush_formatter(struct req_state *s, Formatter *formatter)
 void dump_errno(struct req_state *s)
 {
   char buf[32];
-  snprintf(buf, sizeof(buf), "%d", s->err.http_ret_E);
-  dump_status(s, buf, http_status_names[s->err.http_ret_E]);
-}
-
-void dump_errno(struct req_state *s, int err)
-{
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%d", err);
-  dump_status(s, buf, http_status_names[s->err.http_ret_E]);
+  snprintf(buf, sizeof(buf), "%d", s->err->http_ret_E);
+  dump_status(s, buf, http_status_names[s->err->http_ret_E]);
 }
 
 void dump_string_header(struct req_state *s, const char *name, const char *val)
@@ -405,25 +398,6 @@ if (s->trans_id.length())	// XXX fix formatting - if this is useful.
   }
 }
 
-class s3Error {
-private:
-  const string &s3_code;
-  const string &s3_message;
-public:
-  s3Error(const rgw_err &e) : s3_code(e.s3_code_E), s3_message(e.message_E) {}
-  void dump(Formatter *f);
-};
-
-void s3Error::dump(Formatter *f)
-{
-  f->open_object_section("Error");
-  if (!s3_code.empty())
-    f->dump_string("Code", s3_code);
-  if (!s3_message.empty())
-    f->dump_string("Message", s3_message);
-  f->close_section();
-}
-
 void end_header(struct req_state *s, boost::function<void()> dump_more, const char *content_type, const int64_t proposed_content_length,
 		bool force_content_type)
 {
@@ -441,7 +415,7 @@ void end_header(struct req_state *s, boost::function<void()> dump_more, const ch
 
   /* do not send content type if content length is zero
      and the content type was not set by the user */
-  if (force_content_type || (!content_type &&  s->formatter->get_len()  != 0) || s->err.is_err()){
+  if (force_content_type || (!content_type &&  s->formatter->get_len()  != 0) || s->is_err()){
     switch (s->format) {
     case RGW_FORMAT_XML:
       ctype = "application/xml";
@@ -457,10 +431,9 @@ void end_header(struct req_state *s, boost::function<void()> dump_more, const ch
       ctype.append("; charset=utf-8");
     content_type = ctype.c_str();
   }
-  if (s->err.is_err()) {
+  if (s->is_err()) {
     dump_start(s);
-    s3Error errobj(s->err);
-    errobj.dump(s->formatter);
+    s->err->dump(s->formatter);
     dump_content_length(s, s->formatter->get_len());
   } else {
     if (proposed_content_length != NO_CONTENT_LENGTH) {

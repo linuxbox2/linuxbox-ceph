@@ -645,7 +645,9 @@ done:
     rgw_log_op(store, s, (op ? op->name() : "unknown"), olog);
   }
 
-  int http_ret = s->err.http_ret_E;
+  if (!s->err) s->err = new rgw_err();
+
+  int http_ret = s->err->http_ret_E;
 
   req->log_format(s, "http status=%d", http_ret);
 
@@ -655,7 +657,7 @@ done:
 
   dout(1) << "====== req done req=" << hex << req << dec << " http_status=" << http_ret << " ======" << dendl;
 
-  return (ret < 0 ? ret : s->err.ret_E);
+  return (ret < 0 ? ret : s->err->ret_E);
 }
 
 void RGWFCGXProcess::handle_request(RGWRequest *r)
