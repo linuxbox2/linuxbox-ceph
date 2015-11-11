@@ -132,6 +132,7 @@ namespace ceph {
     std::stringstream m_ss, m_pending_string;
     std::list<json_formatter_stack_entry_d> m_stack;
     bool m_is_pending_string;
+    bool need_nl;
   };
 
   class XMLFormatter : public Formatter {
@@ -171,6 +172,7 @@ namespace ceph {
     std::deque<std::string> m_sections;
     bool m_pretty;
     std::string m_pending_string_name;
+    bool need_nl;
   };
 
   class TableFormatter : public Formatter {
