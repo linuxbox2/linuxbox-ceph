@@ -96,7 +96,12 @@ namespace ceph {
 
   class JSONFormatter : public Formatter {
   public:
-    JSONFormatter(bool p = false);
+    enum Escape {
+      Always = 0,
+      Least = 1,
+      SmartHtml = 2,
+    };
+    JSONFormatter(bool p = false, Escape c = Always);
 
     void flush(std::ostream& os);
     void reset();
@@ -113,6 +118,7 @@ namespace ceph {
     void dump_format_va(const char *name, const char *ns, bool quoted, const char *fmt, va_list ap);
     int get_len() const;
     void write_raw_data(const char *data);
+
 
   private:
 
@@ -133,6 +139,7 @@ namespace ceph {
     std::list<json_formatter_stack_entry_d> m_stack;
     bool m_is_pending_string;
     bool need_nl;
+    Escape cook;
   };
 
   class XMLFormatter : public Formatter {
