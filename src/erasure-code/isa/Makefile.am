@@ -58,7 +58,7 @@ isa_sources = \
 	erasure-code/isa/ErasureCodePluginIsa.cc \
 	erasure-code/isa/xor_op.cc
 
-erasure-code/isa/ErasureCodePluginIsa.cc: ./ceph_ver.h
+erasure-code/isa/ErasureCodePluginIsa.cc: ceph_ver.h
 
 noinst_LTLIBRARIES += libisa.la
 libisa_la_SOURCES = ${isa_sources}

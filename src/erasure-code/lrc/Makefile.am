@@ -7,7 +7,7 @@ lrc_sources = \
   erasure-code/lrc/ErasureCodePluginLrc.cc \
   erasure-code/lrc/ErasureCodeLrc.cc
 
-erasure-code/lrc/ErasureCodePluginLrc.cc: ./ceph_ver.h
+erasure-code/lrc/ErasureCodePluginLrc.cc: ceph_ver.h
 
 libec_lrc_la_SOURCES = ${lrc_sources} common/str_map.cc
 libec_lrc_la_CFLAGS = ${AM_CFLAGS}

@@ -7,7 +7,7 @@ include compressor/snappy/Makefile.am
 libcompressor_la_SOURCES = \
 	compressor/Compressor.cc \
 	compressor/AsyncCompressor.cc
-compressor/CompressionPlugin.cc: ./ceph_ver.h
+compressor/CompressionPlugin.cc: ceph_ver.h
 libcompressor_la_DEPENDENCIES = $(compressorlib_LTLIBRARIES)
 if LINUX
 libcompressor_la_LIBADD = -ldl

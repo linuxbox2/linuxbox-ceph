@@ -36,7 +36,7 @@ noinst_HEADERS += \
 	erasure-code/jerasure/gf-complete/include/gf_method.h \
 	erasure-code/jerasure/gf-complete/include/gf_general.h
 
-erasure-code/shec/ErasureCodePluginShec.cc: ./ceph_ver.h
+erasure-code/shec/ErasureCodePluginShec.cc: ceph_ver.h
 
 libec_shec_generic_la_SOURCES = ${shec_sources}
 libec_shec_generic_la_CFLAGS = ${AM_CFLAGS}  \
@@ -157,6 +157,6 @@ if LINUX
 libec_shec_la_LDFLAGS += -export-symbols-regex '.*__erasure_code_.*'
 endif
 
-erasure-code/shec/ErasureCodePluginSelectShec.cc: ./ceph_ver.h
+erasure-code/shec/ErasureCodePluginSelectShec.cc: ceph_ver.h
 
 erasure_codelib_LTLIBRARIES += libec_shec.la

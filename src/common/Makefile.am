@@ -80,7 +80,7 @@ libcommon_internal_la_SOURCES = \
 	common/blkdev.cc \
 	common/dns_resolve.cc
 
-common/PluginRegistry.cc: ./ceph_ver.h
+common/PluginRegistry.cc: ceph_ver.h
 
 if ENABLE_SERVER
 libcommon_internal_la_SOURCES += \

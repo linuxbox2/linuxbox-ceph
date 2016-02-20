@@ -36,7 +36,7 @@ bin_DEBUGPROGRAMS += ceph_erasure_code
 libec_example_la_SOURCES = \
 	erasure-code/ErasureCode.cc \
 	test/erasure-code/ErasureCodePluginExample.cc
-test/erasure-code/ErasureCodePluginExample.cc: ./ceph_ver.h
+test/erasure-code/ErasureCodePluginExample.cc: ceph_ver.h
 libec_example_la_CFLAGS = ${AM_CFLAGS}
 libec_example_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_example_la_LIBADD = $(LIBCRUSH) $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -47,7 +47,7 @@ endif
 check_LTLIBRARIES += libec_example.la
 
 libec_missing_entry_point_la_SOURCES = test/erasure-code/ErasureCodePluginMissingEntryPoint.cc
-test/erasure-code/ErasureCodePluginMissingEntryPoint.cc: ./ceph_ver.h
+test/erasure-code/ErasureCodePluginMissingEntryPoint.cc: ceph_ver.h
 libec_missing_entry_point_la_CFLAGS = ${AM_CFLAGS}
 libec_missing_entry_point_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_missing_entry_point_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -68,7 +68,7 @@ endif
 check_LTLIBRARIES += libec_missing_version.la
 
 libec_hangs_la_SOURCES = test/erasure-code/ErasureCodePluginHangs.cc
-test/erasure-code/ErasureCodePluginHangs.cc: ./ceph_ver.h
+test/erasure-code/ErasureCodePluginHangs.cc: ceph_ver.h
 libec_hangs_la_CFLAGS = ${AM_CFLAGS}
 libec_hangs_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_hangs_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -79,7 +79,7 @@ endif
 check_LTLIBRARIES += libec_hangs.la
 
 libec_fail_to_initialize_la_SOURCES = test/erasure-code/ErasureCodePluginFailToInitialize.cc
-test/erasure-code/ErasureCodePluginFailToInitialize.cc: ./ceph_ver.h
+test/erasure-code/ErasureCodePluginFailToInitialize.cc: ceph_ver.h
 libec_fail_to_initialize_la_CFLAGS = ${AM_CFLAGS}
 libec_fail_to_initialize_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_fail_to_initialize_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -90,7 +90,7 @@ endif
 check_LTLIBRARIES += libec_fail_to_initialize.la
 
 libec_fail_to_register_la_SOURCES = test/erasure-code/ErasureCodePluginFailToRegister.cc
-test/erasure-code/ErasureCodePluginFailToRegister.cc: ./ceph_ver.h
+test/erasure-code/ErasureCodePluginFailToRegister.cc: ceph_ver.h
 libec_fail_to_register_la_CFLAGS = ${AM_CFLAGS}
 libec_fail_to_register_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_fail_to_register_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -101,7 +101,7 @@ endif
 check_LTLIBRARIES += libec_fail_to_register.la
 
 libec_test_jerasure_neon_la_SOURCES = test/erasure-code/TestJerasurePluginNEON.cc
-test/erasure-code/TestJerasurePluginNEON.cc: ./ceph_ver.h
+test/erasure-code/TestJerasurePluginNEON.cc: ceph_ver.h
 libec_test_jerasure_neon_la_CFLAGS = ${AM_CFLAGS}
 libec_test_jerasure_neon_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_test_jerasure_neon_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -112,7 +112,7 @@ endif
 check_LTLIBRARIES += libec_test_jerasure_neon.la
 
 libec_test_jerasure_sse4_la_SOURCES = test/erasure-code/TestJerasurePluginSSE4.cc
-test/erasure-code/TestJerasurePluginSSE4.cc: ./ceph_ver.h
+test/erasure-code/TestJerasurePluginSSE4.cc: ceph_ver.h
 libec_test_jerasure_sse4_la_CFLAGS = ${AM_CFLAGS}
 libec_test_jerasure_sse4_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_test_jerasure_sse4_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -123,7 +123,7 @@ endif
 check_LTLIBRARIES += libec_test_jerasure_sse4.la
 
 libec_test_jerasure_sse3_la_SOURCES = test/erasure-code/TestJerasurePluginSSE3.cc
-test/erasure-code/TestJerasurePluginSSE3.cc: ./ceph_ver.h
+test/erasure-code/TestJerasurePluginSSE3.cc: ceph_ver.h
 libec_test_jerasure_sse3_la_CFLAGS = ${AM_CFLAGS}
 libec_test_jerasure_sse3_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_test_jerasure_sse3_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -134,7 +134,7 @@ endif
 check_LTLIBRARIES += libec_test_jerasure_sse3.la
 
 libec_test_jerasure_generic_la_SOURCES = test/erasure-code/TestJerasurePluginGeneric.cc
-test/erasure-code/TestJerasurePluginGeneric.cc: ./ceph_ver.h
+test/erasure-code/TestJerasurePluginGeneric.cc: ceph_ver.h
 libec_test_jerasure_generic_la_CFLAGS = ${AM_CFLAGS}
 libec_test_jerasure_generic_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_test_jerasure_generic_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -312,7 +312,7 @@ endif
 check_TESTPROGRAMS += unittest_erasure_code_plugin_shec
 
 libec_test_shec_neon_la_SOURCES = test/erasure-code/TestShecPluginNEON.cc
-test/erasure-code/TestShecPluginNEON.cc: ./ceph_ver.h
+test/erasure-code/TestShecPluginNEON.cc: ceph_ver.h
 libec_test_shec_neon_la_CFLAGS = ${AM_CFLAGS}
 libec_test_shec_neon_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_test_shec_neon_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -323,7 +323,7 @@ endif
 check_LTLIBRARIES += libec_test_shec_neon.la
 
 libec_test_shec_sse4_la_SOURCES = test/erasure-code/TestShecPluginSSE4.cc
-test/erasure-code/TestShecPluginSSE4.cc: ./ceph_ver.h
+test/erasure-code/TestShecPluginSSE4.cc: ceph_ver.h
 libec_test_shec_sse4_la_CFLAGS = ${AM_CFLAGS}
 libec_test_shec_sse4_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_test_shec_sse4_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -334,7 +334,7 @@ endif
 check_LTLIBRARIES += libec_test_shec_sse4.la
 
 libec_test_shec_sse3_la_SOURCES = test/erasure-code/TestShecPluginSSE3.cc
-test/erasure-code/TestShecPluginSSE3.cc: ./ceph_ver.h
+test/erasure-code/TestShecPluginSSE3.cc: ceph_ver.h
 libec_test_shec_sse3_la_CFLAGS = ${AM_CFLAGS}
 libec_test_shec_sse3_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_test_shec_sse3_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)
@@ -345,7 +345,7 @@ endif
 check_LTLIBRARIES += libec_test_shec_sse3.la
 
 libec_test_shec_generic_la_SOURCES = test/erasure-code/TestShecPluginGeneric.cc
-test/erasure-code/TestShecPluginGeneric.cc: ./ceph_ver.h
+test/erasure-code/TestShecPluginGeneric.cc: ceph_ver.h
 libec_test_shec_generic_la_CFLAGS = ${AM_CFLAGS}
 libec_test_shec_generic_la_CXXFLAGS= ${AM_CXXFLAGS}
 libec_test_shec_generic_la_LIBADD = $(PTHREAD_LIBS) $(EXTRALIBS)

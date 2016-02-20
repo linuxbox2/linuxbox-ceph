@@ -7,7 +7,7 @@ snappy_sources = \
   compressor/Compressor.cc \
   compressor/snappy/CompressionPluginSnappy.cc
 
-compressor/snappy/CompressionPluginSnappy.cc: ./ceph_ver.h
+compressor/snappy/CompressionPluginSnappy.cc: ceph_ver.h
 
 libceph_snappy_la_SOURCES = ${snappy_sources}
 libceph_snappy_la_CFLAGS = ${AM_CFLAGS}  \

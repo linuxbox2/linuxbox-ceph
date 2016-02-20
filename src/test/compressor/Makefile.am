@@ -7,7 +7,7 @@ libceph_example_la_SOURCES = \
 	compressor/Compressor.cc \
 	test/compressor/compressor_plugin_example.cc
 noinst_HEADERS += test/compressor/compressor_example.h
-test/compressor/compressor_plugin_example.cc: ./ceph_ver.h
+test/compressor/compressor_plugin_example.cc: ceph_ver.h
 libceph_example_la_CFLAGS = ${AM_CFLAGS}
 libceph_example_la_CXXFLAGS= ${AM_CXXFLAGS}
 libceph_example_la_LIBADD = $(LIBCRUSH) $(PTHREAD_LIBS) $(EXTRALIBS)

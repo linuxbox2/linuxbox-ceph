@@ -8,7 +8,7 @@ zlib_sources = \
   compressor/zlib/CompressionPluginZlib.cc \
   compressor/zlib/CompressionZlib.cc
 
-compressor/zlib/CompressionPluginZlib.cc: ./ceph_ver.h
+compressor/zlib/CompressionPluginZlib.cc: ceph_ver.h
 
 libceph_zlib_la_SOURCES = ${zlib_sources}
 libceph_zlib_la_CFLAGS = ${AM_CFLAGS}  
