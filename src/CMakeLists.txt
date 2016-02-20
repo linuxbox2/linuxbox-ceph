@@ -853,6 +853,8 @@ endif(WITH_SPDK)
 if(NOT ALLOCATOR STREQUAL "jemalloc")
   set(disable_jemalloc "DISABLE_JEMALLOC=1")
 endif()
+if(WITH_ROCKSDB)
+else(WITH_ROCKSDB)
 add_custom_target(build_rocksdb
     COMMAND
     PORTABLE=1 ${disable_jemalloc} $(MAKE) static_lib EXTRA_CXXFLAGS='-fPIC -Wno-unused-variable'
@@ -864,6 +866,7 @@ add_library(rocksdb STATIC IMPORTED)
 set_property(TARGET rocksdb PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/src/rocksdb/librocksdb.a")
 add_dependencies(rocksdb build_rocksdb)
 set(ROCKSDB_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/src/rocksdb/include)
+endif(WITH_ROCKSDB)
 
 add_subdirectory(kv)
 
