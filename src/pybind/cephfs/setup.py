@@ -10,14 +10,21 @@ from Cython.Distutils import build_ext
 
 
 def get_version():
+  where = []
+  top = os.getenv("CEPH_BUILD_TOP")
+  if top:
+    where.append(top)
+    where.append(os.path.join(top, "src", "include"))
+  else:
+    where.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+  for dir in where:
     try:
-        for line in open(os.path.join(os.path.dirname(__file__), "..", "ceph_ver.h")):
+        for line in open(os.path.join(dir, "ceph_ver.h")):
             if "CEPH_GIT_NICE_VER" in line:
                 return line.split()[2][1:-1]
-        else:
-            return "0"
     except IOError:
-        return "0"
+	pass
+  return "0"
 
 class EggInfoCommand(egg_info):
     def finalize_options(self):

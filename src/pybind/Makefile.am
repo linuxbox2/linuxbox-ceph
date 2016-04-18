@@ -15,6 +15,7 @@ PY_DISTUTILS = \
 	CYTHON_BUILD_DIR=$(CYTHON_BUILD_DIR) \
 	CEPH_LIBDIR="$(abs_builddir)/.libs" \
         TMPDIR=${TMPDIR} \
+	CEPH_BUILD_TOP=$(top_builddir) \
 	${PYTHON} ./setup.py
 
 if WITH_RADOS
