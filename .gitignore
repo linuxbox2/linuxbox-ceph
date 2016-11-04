@@ -34,6 +34,9 @@ core
 /build-doc
 /tags
 
+# config-time generated symlink
+/src/include/civetweb
+
 # where is this from?
 web/*.html
 
